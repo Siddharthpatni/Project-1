@@ -383,6 +383,14 @@ async def load_with_recovery(page, row: dict) -> Tuple[str, str, Optional[str]]:
             resp = await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
             if resp and resp.status >= 400:
                 return None
+            
+            # Certain portals (like europa.vergabe24.de) construct session tokens via frontend JS
+            # meaning their tender data only appears after a hard page reload
+            if "vergabe24.de" in url:
+                log.info(f"    {label}: reloading page to fetch updated AJAX content...")
+                await page.wait_for_timeout(1000)
+                await page.reload(wait_until="domcontentloaded", timeout=timeout)
+
             await page.wait_for_timeout(700)
             await dismiss_cookies(page)
             text = await get_page_text(page)
