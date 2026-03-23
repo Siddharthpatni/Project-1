@@ -10,8 +10,10 @@ import logging
 import time
 import argparse
 import os
+import re
+import urllib.request
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
 # basic logging - goes to file and terminal
@@ -324,13 +326,90 @@ async def grab_all_labels(page):
 
 
 # -------------------------------------------------------------------
+# DOCUMENT DOWNLOAD
+# After a page is scraped, we look for any downloadable files linked
+# on the page (PDFs, ZIPs, Word docs etc.) and save them locally.
+# Files go into:  downloads/<tender_id>/<filename>
+# -------------------------------------------------------------------
+
+# file extensions we want to download
+DOC_EXTENSIONS = (".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".rar", ".7z")
+
+async def download_documents(page, tender_id, base_url, download_dir):
+    """
+    Finds all download links on the current page and saves the files.
+    Returns a list of filenames that were saved.
+    """
+    saved = []
+
+    try:
+        # grab every <a href> on the page
+        links = await page.locator("xpath=//a[@href]").all()
+        seen  = set()  # avoid downloading the same file twice
+
+        for link in links:
+            try:
+                href = await link.get_attribute("href")
+                if not href:
+                    continue
+
+                # make absolute URL
+                full_url = urljoin(base_url, href)
+
+                # only download known document types
+                lower = full_url.lower().split("?")[0]  # strip query params for extension check
+                if not any(lower.endswith(ext) for ext in DOC_EXTENSIONS):
+                    continue
+
+                if full_url in seen:
+                    continue
+                seen.add(full_url)
+
+                # build save path:  downloads/<tender_id>/<filename>
+                raw_name = full_url.split("/")[-1].split("?")[0] or "document"
+                # sanitize filename - remove anything sketchy
+                filename  = re.sub(r'[^\w.\-]', '_', raw_name)[:100]
+                folder    = os.path.join(download_dir, str(tender_id))
+                os.makedirs(folder, exist_ok=True)
+                dest      = os.path.join(folder, filename)
+
+                # skip if already downloaded
+                if os.path.exists(dest):
+                    saved.append(filename)
+                    continue
+
+                # try to download the file
+                try:
+                    req = urllib.request.Request(
+                        full_url,
+                        headers={"User-Agent": "Mozilla/5.0 (compatible; scraper/1.0)"},
+                    )
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        with open(dest, "wb") as fh:
+                            fh.write(resp.read())
+                    saved.append(filename)
+                    log.info(f"    ↓ downloaded: {filename}")
+                except Exception as dl_err:
+                    log.debug(f"    skip {filename}: {dl_err}")
+
+            except Exception:
+                pass
+
+    except Exception:
+        pass
+
+    return saved
+
+
+# -------------------------------------------------------------------
 # SCRAPE ONE URL
 # This is the main function. For each URL we:
 #   1. Load the page in the browser
 #   2. Dismiss cookie popup
 #   3. Try our XPath selectors for each field
 #   4. Fall back to grabbing all label/value pairs
-#   5. Return a dict with everything we found
+#   5. Download any found documents (if --download-docs is set)
+#   6. Return a dict with everything we found
 # -------------------------------------------------------------------
 
 # words that signal a tender was deleted / page doesn't exist
@@ -342,7 +421,7 @@ EXPIRED_WORDS = [
 ]
 
 
-async def scrape_url(page, row, config):
+async def scrape_url(page, row, config, download_docs=False, download_dir="downloads"):
     url    = row["url"]
     domain, cfg = get_config(url)
 
@@ -363,6 +442,7 @@ async def scrape_url(page, row, config):
         "reference_number":None,
         "contact_info":    None,
         "extra_fields":    {},
+        "downloaded_docs": [],   # filenames of any documents saved from this page
         "error_message":   None,
         "scrape_time_ms":  0,
         "scraped_at":      "",
@@ -409,6 +489,15 @@ async def scrape_url(page, row, config):
         # fallback: grab everything we can find
         result["extra_fields"] = await grab_all_labels(page)
 
+        # download any linked documents if the flag is on
+        if download_docs:
+            tender_id = result["id"] or re.sub(r'[^\w]', '_', url[-40:])
+            result["downloaded_docs"] = await download_documents(
+                page, tender_id, url, download_dir
+            )
+            if result["downloaded_docs"]:
+                log.info(f"    saved {len(result['downloaded_docs'])} doc(s) for {tender_id[:20]}")
+
         # decide overall status
         if result["title"] or result["contracting_authority"] or result["extra_fields"]:
             result["status"] = "success"
@@ -434,13 +523,13 @@ async def scrape_url(page, row, config):
 # opening a new tab for every URL.
 # -------------------------------------------------------------------
 
-async def run_domain(domain, rows, cfg, results, sem, ctx, counter, total):
+async def run_domain(domain, rows, cfg, results, sem, ctx, counter, total, download_docs=False, download_dir="downloads"):
     log.info(f"  starting {domain}  ({len(rows)} urls)")
     page = await ctx.new_page()
 
     for i, row in enumerate(rows):
         async with sem:
-            rec = await scrape_url(page, row, cfg)
+            rec = await scrape_url(page, row, cfg, download_docs, download_dir)
             results.append(rec)
             counter["n"] += 1
             icon = "✓" if rec["status"] == "success" else ("⏱" if rec["status"] == "timeout" else "✗")
@@ -459,8 +548,12 @@ async def run_domain(domain, rows, cfg, results, sem, ctx, counter, total):
 # concurrently using Python's asyncio (async/await).
 # -------------------------------------------------------------------
 
-async def run(input_file, output_file, workers, skip_completed, limit):
-    # load CSV
+async def run(input_file, output_file, workers, skip_completed, limit, download_docs=False, download_dir="downloads"):
+    # ---------------------------------------------------------------
+    # CSV LOADING  ← this is where publications_b.csv is read
+    # The CSV must have at minimum a 'url' column.
+    # Other columns (id, state, domain, error) are optional extras.
+    # ---------------------------------------------------------------
     rows = []
     with open(input_file, "r", encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -515,8 +608,12 @@ async def run(input_file, output_file, workers, skip_completed, limit):
         )
 
         # fire off all domain batches concurrently
+        if download_docs:
+            os.makedirs(download_dir, exist_ok=True)
+            log.info(f"  document download ON  →  folder: {download_dir}/")
+
         tasks = [
-            run_domain(domain, g, DOMAINS.get(domain, FALLBACK), results, sem, ctx, counter, total)
+            run_domain(domain, g, DOMAINS.get(domain, FALLBACK), results, sem, ctx, counter, total, download_docs, download_dir)
             for domain, g in groups.items()
         ]
         await asyncio.gather(*tasks)
@@ -566,6 +663,11 @@ async def run(input_file, output_file, workers, skip_completed, limit):
         if r["status"] == "success":
             domain_stats[d]["success"] += 1
 
+    # also print how many docs were downloaded total
+    total_docs = sum(len(r.get("downloaded_docs", [])) for r in results)
+    if total_docs:
+        print(f"\n  documents downloaded: {total_docs} files  →  {download_dir}/")
+
     print("\n  per domain:")
     for d, s in sorted(domain_stats.items(), key=lambda x: -x[1]["total"]):
         rate = 100 * s["success"] / s["total"] if s["total"] else 0
@@ -584,13 +686,15 @@ def main():
     p.add_argument("--workers","-w", type=int, default=8,          help="parallel tabs (default 8)")
     p.add_argument("--limit",  "-n", type=int, default=0,          help="only first N urls (0=all)")
     p.add_argument("--skip-completed", action="store_true",        help="skip rows where state=COMPLETED")
+    p.add_argument("--download-docs",  action="store_true",        help="download any PDF/ZIP/DOC files found on each page")
+    p.add_argument("--download-dir",   default="downloads",        help="folder to save downloaded docs (default: downloads/)")
     args = p.parse_args()
 
     if not os.path.exists(args.input):
         print(f"file not found: {args.input}")
         return
 
-    asyncio.run(run(args.input, args.output, args.workers, args.skip_completed, args.limit))
+    asyncio.run(run(args.input, args.output, args.workers, args.skip_completed, args.limit, args.download_docs, args.download_dir))
 
 
 if __name__ == "__main__":

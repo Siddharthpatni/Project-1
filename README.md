@@ -29,24 +29,29 @@ python3 -m playwright install chromium
 # Scrape first 100 URLs (fast test)
 python3 scraper_b.py --limit 100
 
+# Scrape first 100 URLs and download PDFs/ZIPs
+python3 scraper.py --limit 100 --download-docs
+
 # Scrape only FAILED rows (skip already-completed ones)
-python3 scraper_b.py --skip-completed --workers 8
+python3 scraper.py --skip-completed --workers 8
 
 # Full run — all 7,500 URLs
-python3 scraper_b.py --workers 8
+python3 scraper.py --workers 8
 
 # Watch live progress
-tail -f scraper_b.log
+tail -f scraper.log
 ```
 
 ### All CLI Options
 
 ```
 --input    -i   Input CSV file          (default: publications_b.csv)
---output   -o   Output JSON file        (default: results_b.json)
+--output   -o   Output JSON file        (default: results.json)
 --workers  -w   Parallel browser tabs   (default: 8)
 --limit    -n   Only scrape first N URLs (0 = all)
 --skip-completed  Skip rows where state=COMPLETED in CSV
+--download-docs   Download any PDF/ZIP/DOC files found on each page
+--download-dir    Folder to save downloaded docs (default: downloads/)
 ```
 
 ---
@@ -74,9 +79,10 @@ publications_b.csv
    d. check expired_indicators → mark as "invalid" if page deleted
    e. extract_field()         → run XPath selectors for each field
    f. extract_all_key_value_pairs() → fallback: grab ALL label/value pairs
+   g. download_documents()    → if --download-docs is on, save PDFs/ZIPs
        │
        ▼
-⑤ save_results()         — writes results_b.json + results_b.csv
+⑤ save_results()         — writes results.json + results.csv
 ⑥ print_summary()        — shows success rate per domain
 ```
 
@@ -152,6 +158,7 @@ XPath is a standard query language (W3C spec) for finding elements in HTML. Thin
 | `cpv_codes` | EU procurement category codes |
 | `location` | Place of performance (Erfüllungsort) |
 | `extra_fields` | All other label/value pairs found on the page |
+| `downloaded_docs`| List of downloaded filenames (`--download-docs`) |
 | `scrape_time_ms` | How long this URL took (milliseconds) |
 | `row_state` | Original `state` from input CSV |
 
