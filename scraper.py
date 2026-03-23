@@ -1,20 +1,7 @@
-"""
-Vergabepilot.AI - Phase 1: Manual Procurement Tender Scraper
-=============================================================
-A Playwright + XPath based scraper for German public procurement portals.
-Designed for the hackathon: maximize scraped websites from ~7,500 URLs.
-
-Supported Domains:
-  - evergabe-online.de
-  - dtvp.de
-  - sachsen-vergabe.de
-  - evergabe.de
-  - vergabeportal-bw.de
-  - (extensible to new domains via domain_configs)
-
-Usage:
-  python scraper.py --input urls.csv --output results.json --workers 4
-"""
+# scraper.py
+# Phase 1 - Manual scraping of German procurement portals
+# Uses Playwright (browser automation) + XPath (HTML element selectors)
+# Run: python3 scraper.py --input publications_b.csv --limit 100
 
 import asyncio
 import csv
@@ -25,556 +12,498 @@ import argparse
 import os
 from datetime import datetime
 from urllib.parse import urlparse
-from dataclasses import dataclass, asdict, field
-from typing import Optional
-from playwright.async_api import async_playwright, Page, TimeoutError as PlaywrightTimeout
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
-# ─── Logging Setup ───────────────────────────────────────────────────────────
+# basic logging - goes to file and terminal
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+    format="%(asctime)s  %(message)s",
     handlers=[
         logging.FileHandler("scraper.log"),
         logging.StreamHandler(),
     ],
 )
-logger = logging.getLogger("VergabepilotScraper")
+log = logging.getLogger("scraper")
 
 
-# ─── Data Model ──────────────────────────────────────────────────────────────
-@dataclass
-class TenderRecord:
-    """Structured output for a single procurement tender."""
-    url: str
-    domain: str
-    status: str = "pending"  # success | error | timeout | invalid
-    title: Optional[str] = None
-    description: Optional[str] = None
-    contracting_authority: Optional[str] = None  # Auftraggeber
-    publication_date: Optional[str] = None       # Veröffentlichungsdatum
-    deadline: Optional[str] = None               # Angebotsfrist / Teilnahmefrist
-    tender_type: Optional[str] = None            # Verfahrensart
-    cpv_codes: Optional[str] = None              # CPV-Codes
-    location: Optional[str] = None               # Erfüllungsort
-    reference_number: Optional[str] = None       # Vergabenummer / Aktenzeichen
-    contact_info: Optional[str] = None
-    extra_fields: dict = field(default_factory=dict)
-    scraped_at: str = ""
-    error_message: Optional[str] = None
-    scrape_time_ms: int = 0
+# -------------------------------------------------------------------
+# XPATH SELECTORS
+# XPath lets us find specific elements on a web page using a path-like
+# syntax. Example:  //h1  →  finds the first <h1> tag on the page
+#
+# We define common German procurement labels here and try multiple
+# variants because each portal structures its HTML differently.
+# -------------------------------------------------------------------
 
-
-# ─── Domain-Specific XPath Configurations ────────────────────────────────────
-# Each config defines XPath selectors for extracting fields from a specific domain.
-# Adjust these selectors after inspecting the target sites.
-
-DOMAIN_CONFIGS = {
-    "www.evergabe-online.de": {
-        "name": "eVergabe Online",
-        "wait_selector": "//div[contains(@class,'tender') or contains(@class,'detail') or contains(@class,'content')]",
-        "selectors": {
-            "title": [
-                "//h1[contains(@class,'title') or contains(@class,'heading')]",
-                "//h1",
-                "//div[contains(@class,'tender-title')]",
-                "//*[contains(@class,'publication-title')]",
-            ],
-            "contracting_authority": [
-                "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
-                "//*[contains(text(),'Vergabestelle')]/following-sibling::*[1]",
-                "//td[contains(text(),'Auftraggeber')]/following-sibling::td[1]",
-                "//*[contains(@class,'authority') or contains(@class,'client')]",
-            ],
-            "description": [
-                "//*[contains(text(),'Beschreibung')]/following-sibling::*[1]",
-                "//*[contains(text(),'Leistung')]/following-sibling::*[1]",
-                "//*[contains(@class,'description')]",
-            ],
-            "deadline": [
-                "//*[contains(text(),'Angebotsfrist') or contains(text(),'Teilnahmefrist')]/following-sibling::*[1]",
-                "//*[contains(text(),'Frist')]/following-sibling::*[1]",
-                "//td[contains(text(),'Frist')]/following-sibling::td[1]",
-            ],
-            "publication_date": [
-                "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
-                "//*[contains(text(),'Bekanntmachung')]/following-sibling::*[1]",
-                "//td[contains(text(),'Datum')]/following-sibling::td[1]",
-            ],
-            "tender_type": [
-                "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
-                "//*[contains(text(),'Vergabeart')]/following-sibling::*[1]",
-            ],
-            "reference_number": [
-                "//*[contains(text(),'Vergabenummer') or contains(text(),'Aktenzeichen')]/following-sibling::*[1]",
-                "//*[contains(text(),'Referenz')]/following-sibling::*[1]",
-            ],
-            "cpv_codes": [
-                "//*[contains(text(),'CPV')]/following-sibling::*[1]",
-            ],
-            "location": [
-                "//*[contains(text(),'Erfüllungsort') or contains(text(),'Ort der Leistung')]/following-sibling::*[1]",
-            ],
-            "contact_info": [
-                "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
-                "//*[contains(@class,'contact')]",
-            ],
-        },
-    },
-
-    "www.dtvp.de": {
-        "name": "DTVP",
-        "wait_selector": "//div[contains(@class,'notice') or contains(@class,'detail') or contains(@class,'content')]",
-        "selectors": {
-            "title": [
-                "//h1",
-                "//*[contains(@class,'notice-title')]",
-                "//div[contains(@class,'headline')]//h1",
-            ],
-            "contracting_authority": [
-                "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
-                "//*[contains(text(),'Vergabestelle')]/following-sibling::*[1]",
-                "//dt[contains(text(),'Auftraggeber')]/following-sibling::dd[1]",
-            ],
-            "description": [
-                "//*[contains(text(),'Beschreibung')]/following-sibling::*[1]",
-                "//*[contains(text(),'Gegenstand')]/following-sibling::*[1]",
-            ],
-            "deadline": [
-                "//*[contains(text(),'Frist')]/following-sibling::*[1]",
-                "//dt[contains(text(),'Frist')]/following-sibling::dd[1]",
-            ],
-            "publication_date": [
-                "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
-                "//*[contains(text(),'Datum')]/following-sibling::*[1]",
-            ],
-            "tender_type": [
-                "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
-            ],
-            "reference_number": [
-                "//*[contains(text(),'Vergabenummer')]/following-sibling::*[1]",
-                "//*[contains(text(),'Referenz')]/following-sibling::*[1]",
-            ],
-            "cpv_codes": [
-                "//*[contains(text(),'CPV')]/following-sibling::*[1]",
-            ],
-            "location": [
-                "//*[contains(text(),'Erfüllungsort')]/following-sibling::*[1]",
-            ],
-            "contact_info": [
-                "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
-            ],
-        },
-    },
-
-    "www.sachsen-vergabe.de": {
-        "name": "Sachsen Vergabe",
-        "wait_selector": "//div[contains(@class,'detail') or contains(@class,'content') or contains(@class,'publication')]",
-        "selectors": {
-            "title": [
-                "//h1",
-                "//*[contains(@class,'title')]",
-            ],
-            "contracting_authority": [
-                "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
-                "//td[contains(text(),'Auftraggeber')]/following-sibling::td[1]",
-            ],
-            "description": [
-                "//*[contains(text(),'Beschreibung')]/following-sibling::*[1]",
-                "//*[contains(text(),'Leistung')]/following-sibling::*[1]",
-            ],
-            "deadline": [
-                "//*[contains(text(),'Frist')]/following-sibling::*[1]",
-            ],
-            "publication_date": [
-                "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
-            ],
-            "tender_type": [
-                "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
-            ],
-            "reference_number": [
-                "//*[contains(text(),'Vergabenummer')]/following-sibling::*[1]",
-            ],
-            "cpv_codes": [
-                "//*[contains(text(),'CPV')]/following-sibling::*[1]",
-            ],
-            "location": [
-                "//*[contains(text(),'Erfüllungsort')]/following-sibling::*[1]",
-            ],
-            "contact_info": [
-                "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
-            ],
-        },
-    },
-
-    "www.evergabe.de": {
-        "name": "eVergabe.de",
-        "wait_selector": "//div[contains(@class,'content') or contains(@class,'detail') or contains(@class,'tender')]",
-        "selectors": {
-            "title": [
-                "//h1",
-                "//*[contains(@class,'tender-title') or contains(@class,'title')]",
-            ],
-            "contracting_authority": [
-                "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
-                "//*[contains(text(),'Vergabestelle')]/following-sibling::*[1]",
-            ],
-            "description": [
-                "//*[contains(text(),'Beschreibung')]/following-sibling::*[1]",
-            ],
-            "deadline": [
-                "//*[contains(text(),'Frist')]/following-sibling::*[1]",
-                "//*[contains(text(),'Angebotsfrist')]/following-sibling::*[1]",
-            ],
-            "publication_date": [
-                "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
-            ],
-            "tender_type": [
-                "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
-            ],
-            "reference_number": [
-                "//*[contains(text(),'Vergabenummer')]/following-sibling::*[1]",
-            ],
-            "cpv_codes": [
-                "//*[contains(text(),'CPV')]/following-sibling::*[1]",
-            ],
-            "location": [
-                "//*[contains(text(),'Erfüllungsort')]/following-sibling::*[1]",
-            ],
-            "contact_info": [
-                "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
-            ],
-        },
-    },
-
-    "vergabeportal-bw.de": {
-        "name": "Vergabeportal BW",
-        "wait_selector": "//div[contains(@class,'content') or contains(@class,'detail') or contains(@class,'notice')]",
-        "selectors": {
-            "title": [
-                "//h1",
-                "//*[contains(@class,'title')]",
-            ],
-            "contracting_authority": [
-                "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
-            ],
-            "description": [
-                "//*[contains(text(),'Beschreibung')]/following-sibling::*[1]",
-            ],
-            "deadline": [
-                "//*[contains(text(),'Frist')]/following-sibling::*[1]",
-            ],
-            "publication_date": [
-                "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
-            ],
-            "tender_type": [
-                "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
-            ],
-            "reference_number": [
-                "//*[contains(text(),'Vergabenummer')]/following-sibling::*[1]",
-            ],
-            "cpv_codes": [
-                "//*[contains(text(),'CPV')]/following-sibling::*[1]",
-            ],
-            "location": [
-                "//*[contains(text(),'Erfüllungsort')]/following-sibling::*[1]",
-            ],
-            "contact_info": [
-                "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
-            ],
-        },
-    },
-}
-
-# Fallback config for unknown domains
-FALLBACK_CONFIG = {
-    "name": "Generic",
-    "wait_selector": "//body",
-    "selectors": {
-        "title": ["//h1", "//title"],
-        "contracting_authority": [
-            "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
-            "//*[contains(text(),'Vergabestelle')]/following-sibling::*[1]",
-        ],
-        "description": [
-            "//*[contains(text(),'Beschreibung')]/following-sibling::*[1]",
-        ],
-        "deadline": [
-            "//*[contains(text(),'Frist')]/following-sibling::*[1]",
-        ],
-        "publication_date": [
-            "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
-        ],
-        "tender_type": [
-            "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
-        ],
-        "reference_number": [
-            "//*[contains(text(),'Vergabenummer')]/following-sibling::*[1]",
-        ],
-        "cpv_codes": [
-            "//*[contains(text(),'CPV')]/following-sibling::*[1]",
-        ],
-        "location": [
-            "//*[contains(text(),'Erfüllungsort')]/following-sibling::*[1]",
-        ],
-        "contact_info": [
-            "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
-        ],
-    },
-}
-
-
-# ─── Helper Functions ────────────────────────────────────────────────────────
-
-def get_domain(url: str) -> str:
-    """Extract domain from URL."""
-    parsed = urlparse(url)
-    return parsed.netloc.lower()
-
-
-def get_config(domain: str) -> dict:
-    """Get scraping config for a domain, fall back to generic."""
-    # Try exact match first
-    if domain in DOMAIN_CONFIGS:
-        return DOMAIN_CONFIGS[domain]
-    # Try partial match (e.g., subdomain variations)
-    for key, config in DOMAIN_CONFIGS.items():
-        if key in domain or domain in key:
-            return config
-    return FALLBACK_CONFIG
-
-
-def load_urls(filepath: str) -> list[dict]:
-    """Load URLs from CSV. Expects at minimum a 'url' column."""
-    urls = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            urls.append(row)
-    logger.info(f"Loaded {len(urls)} URLs from {filepath}")
-    return urls
-
-
-def group_urls_by_domain(url_rows: list[dict]) -> dict[str, list[dict]]:
-    """Group URLs by domain for efficient batch processing."""
-    groups = {}
-    for row in url_rows:
-        domain = get_domain(row["url"])
-        groups.setdefault(domain, []).append(row)
-    for domain, rows in groups.items():
-        logger.info(f"  {domain}: {len(rows)} URLs")
-    return groups
-
-
-# ─── Core Scraper ────────────────────────────────────────────────────────────
-
-async def extract_field(page: Page, xpath_list: list[str]) -> Optional[str]:
-    """Try multiple XPath selectors, return first match's text content."""
-    for xpath in xpath_list:
+# tries each xpath in order, returns the text of the first one that works
+async def get_text(page, xpaths):
+    for xp in xpaths:
         try:
-            elements = await page.locator(f"xpath={xpath}").all()
-            if elements:
-                text = await elements[0].inner_text()
-                text = text.strip()
-                if text:
-                    return text
+            els = await page.locator(f"xpath={xp}").all()
+            if els:
+                txt = (await els[0].inner_text()).strip()
+                if txt and len(txt) < 2000:
+                    return txt
         except Exception:
-            continue
+            pass
     return None
 
 
-async def extract_all_key_value_pairs(page: Page) -> dict:
-    """
-    Fallback: extract all visible label-value pairs from the page.
-    Looks for common patterns: <dt>/<dd>, <th>/<td>, label/value divs.
-    """
-    extra = {}
+# generic german procurement labels that appear on almost every portal
+TITLE_XP = [
+    "//h1",
+    "//*[contains(@class,'title') and (self::h1 or self::h2)]",
+    "//title",
+]
+AUTHORITY_XP = [
+    "//dt[contains(.,'Auftraggeber')]/following-sibling::dd[1]",
+    "//th[contains(.,'Auftraggeber')]/following-sibling::td[1]",
+    "//td[contains(.,'Auftraggeber')]/following-sibling::td[1]",
+    "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
+    "//*[contains(text(),'Vergabestelle')]/following-sibling::*[1]",
+]
+DEADLINE_XP = [
+    "//dt[contains(.,'Angebotsfrist') or contains(.,'Frist')]/following-sibling::dd[1]",
+    "//th[contains(.,'Frist')]/following-sibling::td[1]",
+    "//td[contains(.,'Frist')]/following-sibling::td[1]",
+    "//*[contains(text(),'Angebotsfrist') or contains(text(),'Teilnahmefrist')]/following-sibling::*[1]",
+    "//*[contains(text(),'Frist')]/following-sibling::*[1]",
+]
+PUBDATE_XP = [
+    "//dt[contains(.,'Veröffentlich')]/following-sibling::dd[1]",
+    "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
+    "//*[contains(text(),'Bekanntmachung')]/following-sibling::*[1]",
+]
+TYPE_XP = [
+    "//dt[contains(.,'Verfahrensart') or contains(.,'Vergabeart')]/following-sibling::dd[1]",
+    "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
+]
+CPV_XP = [
+    "//*[contains(text(),'CPV')]/following-sibling::*[1]",
+    "//dt[contains(.,'CPV')]/following-sibling::dd[1]",
+]
+LOCATION_XP = [
+    "//*[contains(text(),'Erfüllungsort') or contains(text(),'Ort der Leistung')]/following-sibling::*[1]",
+]
+REF_XP = [
+    "//dt[contains(.,'Vergabenummer') or contains(.,'Aktenzeichen')]/following-sibling::dd[1]",
+    "//*[contains(text(),'Vergabenummer') or contains(text(),'Aktenzeichen')]/following-sibling::*[1]",
+]
+DESC_XP = [
+    "//*[contains(text(),'Beschreibung') or contains(text(),'Leistung')]/following-sibling::*[1]",
+    "//*[contains(@class,'description')]",
+]
+CONTACT_XP = [
+    "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
+    "//*[contains(@class,'contact')]",
+]
+
+
+# -------------------------------------------------------------------
+# DOMAIN CONFIGS
+# Because each portal has slightly different HTML, we try portal-specific
+# xpaths first, then fall back to the generic ones above.
+# -------------------------------------------------------------------
+
+# helper so each domain config is just the extra specific xpaths
+def make_selectors(extra_title=None, extra_auth=None, extra_deadline=None):
+    return {
+        "title":                 (extra_title or []) + TITLE_XP,
+        "contracting_authority": (extra_auth or []) + AUTHORITY_XP,
+        "description":           DESC_XP,
+        "deadline":              (extra_deadline or []) + DEADLINE_XP,
+        "publication_date":      PUBDATE_XP,
+        "tender_type":           TYPE_XP,
+        "cpv_codes":             CPV_XP,
+        "location":              LOCATION_XP,
+        "reference_number":      REF_XP,
+        "contact_info":          CONTACT_XP,
+    }
+
+
+DOMAINS = {
+    "www.evergabe.de": {
+        "wait": "//h1 | //div[contains(@class,'content')]",
+        "sel":  make_selectors(extra_auth=["//*[contains(@class,'vergabestelle')]"]),
+    },
+    "www.subreport.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(
+            extra_title=["//div[contains(@class,'bekanntmachungstitel')]"],
+            extra_auth=["//span[contains(@id,'lblVergabestelle') or contains(@id,'lblAuftraggeber')]"],
+            extra_deadline=["//span[contains(@id,'lblAngebotsfrist')]"],
+        ),
+    },
+    "vergabemarktplatz.brandenburg.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(extra_auth=["//*[contains(@class,'organisation-name')]"]),
+    },
+    "vergabe.niedersachsen.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "bieterzugang.deutsche-evergabe.de": {
+        "wait": "//div | //h1",
+        "sel":  make_selectors(),
+    },
+    "www.evergabe.nrw.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "www.vergabe-westfalen.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "www.deutsches-ausschreibungsblatt.de": {
+        "wait": "//div[contains(@class,'content')]",
+        "sel":  make_selectors(extra_auth=["//td[contains(text(),'Auftraggeber')]/following-sibling::td[1]"]),
+    },
+    "www.had.de": {
+        "wait": "//div[contains(@class,'content')]",
+        "sel":  make_selectors(
+            extra_auth=["//td[contains(text(),'Auftraggeber')]/following-sibling::td[1]"],
+            extra_deadline=["//td[contains(text(),'Frist') or contains(text(),'Abgabetermin')]/following-sibling::td[1]"],
+        ),
+    },
+    "www.vergabe.metropoleruhr.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "fbhh-evergabe.web.hamburg.de": {
+        "wait": "//div | //h1",
+        "sel":  make_selectors(),
+    },
+    "bi-medien.de": {
+        "wait": "//div[contains(@class,'content')]",
+        "sel":  make_selectors(extra_auth=["//span[contains(@class,'auftraggeber')]"]),
+    },
+    "www.tender24.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(
+            extra_auth=["//span[@id='lblVergabestelle']"],
+            extra_deadline=["//span[@id='lblAngebotsfrist']"],
+        ),
+    },
+    "vergabe.landbw.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(),
+    },
+    "www.vergabe24.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(extra_auth=["//span[@id='lblVergabestelle']"]),
+    },
+    "vergabekooperation.berlin": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(),
+    },
+    "www.evergabe.bayern.de": {
+        "wait": "//div | //h1",
+        "sel":  make_selectors(),
+    },
+    "vergabeportal-bw.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "vergabe.fraunhofer.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(),
+    },
+    "www.ausschreibungen.ls.brandenburg.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(),
+    },
+    "landesverwaltung.vergabe.rlp.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "lbb.vergabe.rlp.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "vergabe.deges.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(),
+    },
+    "www.evergabe.sachsen.de": {
+        "wait": "//div[contains(@class,'detail')]",
+        "sel":  make_selectors(),
+    },
+    "www.vergabe.metropoleruhr.de": {
+        "wait": "//div[contains(@class,'notice')]",
+        "sel":  make_selectors(),
+    },
+    "vergabe.muenchen.de": {
+        "wait": "//div | //h1",
+        "sel":  make_selectors(),
+    },
+    "vergabe.bremen.de": {
+        "wait": "//div | //h1",
+        "sel":  make_selectors(),
+    },
+}
+
+# anything not listed above gets this fallback
+FALLBACK = {
+    "wait": "//body",
+    "sel":  make_selectors(),
+}
+
+
+def get_config(url):
+    domain = urlparse(url).netloc.lower()
+    if domain in DOMAINS:
+        return domain, DOMAINS[domain]
+    # partial match for subdomains etc.
+    for key in DOMAINS:
+        if key in domain or domain in key:
+            return domain, DOMAINS[key]
+    return domain, FALLBACK
+
+
+# -------------------------------------------------------------------
+# COOKIE BANNER DISMISSAL
+# Most German sites show a GDPR cookie popup. We try to click "accept"
+# so it doesn't cover the actual content we want to scrape.
+# -------------------------------------------------------------------
+
+async def dismiss_cookies(page):
+    buttons = [
+        "xpath=//button[contains(text(),'Akzeptieren')]",
+        "xpath=//button[contains(text(),'Alle akzeptieren')]",
+        "xpath=//button[contains(text(),'Accept')]",
+        "xpath=//button[contains(text(),'Zustimmen')]",
+        "xpath=//button[contains(text(),'Nur notwendige')]",
+        "xpath=//button[contains(@class,'accept') or contains(@class,'consent')]",
+        "xpath=//button[@id='accept' or @id='acceptCookies']",
+    ]
+    for sel in buttons:
+        try:
+            btn = page.locator(sel).first
+            if await btn.is_visible(timeout=1000):
+                await btn.click()
+                await page.wait_for_timeout(500)
+                return
+        except Exception:
+            pass
+
+
+# -------------------------------------------------------------------
+# FALLBACK DATA EXTRACTION
+# If our specific XPaths don't find anything, we grab ALL label→value
+# pairs from <dt>/<dd> lists and <table> rows on the page.
+# This is a safety net so we still capture something from unknown layouts.
+# -------------------------------------------------------------------
+
+async def grab_all_labels(page):
+    data = {}
     try:
-        # Pattern 1: Definition lists (dt/dd)
-        dts = await page.locator("xpath=//dt").all()
-        for dt in dts:
+        # definition lists  (<dt>label</dt><dd>value</dd>)
+        for dt in await page.locator("xpath=//dt").all():
             try:
                 label = (await dt.inner_text()).strip()
-                dd = await dt.evaluate("el => el.nextElementSibling?.textContent?.trim()")
-                if label and dd:
-                    extra[label] = dd
+                value = await dt.evaluate("el => el.nextElementSibling?.textContent?.trim()")
+                if label and value and len(label) < 150:
+                    data[label] = value
             except Exception:
-                continue
+                pass
 
-        # Pattern 2: Table rows (th/td or td/td)
-        rows = await page.locator("xpath=//tr").all()
-        for row in rows:
+        # table rows  (<td>label</td><td>value</td>)
+        for row in await page.locator("xpath=//tr").all():
             try:
                 cells = await row.locator("td, th").all()
                 if len(cells) >= 2:
                     label = (await cells[0].inner_text()).strip()
                     value = (await cells[1].inner_text()).strip()
-                    if label and value and len(label) < 100:
-                        extra[label] = value
+                    if label and value and len(label) < 150:
+                        data[label] = value
             except Exception:
-                continue
-
+                pass
     except Exception:
         pass
-    return extra
+    return data
 
 
-async def handle_cookie_consent(page: Page):
-    """Dismiss cookie banners if present."""
-    consent_selectors = [
-        "xpath=//button[contains(text(),'Akzeptieren')]",
-        "xpath=//button[contains(text(),'Alle akzeptieren')]",
-        "xpath=//button[contains(text(),'Accept')]",
-        "xpath=//button[contains(text(),'Zustimmen')]",
-        "xpath=//a[contains(text(),'Akzeptieren')]",
-        "xpath=//button[contains(@class,'accept') or contains(@class,'consent') or contains(@class,'agree')]",
-        "xpath=//button[@id='accept' or @id='consent']",
-    ]
-    for selector in consent_selectors:
-        try:
-            btn = page.locator(selector).first
-            if await btn.is_visible(timeout=1000):
-                await btn.click()
-                await page.wait_for_timeout(500)
-                logger.debug("Dismissed cookie banner")
-                return
-        except Exception:
-            continue
+# -------------------------------------------------------------------
+# SCRAPE ONE URL
+# This is the main function. For each URL we:
+#   1. Load the page in the browser
+#   2. Dismiss cookie popup
+#   3. Try our XPath selectors for each field
+#   4. Fall back to grabbing all label/value pairs
+#   5. Return a dict with everything we found
+# -------------------------------------------------------------------
+
+# words that signal a tender was deleted / page doesn't exist
+EXPIRED_WORDS = [
+    "nicht mehr verfügbar", "nicht gefunden", "abgelaufen",
+    "Seite existiert nicht", "Page not found",
+    "Vergabe wurde aufgehoben", "Bekanntmachung wurde gelöscht",
+    "kein Ergebnis", "Kein Treffer",
+]
 
 
-async def scrape_single_url(page: Page, url: str, config: dict) -> TenderRecord:
-    """Scrape a single tender URL using the given domain config."""
-    domain = get_domain(url)
-    record = TenderRecord(url=url, domain=domain)
-    start = time.time()
+async def scrape_url(page, row, config):
+    url    = row["url"]
+    domain, cfg = get_config(url)
+
+    result = {
+        "id":         row.get("id", ""),
+        "url":        url,
+        "domain":     domain,
+        "row_state":  row.get("state", ""),
+        "status":     "pending",
+        "title":      None,
+        "contracting_authority": None,
+        "description":     None,
+        "deadline":        None,
+        "publication_date":None,
+        "tender_type":     None,
+        "cpv_codes":       None,
+        "location":        None,
+        "reference_number":None,
+        "contact_info":    None,
+        "extra_fields":    {},
+        "error_message":   None,
+        "scrape_time_ms":  0,
+        "scraped_at":      "",
+    }
+
+    t_start = time.time()
 
     try:
-        # Navigate with timeout
-        response = await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+        resp = await page.goto(url, wait_until="domcontentloaded", timeout=20000)
 
-        # Check HTTP status
-        if response and response.status >= 400:
-            record.status = "invalid"
-            record.error_message = f"HTTP {response.status}"
-            return record
+        # 404 or similar
+        if resp and resp.status >= 400:
+            result["status"] = "invalid"
+            result["error_message"] = f"HTTP {resp.status}"
+            return result
 
-        # Wait briefly for dynamic content
+        # give JS a moment to render
         await page.wait_for_timeout(1500)
+        await dismiss_cookies(page)
 
-        # Handle cookie consent
-        await handle_cookie_consent(page)
-
-        # Try to wait for content selector
+        # wait for the main content selector (best effort)
         try:
-            await page.wait_for_selector(
-                f"xpath={config['wait_selector']}", timeout=5000
-            )
+            await page.wait_for_selector(f"xpath={cfg['wait']}", timeout=5000)
         except PlaywrightTimeout:
-            pass  # Continue anyway, page might still have content
+            pass  # continue anyway, page might still be useful
 
-        # Check for common "expired/removed" indicators
-        body_text = await page.inner_text("body")
-        expired_indicators = [
-            "nicht mehr verfügbar",
-            "nicht gefunden",
-            "abgelaufen",
-            "Seite existiert nicht",
-            "404",
-            "Vergabe wurde aufgehoben",
-            "Bekanntmachung wurde gelöscht",
-        ]
-        for indicator in expired_indicators:
-            if indicator.lower() in body_text.lower():
-                record.status = "invalid"
-                record.error_message = f"Tender expired/removed: '{indicator}'"
-                return record
+        # check if the tender was deleted / page is gone
+        try:
+            body = await page.inner_text("body")
+            for word in EXPIRED_WORDS:
+                if word.lower() in body.lower()[:5000]:
+                    result["status"] = "invalid"
+                    result["error_message"] = f"Page removed ({word})"
+                    return result
+        except Exception:
+            pass
 
-        # Extract structured fields
-        selectors = config.get("selectors", {})
-        for field_name, xpath_list in selectors.items():
-            value = await extract_field(page, xpath_list)
-            if value and hasattr(record, field_name):
-                setattr(record, field_name, value)
+        # extract each field using our XPath lists
+        for field, xpaths in cfg["sel"].items():
+            val = await get_text(page, xpaths)
+            if val:
+                result[field] = val
 
-        # Fallback: grab all key-value pairs
-        record.extra_fields = await extract_all_key_value_pairs(page)
+        # fallback: grab everything we can find
+        result["extra_fields"] = await grab_all_labels(page)
 
-        # Determine success
-        if record.title or record.contracting_authority or record.extra_fields:
-            record.status = "success"
+        # decide overall status
+        if result["title"] or result["contracting_authority"] or result["extra_fields"]:
+            result["status"] = "success"
         else:
-            record.status = "error"
-            record.error_message = "No data extracted"
+            result["status"] = "error"
+            result["error_message"] = "Nothing extracted"
 
     except PlaywrightTimeout:
-        record.status = "timeout"
-        record.error_message = "Page load timed out (15s)"
+        result["status"] = "timeout"
+        result["error_message"] = "Page load timed out (20s)"
     except Exception as e:
-        record.status = "error"
-        record.error_message = str(e)[:200]
+        result["status"] = "error"
+        result["error_message"] = str(e)[:300]
 
-    record.scrape_time_ms = int((time.time() - start) * 1000)
-    record.scraped_at = datetime.now().isoformat()
-    return record
+    result["scrape_time_ms"] = int((time.time() - t_start) * 1000)
+    result["scraped_at"]     = datetime.now().isoformat()
+    return result
 
 
-# ─── Batch Processing ────────────────────────────────────────────────────────
+# -------------------------------------------------------------------
+# BATCH - process all URLs for one domain using one persistent tab
+# Reusing the same tab across URLs on the same domain is faster than
+# opening a new tab for every URL.
+# -------------------------------------------------------------------
 
-async def scrape_domain_batch(
-    domain: str,
-    url_rows: list[dict],
-    config: dict,
-    results: list,
-    semaphore: asyncio.Semaphore,
-    browser_context,
-):
-    """Scrape all URLs for a given domain using shared browser context."""
-    logger.info(f"Starting batch for {domain} ({len(url_rows)} URLs)")
-    page = await browser_context.new_page()
+async def run_domain(domain, rows, cfg, results, sem, ctx, counter, total):
+    log.info(f"  starting {domain}  ({len(rows)} urls)")
+    page = await ctx.new_page()
 
-    for i, row in enumerate(url_rows):
-        async with semaphore:
-            url = row["url"]
-            record = await scrape_single_url(page, url, config)
-
-            # Attach metadata from CSV if available
-            for key in ["id", "trigger_id", "procedure_id"]:
-                if key in row and row[key]:
-                    record.extra_fields[key] = row[key]
-
-            results.append(record)
-
-            status_icon = "✓" if record.status == "success" else "✗"
-            logger.info(
-                f"  [{status_icon}] [{i+1}/{len(url_rows)}] {domain} | "
-                f"{record.status} | {record.scrape_time_ms}ms | {url[:80]}..."
+    for i, row in enumerate(rows):
+        async with sem:
+            rec = await scrape_url(page, row, cfg)
+            results.append(rec)
+            counter["n"] += 1
+            icon = "✓" if rec["status"] == "success" else ("⏱" if rec["status"] == "timeout" else "✗")
+            log.info(
+                f"  {icon} [{counter['n']}/{total}  {100*counter['n']/total:.1f}%]  "
+                f"{domain}  {rec['status']}  {rec['scrape_time_ms']}ms"
             )
 
     await page.close()
-    logger.info(f"Completed batch for {domain}")
+    log.info(f"  done: {domain}")
 
 
-async def run_scraper(input_file: str, output_file: str, max_concurrent: int = 4):
-    """Main scraper orchestration."""
-    # Load and group URLs
-    url_rows = load_urls(input_file)
-    domain_groups = group_urls_by_domain(url_rows)
+# -------------------------------------------------------------------
+# MAIN ORCHESTRATION
+# Loads URLs, groups them by domain, then runs all domain batches
+# concurrently using Python's asyncio (async/await).
+# -------------------------------------------------------------------
 
-    results: list[TenderRecord] = []
-    semaphore = asyncio.Semaphore(max_concurrent)
+async def run(input_file, output_file, workers, skip_completed, limit):
+    # load CSV
+    rows = []
+    with open(input_file, "r", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row.get("url", "").strip():
+                rows.append(row)
+    log.info(f"loaded {len(rows)} urls from {input_file}")
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
+    # skip already-done if asked
+    if skip_completed:
+        before = len(rows)
+        rows = [r for r in rows if r.get("state", "") != "COMPLETED"]
+        log.info(f"skipped {before - len(rows)} completed rows  ({len(rows)} left)")
+
+    # cap total if asked
+    if limit and limit > 0:
+        rows = rows[:limit]
+        log.info(f"limited to first {limit} urls")
+
+    # group by domain so we reuse one tab per domain
+    groups = {}
+    for r in rows:
+        d = urlparse(r["url"]).netloc.lower()
+        groups.setdefault(d, []).append(r)
+    for d, g in sorted(groups.items(), key=lambda x: -len(x[1])):
+        log.info(f"    {d}: {len(g)}")
+
+    results = []
+    sem     = asyncio.Semaphore(workers)
+    counter = {"n": 0}
+    total   = len(rows)
+
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(
             headless=True,
             args=[
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--disable-gpu",
                 "--disable-extensions",
-                "--disable-images",  # Speed up by skipping images
+                "--blink-settings=imagesEnabled=false",  # skip images = faster
             ],
         )
-
-        context = await browser.new_context(
+        ctx = await browser.new_context(
             locale="de-DE",
             timezone_id="Europe/Berlin",
             user_agent=(
@@ -585,106 +514,83 @@ async def run_scraper(input_file: str, output_file: str, max_concurrent: int = 4
             viewport={"width": 1280, "height": 720},
         )
 
-        # Process each domain group
-        tasks = []
-        for domain, rows in domain_groups.items():
-            config = get_config(domain)
-            tasks.append(
-                scrape_domain_batch(domain, rows, config, results, semaphore, context)
-            )
-
+        # fire off all domain batches concurrently
+        tasks = [
+            run_domain(domain, g, DOMAINS.get(domain, FALLBACK), results, sem, ctx, counter, total)
+            for domain, g in groups.items()
+        ]
         await asyncio.gather(*tasks)
         await browser.close()
 
-    # Write results
-    save_results(results, output_file)
-    print_summary(results)
-
-
-def save_results(results: list[TenderRecord], output_file: str):
-    """Save results to JSON (and a parallel CSV for quick review)."""
-    # JSON output
-    data = [asdict(r) for r in results]
+    # save results
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    logger.info(f"Saved {len(results)} records to {output_file}")
+        json.dump(results, f, ensure_ascii=False, indent=2)
+    log.info(f"saved {len(results)} records → {output_file}")
 
-    # CSV output for quick review
-    csv_file = output_file.replace(".json", ".csv")
-    if results:
-        fieldnames = [
-            "url", "domain", "status", "title", "contracting_authority",
-            "deadline", "publication_date", "tender_type", "reference_number",
-            "scrape_time_ms", "error_message",
-        ]
-        with open(csv_file, "w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
-            for r in results:
-                writer.writerow(asdict(r))
-        logger.info(f"Saved CSV summary to {csv_file}")
+    # also save a CSV for quick viewing in Excel
+    csv_out = output_file.replace(".json", ".csv")
+    keys = ["id", "url", "domain", "row_state", "status", "title",
+            "contracting_authority", "deadline", "publication_date",
+            "tender_type", "reference_number", "scrape_time_ms", "error_message"]
+    with open(csv_out, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(results)
+    log.info(f"saved csv → {csv_out}")
 
+    # print summary
+    total_r   = len(results)
+    success   = sum(1 for r in results if r["status"] == "success")
+    errors    = sum(1 for r in results if r["status"] == "error")
+    timeouts  = sum(1 for r in results if r["status"] == "timeout")
+    invalid   = sum(1 for r in results if r["status"] == "invalid")
+    avg_ms    = sum(r["scrape_time_ms"] for r in results) / total_r if total_r else 0
 
-def print_summary(results: list[TenderRecord]):
-    """Print scraping statistics."""
-    total = len(results)
-    success = sum(1 for r in results if r.status == "success")
-    errors = sum(1 for r in results if r.status == "error")
-    timeouts = sum(1 for r in results if r.status == "timeout")
-    invalid = sum(1 for r in results if r.status == "invalid")
-    avg_time = sum(r.scrape_time_ms for r in results) / total if total else 0
+    print("\n" + "=" * 55)
+    print("  RESULTS")
+    print("=" * 55)
+    print(f"  total       {total_r}")
+    print(f"  success     {success}  ({100*success/total_r:.1f}%)")
+    print(f"  errors      {errors}  ({100*errors/total_r:.1f}%)")
+    print(f"  timeouts    {timeouts}  ({100*timeouts/total_r:.1f}%)")
+    print(f"  invalid     {invalid}  ({100*invalid/total_r:.1f}%)")
+    print(f"  avg time    {avg_ms:.0f}ms per url")
+    print("=" * 55)
 
-    print("\n" + "=" * 60)
-    print("  SCRAPING SUMMARY")
-    print("=" * 60)
-    print(f"  Total URLs:      {total}")
-    print(f"  ✓ Success:       {success} ({100*success/total:.1f}%)")
-    print(f"  ✗ Errors:        {errors} ({100*errors/total:.1f}%)")
-    print(f"  ⏱ Timeouts:      {timeouts} ({100*timeouts/total:.1f}%)")
-    print(f"  ⊘ Invalid/Expired: {invalid} ({100*invalid/total:.1f}%)")
-    print(f"  Avg scrape time: {avg_time:.0f}ms")
-    print("=" * 60)
-
-    # Per-domain breakdown
-    domains = {}
+    # per-domain breakdown
+    domain_stats = {}
     for r in results:
-        domains.setdefault(r.domain, {"total": 0, "success": 0})
-        domains[r.domain]["total"] += 1
-        if r.status == "success":
-            domains[r.domain]["success"] += 1
+        d = r["domain"]
+        domain_stats.setdefault(d, {"total": 0, "success": 0})
+        domain_stats[d]["total"] += 1
+        if r["status"] == "success":
+            domain_stats[d]["success"] += 1
 
-    print("\n  Per-Domain Breakdown:")
-    for domain, stats in sorted(domains.items(), key=lambda x: -x[1]["total"]):
-        rate = 100 * stats["success"] / stats["total"] if stats["total"] else 0
-        print(f"    {domain:40s} {stats['success']:>5}/{stats['total']:<5} ({rate:.0f}%)")
+    print("\n  per domain:")
+    for d, s in sorted(domain_stats.items(), key=lambda x: -x[1]["total"]):
+        rate = 100 * s["success"] / s["total"] if s["total"] else 0
+        print(f"    {d:45s}  {s['success']:>5}/{s['total']:<5}  ({rate:.0f}%)")
     print()
 
 
-# ─── CLI Entry Point ─────────────────────────────────────────────────────────
+# -------------------------------------------------------------------
+# CLI - run from terminal
+# -------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Vergabepilot.AI - Manual Procurement Tender Scraper"
-    )
-    parser.add_argument(
-        "--input", "-i", required=True,
-        help="Path to CSV file with URLs (must have 'url' column)",
-    )
-    parser.add_argument(
-        "--output", "-o", default="results.json",
-        help="Output JSON file path (default: results.json)",
-    )
-    parser.add_argument(
-        "--workers", "-w", type=int, default=4,
-        help="Max concurrent scraping tasks (default: 4)",
-    )
-    args = parser.parse_args()
+    p = argparse.ArgumentParser(description="German procurement portal scraper")
+    p.add_argument("--input",  "-i", default="publications_b.csv", help="input CSV")
+    p.add_argument("--output", "-o", default="results.json",       help="output JSON")
+    p.add_argument("--workers","-w", type=int, default=8,          help="parallel tabs (default 8)")
+    p.add_argument("--limit",  "-n", type=int, default=0,          help="only first N urls (0=all)")
+    p.add_argument("--skip-completed", action="store_true",        help="skip rows where state=COMPLETED")
+    args = p.parse_args()
 
     if not os.path.exists(args.input):
-        logger.error(f"Input file not found: {args.input}")
+        print(f"file not found: {args.input}")
         return
 
-    asyncio.run(run_scraper(args.input, args.output, args.workers))
+    asyncio.run(run(args.input, args.output, args.workers, args.skip_completed, args.limit))
 
 
 if __name__ == "__main__":
