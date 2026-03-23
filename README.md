@@ -259,13 +259,13 @@ From a test run (interrupted at ~2,500 URLs):
 In Phase 1, we wrote handcrafted XPath selectors (like `//dt[contains(.,'Auftraggeber')]/following-sibling::dd[1]`) for every domain. This becomes unmanageable at scale when handling 25+ unique frontends built by different developers. LLMs solve this out-of-the-box by generically interpreting human-facing text.
 
 ### How it Works
-1. **Unified Scraper**: `scraper_v3.py` combines both Phase 1 (XPath) and Phase 2 (LLM) into one robust script, yielding the exact same columns and JSON schema.
+1. **Unified Scrapers (V3/V4)**: Both `scraper_v3.py` and the newer `scraper_v4.py` combine Phase 1 (XPath) and Phase 2 (LLM) into one robust script, yielding the exact same columns and JSON schema.
 2. **Playwright Renders JS & Downloads**: Playwright bypasses JS walls, simulates a real user, clicks Cookie consent banners, and performs smart project-relevant document downloading (identifying PDFs vs generic site docs).
 3. **OpenRouter API**: You can run standard extraction via XPath, or pass the `--llm` flag to send the visible text to OpenRouter.
-4. **LLM Chain Fallback**: It attempts extraction using a primary cheap model (e.g., `gemini-2.5-flash-lite`), and gracefully falls back to another model if rate limits or errors occur.
+4. **V4 Advanced URL Recovery**: `scraper_v4.py` implements a robust URL recovery chain (handling double-encoded URLs, portal specific rewrites, and even Google Search fallbacks) to rescue 404/expired links!
 
 ### Configuration & Flexibility
-Different teams can use **different LLMs**. `scraper_v3.py` is configured specifically for **OpenRouter**, meaning anyone can seamlessly switch out models just by changing the `MODEL_CHAIN` inside the script or testing different providers!
+Different teams can use **different LLMs**. The scrapers are configured specifically for **OpenRouter**, meaning anyone can seamlessly switch out models just by changing the `MODEL_CHAIN` inside the script or testing different providers!
 
 ### 💻 Proper Code (Quick Start)
 
@@ -283,16 +283,22 @@ export OPENROUTER_API_KEY="sk-or-v1-****************************"
 **Run Phase 1 (XPath only, no LLM):**
 ```bash
 python3 scraper_v3.py -i publications_b.csv -n 100
+# Or use V4 for higher success rate via URL Recovery:
+python3 scraper_v4.py -i publications_b.csv -n 100
 ```
 
 **Run Phase 2 (LLM-Assisted Extraction):**
 ```bash
 python3 scraper_v3.py -i publications_b.csv -n 100 --llm
+# With V4:
+python3 scraper_v4.py -i publications_b.csv -n 100 --llm
 ```
 
 **Run Phase 2 WITH Document Downloading:**
 ```bash
-python3 scraper_v3.py -i publications_b.csv --llm --download-docs
+python3 scraper_v4.py -i publications_b.csv --llm --download-docs
+# Group downloads by contracting authority folder:
+python3 scraper_v4.py -i publications_b.csv --llm --download-docs --folder-by-company
 ```
 
 *(You can also pass your key directly if you don't want to export it: `--api-key YOUR_KEY`)*
@@ -301,4 +307,4 @@ python3 scraper_v3.py -i publications_b.csv --llm --download-docs
 During your team's evaluation:
 1. Note the number of iterations required to refine the exact prompt schema.
 2. Monitor latency (`ms` field per URL query) across different providers via OpenRouter.
-3. Compare the generated `results_v3_stats.json` which tracks total tokens, API calls, retries, and costs!
+3. Compare the generated `results_v4_stats.json` which tracks total tokens, API calls, URL recoveries, and costs!
