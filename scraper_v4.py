@@ -1098,7 +1098,7 @@ async def scrape_one(page, row, client=None, use_llm=False,
             log.info(f"    🔄 URL recovered via {recovery}: {used_url[:70]}")
 
         if not page_text or len(page_text) < 50:
-            r["status"] = "error"; r["err"] = "empty page after all recovery attempts"
+            r["status"] = "expired"; r["err"] = "link is permanently dead/expired on host server"
             r["ms"] = int((time.time() - t0) * 1000)
             return r
 
@@ -1175,6 +1175,7 @@ async def run_domain(domain, rows, results, sem, ctx, prog, total,
             prog["n"] += 1
             n, tot = prog["n"], total
             icon = "✓" if rec["status"] == "success" else ("⏱" if rec["status"] == "timeout" else "✗")
+            if rec["status"] == "expired": icon = "⚠"
             rec_label = f" [{rec['url_recovery']}]" if rec.get("url_recovery") else ""
             mode_label= f" [{rec['model_used']}]"   if rec.get("model_used") else ""
             log.info(f"  {icon} [{n}/{tot} {100*n/tot:.1f}%] {domain} {rec['status']} {rec['ms']}ms{mode_label}{rec_label}")
@@ -1218,6 +1219,7 @@ def print_summary(results, use_llm, download_docs):
     err = sum(1 for x in results if x["status"] == "error")
     to  = sum(1 for x in results if x["status"] == "timeout")
     inv = sum(1 for x in results if x["status"] == "invalid")
+    exp = sum(1 for x in results if x["status"] == "expired")
     avg = sum(x["ms"] for x in results) / t
     total_docs = sum(len(x.get("downloaded_docs") or []) for x in results)
     recovered  = sum(1 for x in results if x.get("url_recovery"))
@@ -1229,6 +1231,7 @@ def print_summary(results, use_llm, download_docs):
     print(f"  total:          {t}")
     print(f"  success:        {ok}  ({100*ok/t:.1f}%)")
     print(f"  errors:         {err}  ({100*err/t:.1f}%)")
+    print(f"  expired (dead): {exp}  ({100*exp/t:.1f}%)")
     print(f"  timeouts:       {to}  ({100*to/t:.1f}%)")
     print(f"  invalid:        {inv}  ({100*inv/t:.1f}%)")
     print(f"  URL recovered:  {recovered}  ({100*recovered/t:.1f}%)")
