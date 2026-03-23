@@ -352,162 +352,115 @@ def extract_with_llm(client, page_text, url, domain, model_chain=None):
     return None, None, 0, 0.0
 
 # ---------------------------------------------------------------------------
-# DOCUMENT DOWNLOAD  –  smart, human-like, project-relevant only
+# DOCUMENT DOWNLOAD  –  accurate, tender-specific only
 # ---------------------------------------------------------------------------
 
-# Extensions we want
-DOC_EXTS = {".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".rar", ".7z", ".odt", ".ods"}
+# File extensions we care about
+DOC_EXTS = {".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".rar", ".7z", ".odt", ".ods", ".p7s"}
 
-# Keywords in URL or link text that suggest it's a tender document
-DOC_POSITIVE_KEYWORDS = [
-    "unterlag", "anlage", "leistung", "vergabe", "ausschreibung",
-    "dokument", "download", "attachment", "bidding", "tender",
-    "specification", "specs", "lv_", "lvh_", "gaeb", "leistungsverzeichnis",
-    "bekanntmachung", "vertrag", "vertrag", "formular",
+# Strong procurement keywords that must appear in the visible LINK TEXT
+# (German portals always label their doc links with these words)
+DOC_LINK_TEXT_KEYWORDS = [
+    "unterlag",                  # Vergabeunterlagen, Unterlagen
+    "leistungsverzeichnis", "leistungsbeschreibung",
+    "ausschreibung",
+    "vergabeunterlag",
+    "angebotsunterlag",
+    "teilnahmeunterlag",
+    "lv ",                       # "LV Datei", "LV Download"
+    "gaeb",
+    "formular",
+    "bewerbungsbogen",
+    "eignungsnachweis",
+    "auftragsbekanntmachung",
+    "bekanntmachung",
+    "vertragsbedingung",
+    "leistungsheft",
+    "baubeschreibung",
+    "planunterlag",
+    "herunterladen",             # "Unterlagen herunterladen"
 ]
 
-# Keywords that indicate NOT a tender doc (generic site docs we skip)
-DOC_NEGATIVE_KEYWORDS = [
-    "agb", "datenschutz", "impressum", "nutzungsbedingungen", "hilfe",
-    "handbuch", "anleitung", "tutorial", "logo", "favicon",
-    "stylesheet", "font", "newsletter", "broschüre", "flyer",
+# These in the link TEXT mean skip regardless of extension (navigation/legal/generic)
+DOC_SKIP_TEXT = [
+    "agb", "datenschutz", "impressum", "nutzungsbedingung",
+    "hilfe", "handbuch", "anleitung", "tutorial",
+    "newsletter", "broschüre", "flyer", "logo",
+    "registrierung", "anmelden", "login",
+    "startseite", "home", "zurück", "weiter",
+    "mehr erfahren", "read more", "alle ausschreibungen",
+    "suche", "merkliste", "favoriten",
 ]
 
-def is_relevant_doc(href, link_text, url):
-    """Decide if a link is likely a tender-related document."""
+# These in the URL mean skip (static assets / navigation)
+DOC_SKIP_URL = [
+    "/agb", "/datenschutz", "/impressum", "/hilfe", "/help",
+    "/login", "/register", "/auth", "/account",
+    "/news/", "/blog/", "/presse/", "/aktuell",
+    ".css", ".js", ".png", ".jpg", ".gif", ".svg", ".ico", ".woff", ".ttf",
+]
+
+# URL keywords that help score download links (weaker signal than link text)
+DOC_URL_KEYWORDS = [
+    "unterlag", "leistung", "vergabe", "gaeb", "dokument",
+    "formular", "ausschreibung", "download", "attachment", "file",
+]
+
+
+def score_doc_link(href, link_text, page_domain):
+    """
+    Returns confidence score 0-3: how likely this link is a tender document.
+      0 = skip
+      1 = possible (has doc extension but no strong label)
+      2 = likely (has strong label keyword)
+      3 = definite (strong label + doc extension)
+    """
     lower_href = href.lower()
-    lower_text = (link_text or "").lower()
+    lower_text = (link_text or "").strip().lower()
     path = urlparse(href).path.lower()
+    link_domain = urlparse(href).netloc.lower()
 
-    # negative filter first
-    if any(k in lower_href or k in lower_text for k in DOC_NEGATIVE_KEYWORDS):
-        return False
+    # skip cross-domain links (tender docs live on the same portal)
+    if link_domain and link_domain != page_domain:
+        # allow known procurement sub-domains
+        if not any(x in link_domain for x in ["evergabe", "vergabe", "subreport", "had.de"]):
+            return 0
 
-    ext = Path(path).suffix
+    # hard skip: URL is clearly a non-doc path
+    if any(k in lower_href for k in DOC_SKIP_URL):
+        return 0
+
+    # hard skip: link text is navigation/legal
+    if any(k in lower_text for k in DOC_SKIP_TEXT):
+        return 0
+
+    ext = Path(path).suffix.lower()
     has_doc_ext = ext in DOC_EXTS
+    has_strong_text = any(k in lower_text for k in DOC_LINK_TEXT_KEYWORDS)
+    has_url_hint = any(k in lower_href for k in DOC_URL_KEYWORDS)
 
-    # positive: known extension
+    # nothing useful → skip
+    if not has_doc_ext and not has_strong_text and not has_url_hint:
+        return 0
+
+    # score
+    score = 0
     if has_doc_ext:
-        # still skip if clearly not a tender doc
-        return True
+        score += 1
+    if has_strong_text:
+        score += 2    # link label is the strongest signal
+    elif has_url_hint:
+        score += 1
 
-    # positive: URL or text contains procurement keywords
-    if any(k in lower_href or k in lower_text for k in DOC_POSITIVE_KEYWORDS):
-        return True
-
-    # positive: download-like URL patterns without extension
-    if re.search(r'/(download|file|dokument|unterlage|attachment)[s/]', lower_href):
-        return True
-
-    return False
+    return min(score, 3)
 
 
-async def click_download_buttons(page):
-    """
-    Human trick: some portals hide docs behind JS buttons (e.g. "Unterlagen herunterladen").
-    We click them to reveal the actual download links or trigger browser downloads.
-    """
-    trigger_texts = [
-        "Unterlagen", "Dokumente", "Download", "herunterladen",
-        "Vergabeunterlagen", "Angebots", "Teilnahme",
-    ]
-    for txt in trigger_texts:
-        try:
-            btn = page.locator(f"xpath=//button[contains(.,'{txt}')] | //a[contains(.,'{txt}')]").first
-            if await btn.is_visible(timeout=500):
-                await btn.click()
-                await page.wait_for_timeout(800)
-        except:
-            pass
+async def collect_doc_links(page, base_url):
+    """Scan page for candidate document links. Returns list of (url, text, score)."""
+    page_domain = urlparse(base_url).netloc.lower()
+    candidates = []
+    seen = set()
 
-
-async def download_documents(page, tender_id, base_url, download_dir, max_docs=20):
-    """
-    Find and download all project-relevant documents from the page.
-    Uses multiple human-like tricks:
-      1. Scan all <a href> links
-      2. Try clicking JS download buttons to reveal hidden links
-      3. Try common portal-specific download URL patterns
-      4. Respect session cookies (uses page.context.request)
-    Returns list of saved filenames.
-    """
-    saved = []
-    seen_urls = set()
-
-    folder = os.path.join(download_dir, re.sub(r'[^\w\-]', '_', str(tender_id))[:60])
-    os.makedirs(folder, exist_ok=True)
-
-    async def fetch_and_save(download_url, suggested_name=None):
-        if download_url in seen_urls or len(saved) >= max_docs:
-            return
-        seen_urls.add(download_url)
-
-        try:
-            # use page context so session cookies are included
-            response = await page.context.request.get(
-                download_url,
-                timeout=20000,
-                headers={
-                    "Accept": "application/pdf,application/octet-stream,*/*",
-                    "Referer": base_url,
-                }
-            )
-
-            if response.status >= 400:
-                return
-
-            content_type = response.headers.get("content-type", "").lower()
-            # skip HTML responses (login walls, error pages)
-            if "text/html" in content_type and not download_url.lower().endswith(".pdf"):
-                return
-
-            # determine filename
-            cd = response.headers.get("content-disposition", "")
-            filename = ""
-            if "filename*=" in cd:
-                # RFC 5987 encoded filename (e.g.  filename*=UTF-8''Leistungsverzeichnis.pdf)
-                m = re.search(r"filename\*=(?:UTF-8'')?([^\s;]+)", cd, re.I)
-                if m:
-                    from urllib.parse import unquote
-                    filename = unquote(m.group(1))
-            if not filename and "filename=" in cd:
-                m = re.search(r'filename=["\']?([^"\';\r\n]+)', cd)
-                if m:
-                    filename = m.group(1).strip("\"' ")
-            if not filename and suggested_name:
-                filename = suggested_name
-            if not filename:
-                path_part = urlparse(download_url).path
-                filename = path_part.split("/")[-1].split("?")[0]
-            if not filename or filename in ("download", "document", "file", ""):
-                # guess extension from content-type
-                ext_map = {"pdf":"pdf","zip":"zip","msword":"doc","vnd.openxmlformats":"docx"}
-                ext = "bin"
-                for k, v in ext_map.items():
-                    if k in content_type:
-                        ext = v; break
-                filename = f"doc_{len(saved)+1}.{ext}"
-
-            filename = re.sub(r'[^\w.\-]', '_', filename)[:120]
-            dest = os.path.join(folder, filename)
-
-            if os.path.exists(dest):
-                saved.append(filename)
-                return
-
-            body = await response.body()
-            if len(body) < 100:   # skip empty/near-empty files
-                return
-
-            with open(dest, "wb") as fh:
-                fh.write(body)
-            saved.append(filename)
-            log.info(f"    ↓ {filename}  ({len(body)//1024}KB)")
-
-        except Exception as e:
-            log.debug(f"    download failed {download_url}: {str(e)[:80]}")
-
-    # --- Pass 1: scan all existing links on the page ---
     try:
         links = await page.locator("xpath=//a[@href]").all()
         for link in links:
@@ -516,60 +469,187 @@ async def download_documents(page, tender_id, base_url, download_dir, max_docs=2
                 if not href or href.startswith(("javascript:", "mailto:", "tel:", "#")):
                     continue
                 full_url = urljoin(base_url, href)
-                text = await link.inner_text()
-                if is_relevant_doc(full_url, text, base_url):
-                    await fetch_and_save(full_url)
+                if full_url in seen:
+                    continue
+                seen.add(full_url)
+
+                text = (await link.inner_text()).strip()
+                score = score_doc_link(full_url, text, page_domain)
+                if score > 0:
+                    candidates.append((full_url, text, score))
             except:
                 pass
     except:
         pass
 
-    # --- Pass 2: click JS buttons to reveal hidden download links ---
-    if len(saved) < 3:   # only do this if we haven't found much yet
+    candidates.sort(key=lambda x: -x[2])  # best first
+    return candidates
+
+
+async def click_reveal_buttons(page):
+    """Click tabs/accordions that reveal hidden document sections."""
+    reveal_xpaths = [
+        "//button[contains(.,'Vergabeunterlagen')]",
+        "//button[contains(.,'Unterlagen')]",
+        "//a[contains(@class,'tab') and contains(.,'Unterlagen')]",
+        "//a[contains(@class,'tab') and contains(.,'Dokumente')]",
+        "//li[contains(@class,'tab') and contains(.,'Unterlagen')]",
+        "//div[contains(@class,'tab') and contains(.,'Unterlagen')]",
+        "//button[contains(.,'Dokumente anzeigen')]",
+        "//button[contains(.,'Unterlagen anzeigen')]",
+    ]
+    clicked = False
+    for xp in reveal_xpaths:
         try:
-            await click_download_buttons(page)
-            await page.wait_for_timeout(1000)
-            # scan links again after clicking
-            links = await page.locator("xpath=//a[@href]").all()
-            for link in links:
-                try:
-                    href = await link.get_attribute("href")
-                    if not href or href.startswith(("javascript:", "mailto:", "tel:", "#")):
-                        continue
-                    full_url = urljoin(base_url, href)
-                    if full_url in seen_urls:
-                        continue
-                    text = await link.inner_text()
-                    if is_relevant_doc(full_url, text, base_url):
-                        await fetch_and_save(full_url)
-                except:
-                    pass
+            el = page.locator(f"xpath={xp}").first
+            if await el.is_visible(timeout=400):
+                await el.click()
+                await page.wait_for_timeout(800)
+                clicked = True
         except:
             pass
+    return clicked
 
-    # --- Pass 3: try common portal-specific download patterns ---
-    # Some portals have predictable API endpoints for documents
-    portal_patterns = []
+
+async def fetch_doc(page, download_url, base_url, folder, saved_count, max_docs):
+    """Fetch one URL and save if it's a real document. Returns filename or None."""
+    if saved_count >= max_docs:
+        return None
+    try:
+        response = await page.context.request.get(
+            download_url,
+            timeout=25000,
+            headers={
+                "Accept": "application/pdf,application/zip,application/octet-stream,*/*",
+                "Referer": base_url,
+                "Accept-Language": "de-DE,de;q=0.9",
+            }
+        )
+
+        if response.status >= 400:
+            return None
+
+        content_type = response.headers.get("content-type", "").lower()
+
+        # strict: skip HTML (login walls, error pages)
+        if "text/html" in content_type:
+            return None
+
+        body = await response.body()
+        # skip suspiciously tiny responses (almost certainly error pages)
+        if len(body) < 500:
+            return None
+
+        # determine filename
+        from urllib.parse import unquote
+        cd = response.headers.get("content-disposition", "")
+        filename = ""
+
+        # RFC 5987 encoding: filename*=UTF-8''Leistungsverzeichnis%20V2.pdf
+        m = re.search(r"filename\*=(?:[Uu][Tt][Ff]-8'')?([^\s;]+)", cd)
+        if m:
+            filename = unquote(m.group(1))
+        if not filename:
+            m = re.search(r'filename=["\']?([^"\';\r\n]+)', cd)
+            if m:
+                filename = m.group(1).strip("\"' ")
+        if not filename:
+            url_path = urlparse(download_url).path
+            filename = unquote(url_path.split("/")[-1].split("?")[0])
+
+        if not filename or filename.lower() in ("download", "document", "file", "attachment", ""):
+            ext_map = {
+                "pdf": "pdf", "zip": "zip",
+                "msword": "doc",
+                "vnd.openxmlformats-officedocument.wordprocessingml": "docx",
+                "vnd.ms-excel": "xls",
+                "vnd.openxmlformats-officedocument.spreadsheetml": "xlsx",
+            }
+            ext = "bin"
+            for k, v in ext_map.items():
+                if k in content_type:
+                    ext = v; break
+            filename = f"doc_{saved_count+1}.{ext}"
+
+        filename = re.sub(r'[^\w.\-]', '_', filename)[:120]
+        dest = os.path.join(folder, filename)
+
+        if os.path.exists(dest):
+            return filename   # already downloaded
+
+        with open(dest, "wb") as fh:
+            fh.write(body)
+
+        log.info(f"    ↓ {filename}  ({len(body)//1024}KB)  [{content_type.split(';')[0]}]")
+        return filename
+
+    except Exception as e:
+        log.debug(f"    fetch failed {download_url[:80]}: {str(e)[:80]}")
+        return None
+
+
+async def download_documents(page, tender_id, base_url, download_dir, max_docs=15):
+    """
+    Download only tender-specific documents. Four-pass strategy:
+      Pass 1 – score all links on the current page
+      Pass 2 – click reveal buttons (tabs/accordions), re-scan
+      Pass 3 – portal-specific API patterns
+      Pass 4 – download: score>=2 first; only fall back to score==1 if nothing better found
+    """
+    saved = []
+    folder = os.path.join(download_dir, re.sub(r'[^\w\-]', '_', str(tender_id))[:60])
+    os.makedirs(folder, exist_ok=True)
+    attempted = set()
+
+    # Pass 1
+    candidates = await collect_doc_links(page, base_url)
+
+    # Pass 2: reveal hidden sections if few strong links found
+    strong = [c for c in candidates if c[2] >= 2]
+    if len(strong) < 2:
+        if await click_reveal_buttons(page):
+            await page.wait_for_timeout(1000)
+            candidates = await collect_doc_links(page, base_url)
+            strong = [c for c in candidates if c[2] >= 2]
+
+    # Pass 3: portal-specific URL patterns
     parsed = urlparse(base_url)
-    base = f"{parsed.scheme}://{parsed.netloc}"
+    netloc = parsed.netloc.lower()
+    portal_urls = []
 
-    # evergabe pattern
-    if "evergabe" in parsed.netloc:
-        m = re.search(r'/tender/(\d+)', parsed.path)
+    if "evergabe" in netloc:
+        m = re.search(r'/tenders?/(\d+)', parsed.path)
         if m:
-            tid = m.group(1)
-            portal_patterns.append(f"{base}/tender/{tid}/documents")
-            portal_patterns.append(f"{base}/api/tender/{tid}/documents")
+            base = f"{parsed.scheme}://{parsed.netloc}"
+            portal_urls.append(f"{base}/tender/{m.group(1)}/documents")
 
-    # subreport pattern
-    if "subreport" in parsed.netloc:
-        m = re.search(r'id=(\d+)', parsed.query)
+    if "subreport" in netloc:
+        m = re.search(r'[?&]id=(\d+)', parsed.query + "?" + parsed.path)
         if m:
-            portal_patterns.append(f"{base}/dokumente.aspx?id={m.group(1)}")
+            base = f"{parsed.scheme}://{parsed.netloc}"
+            portal_urls.append(f"{base}/dokumente.aspx?id={m.group(1)}")
 
-    for pattern_url in portal_patterns:
-        if pattern_url not in seen_urls:
-            await fetch_and_save(pattern_url)
+    for pu in portal_urls:
+        if pu not in attempted:
+            attempted.add(pu)
+            fn = await fetch_doc(page, pu, base_url, folder, len(saved), max_docs)
+            if fn:
+                saved.append(fn)
+
+    # Pass 4: download by score – prefer strong (>=2), only fall back to weak if nothing downloaded
+    threshold = 2 if (strong or saved) else 1
+    for (doc_url, text, score) in candidates:
+        if score < threshold:
+            continue
+        if doc_url in attempted:
+            continue
+        attempted.add(doc_url)
+        fn = await fetch_doc(page, doc_url, base_url, folder, len(saved), max_docs)
+        if fn:
+            saved.append(fn)
+
+    if not saved:
+        log.debug(f"    no docs found: {base_url[:60]}")
 
     return saved
 

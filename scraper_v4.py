@@ -1084,6 +1084,7 @@ async def scrape_one(page, row, client=None, use_llm=False,
     try:
         if should_skip_url(url):
             r["status"] = "invalid"; r["err"] = "non-tender URL (delivery/login page)"
+            r["ms"] = int((time.time() - t0) * 1000)
             return r
 
         # ── load page with full recovery chain ────────────────────────────
@@ -1098,6 +1099,7 @@ async def scrape_one(page, row, client=None, use_llm=False,
 
         if not page_text or len(page_text) < 50:
             r["status"] = "error"; r["err"] = "empty page after all recovery attempts"
+            r["ms"] = int((time.time() - t0) * 1000)
             return r
 
         # ── extraction ────────────────────────────────────────────────────
