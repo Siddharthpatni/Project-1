@@ -441,6 +441,34 @@ async def load_with_recovery(page, row: dict) -> Tuple[str, str, Optional[str]]:
         if text:
             return text, found_url, "search_fallback"
 
+    # ── Strategy 5: Google Click-Through Session Spawn (User Request) ─────
+    try:
+        log.info(f"    🔍 trying Google Referral (Session Spawn Bypass)...")
+        await page.goto(f"https://www.google.com/search?q={quote(normalized)}", wait_until="domcontentloaded", timeout=15000)
+        await page.wait_for_timeout(1000)
+        # click Google consent if present
+        try:
+            btn = page.locator("xpath=//button[contains(.,'Alle akzeptieren') or contains(.,'Accept all')]").first
+            if await btn.is_visible(timeout=500):
+                await btn.click()
+                await page.wait_for_timeout(1000)
+        except: pass
+        
+        links = await page.locator("xpath=//div[@id='search']//a[@href]").all()
+        for link in links[:4]:
+            href = await link.get_attribute("href")
+            if href and (original_url.split("?")[0] in href or urlparse(normalized).netloc in href):
+                log.info(f"    🎯 Google cached link found! Executing click-through...")
+                await link.click()
+                await page.wait_for_timeout(2000)
+                await dismiss_cookies(page)
+                text = await get_page_text(page)
+                if text and not is_gone(text) and not is_login_wall(text):
+                    return text, href, "google_clickthrough"
+                break
+    except Exception as e:
+        log.debug(f"    Google click-through failed: {e}")
+
     return "", original_url, None
 
 
