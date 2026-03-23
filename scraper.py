@@ -350,53 +350,84 @@ async def download_documents(page, tender_id, base_url, download_dir):
         for link in links:
             try:
                 href = await link.get_attribute("href")
-                if not href:
+                if not href or href.startswith("javascript:") or href.startswith("mailto:"):
                     continue
 
-                # make absolute URL
                 full_url = urljoin(base_url, href)
-
-                # only download known document types
-                lower = full_url.lower().split("?")[0]  # strip query params for extension check
-                if not any(lower.endswith(ext) for ext in DOC_EXTENSIONS):
-                    continue
-
                 if full_url in seen:
                     continue
+
+                # Broaden check: check if URL contains extensions, or link text suggests a download
+                lower_url = full_url.lower()
+                text = (await link.inner_text()).lower()
+                
+                path_part = urlparse(full_url).path.lower()
+                is_doc_ext = any(path_part.endswith(ext) for ext in DOC_EXTENSIONS)
+                
+                # Catch links that don't end in .pdf but are downloads (e.g. download.php?id=123)
+                is_download_link = (
+                    is_doc_ext or 
+                    ("download" in lower_url) or
+                    ("dokument" in lower_url) or
+                    ("unterlage" in lower_url) or
+                    ("anlage" in lower_url) or
+                    (any(word in text for word in ["unterlagen", "anlagen", "dokument", "herunterladen", "download"]))
+                )
+
+                if not is_download_link:
+                    continue
+
                 seen.add(full_url)
 
-                # build save path:  downloads/<tender_id>/<filename>
-                raw_name = full_url.split("/")[-1].split("?")[0] or "document"
-                # sanitize filename - remove anything sketchy
-                filename  = re.sub(r'[^\w.\-]', '_', raw_name)[:100]
+                # Fetch using Playwright's network context to keep cookies/session!
+                # This fixes the bug where urllib gets 403 Forbidden.
+                try:
+                    response = await page.context.request.get(full_url, timeout=15000)
+                except Exception as req_err:
+                    log.debug(f"    skip (request failed): {full_url} -> {req_err}")
+                    continue
+                
+                # Make sure we didn't accidentally download a normal HTML webpage
+                content_type = response.headers.get("content-type", "").lower()
+                if "text/html" in content_type:
+                    continue
+
+                # Try to get the real filename from the server's headers
+                cd = response.headers.get("content-disposition", "")
+                filename = ""
+                if "filename=" in cd:
+                    # Extracts filename="something.pdf" -> something.pdf
+                    filename = cd.split("filename=")[-1].strip("\"'")
+                else:
+                    filename = full_url.split("/")[-1].split("?")[0]
+                
+                if not filename or filename in ["download", "document", "file", ""]:
+                    # Fallback extension
+                    ext = ".pdf" if "pdf" in content_type else (".zip" if "zip" in content_type else ".bin")
+                    filename = f"file_{len(saved)+1}{ext}"
+
+                # sanitize filename
+                filename  = re.sub(r'[^\w.\-]', '_', filename)[:100]
                 folder    = os.path.join(download_dir, str(tender_id))
                 os.makedirs(folder, exist_ok=True)
                 dest      = os.path.join(folder, filename)
 
-                # skip if already downloaded
                 if os.path.exists(dest):
                     saved.append(filename)
                     continue
 
-                # try to download the file
-                try:
-                    req = urllib.request.Request(
-                        full_url,
-                        headers={"User-Agent": "Mozilla/5.0 (compatible; scraper/1.0)"},
-                    )
-                    with urllib.request.urlopen(req, timeout=15) as resp:
-                        with open(dest, "wb") as fh:
-                            fh.write(resp.read())
-                    saved.append(filename)
-                    log.info(f"    ↓ downloaded: {filename}")
-                except Exception as dl_err:
-                    log.debug(f"    skip {filename}: {dl_err}")
+                body = await response.body()
+                with open(dest, "wb") as fh:
+                    fh.write(body)
+                    
+                saved.append(filename)
+                log.info(f"    ↓ downloaded: {filename}")
 
-            except Exception:
-                pass
+            except Exception as dl_err:
+                log.debug(f"    download error for {href}: {dl_err}")
 
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug(f"    download_documents error: {e}")
 
     return saved
 

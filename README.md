@@ -248,3 +248,57 @@ From a test run (interrupted at ~2,500 URLs):
 | `invalid` | Page returned 404, or tender was deleted/expired |
 | `timeout` | Page took >20s to load |
 | `error` | Page loaded but no data could be extracted |
+
+---
+
+## 🤖 Phase 2: LLM-Assisted Scraping (OpenRouter Integration)
+
+> **Hackathon Phase 2** — Shifting away from fragile XPath selectors, we utilize LLMs to dynamically parse the text content of the webpage and precisely extract structured fields into a robust JSON schema.
+
+### Why LLMs?
+In Phase 1, we wrote handcrafted XPath selectors (like `//dt[contains(.,'Auftraggeber')]/following-sibling::dd[1]`) for every domain. This becomes unmanageable at scale when handling 25+ unique frontends built by different developers. LLMs solve this out-of-the-box by generically interpreting human-facing text.
+
+### How it Works
+1. **Unified Scraper**: `scraper_v3.py` combines both Phase 1 (XPath) and Phase 2 (LLM) into one robust script, yielding the exact same columns and JSON schema.
+2. **Playwright Renders JS & Downloads**: Playwright bypasses JS walls, simulates a real user, clicks Cookie consent banners, and performs smart project-relevant document downloading (identifying PDFs vs generic site docs).
+3. **OpenRouter API**: You can run standard extraction via XPath, or pass the `--llm` flag to send the visible text to OpenRouter.
+4. **LLM Chain Fallback**: It attempts extraction using a primary cheap model (e.g., `gemini-2.5-flash-lite`), and gracefully falls back to another model if rate limits or errors occur.
+
+### Configuration & Flexibility
+Different teams can use **different LLMs**. `scraper_v3.py` is configured specifically for **OpenRouter**, meaning anyone can seamlessly switch out models just by changing the `MODEL_CHAIN` inside the script or testing different providers!
+
+### 💻 Proper Code (Quick Start)
+
+Install Dependencies including the OpenAI SDK (which natively interfaces with OpenRouter):
+```bash
+pip3 install openai playwright
+python3 -m playwright install chromium
+```
+
+Set your API Key:
+```bash
+export OPENROUTER_API_KEY="sk-or-v1-****************************"
+```
+
+**Run Phase 1 (XPath only, no LLM):**
+```bash
+python3 scraper_v3.py -i publications_b.csv -n 100
+```
+
+**Run Phase 2 (LLM-Assisted Extraction):**
+```bash
+python3 scraper_v3.py -i publications_b.csv -n 100 --llm
+```
+
+**Run Phase 2 WITH Document Downloading:**
+```bash
+python3 scraper_v3.py -i publications_b.csv --llm --download-docs
+```
+
+*(You can also pass your key directly if you don't want to export it: `--api-key YOUR_KEY`)*
+
+### Tracking Iterations
+During your team's evaluation:
+1. Note the number of iterations required to refine the exact prompt schema.
+2. Monitor latency (`ms` field per URL query) across different providers via OpenRouter.
+3. Compare the generated `results_v3_stats.json` which tracks total tokens, API calls, retries, and costs!

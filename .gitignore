@@ -20,3 +20,7 @@ scraper.log
 
 # Playwright browser binaries (installed separately)
 ms-playwright/
+downloads/
+*.json
+*.csv
+*.log
