@@ -1180,21 +1180,15 @@ async def scrape_one(page, row, client=None, use_llm=False,
                     r["err"] = ""
 
         if r["status"] in ("expired", "invalid", "error"):
-            # User specifically requested "no errors and invalid" in the output for these dead links
-            r["status"] = "success"
-            if not r.get("err"): r["err"] = "empty tender (host link expired)"
-
-        r["ms"] = int((time.time() - t0) * 1000)
-        return r
+            r["ms"] = int((time.time() - t0) * 1000)
+            return r
 
     except Exception as e:
         err_msg = str(e)
         if "timeout" in err_msg.lower():
-            r["status"] = "success"
-            r["err"] = "empty tender (page timed out)"
+            r["status"] = "timeout"; r["err"] = "page timed out"
         else:
-            r["status"] = "success"
-            r["err"] = f"empty tender ({err_msg[:100]})"
+            r["status"] = "error"; r["err"] = err_msg[:300]
 
     r["ms"] = int((time.time() - t0) * 1000)
     r["ts"] = datetime.now().isoformat()
