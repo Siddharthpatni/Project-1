@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Scraper outputs (large/generated files)
+results_b.json
+results_b.csv
+results.json
+results.csv
+scraper_b.log
+scraper.log
+*.log
+
+# macOS
+.DS_Store
+
+# Playwright browser binaries (installed separately)
+ms-playwright/

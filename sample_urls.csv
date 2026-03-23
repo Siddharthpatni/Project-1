@@ -1,0 +1,4 @@
+id,created,updated,version,url,domain,trigger_id,procedure_id
+6a05934a-d751-4107-a1dd-dbb24ed438f7,2026-03-22 07:17:14.373,2026-03-22 07:17:25.867,1,https://www.evergabe-online.de/tenderdetails.html?id=example1,www.evergabe-online.de,b32d2a72-368a-45fd-a1f3-ef5b7aa4c101,02e5e8c9-2b40-40d0-8bd1-8b7d55f686aa
+1342d4ba-c967-473a-8418-1f9091a813e0,2026-03-22 07:17:04.622,2026-03-22 07:17:04.983,1,https://www.dtvp.de/Satellite/notice/CXP4Y89M9example,www.dtvp.de,39e68c6b-1a43-487a-85af-41de8e61ef3e,d5f9a789-3e3a-4daf-b98f-469d248586dd
+5bd3fef0-b34c-4396-94bf-b63ff81039bd,2026-03-22 07:16:31.850,2026-03-22 07:16:55.100,1,https://www.sachsen-vergabe.de/NetServer/PublicationControllerServlet?id=example,www.sachsen-vergabe.de,5482a1d3-1edb-42af-aff3-0a1a11970c75,a33147d0-24d4-4b23-a19f-ddad82695c16
