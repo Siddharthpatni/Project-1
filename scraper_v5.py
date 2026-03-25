@@ -998,3 +998,203 @@ async def collect_doc_links(page, base_url: str) -> List[Tuple[str, str, int]]:
                 if not href or href.startswith(("javascript:", "mailto:", "tel:", "#")):
                     continue
                 full_url = urljoin(base_url, href)
+                if full_url in seen:
+                    continue
+                seen.add(full_url)
+
+                text = (await link.inner_text()).strip()
+                sc = score_doc_link(full_url, text, page_domain)
+
+                # Special case: evergabe portals sometimes hide docs in API paths
+                if "evergabe" in page_domain and sc == 0:
+                    if "document" in full_url or "/api/file/" in full_url or "download" in full_url:
+                        sc = 2
+
+                if sc > 0:
+                    candidates.append((full_url, text, sc))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # Scan <form> tags with download-like actions
+    try:
+        forms = await page.locator("xpath=//form[contains(@action,'download') or contains(@action,'unterlag')]").all()
+        for form in forms:
+            try:
+                action = await form.get_attribute("action")
+                if action:
+                    full = urljoin(base_url, action)
+                    if full not in seen:
+                        seen.add(full)
+                        candidates.append((full, "form-download", 2))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    candidates.sort(key=lambda x: -x[2])
+    return candidates
+
+
+async def click_reveal_buttons(page) -> bool:
+    """Click tabs / accordions that might reveal hidden document sections."""
+    clicked = False
+    for xp in REVEAL_BUTTON_XPATHS:
+        try:
+            el = page.locator(f"xpath={xp}").first
+            if await el.is_visible(timeout=400):
+                await el.click()
+                await page.wait_for_timeout(800)
+                clicked = True
+        except Exception:
+            pass
+
+    # Also try data-attribute based tabs via JS
+    try:
+        await page.evaluate("""
+            document.querySelectorAll(
+                '[data-tab="documents"],[data-tab="unterlagen"],'
+                + '[href="#documents"],[href="#unterlagen"]'
+            ).forEach(el => { try { el.click(); } catch(e) {} });
+        """)
+        await page.wait_for_timeout(500)
+    except Exception:
+        pass
+
+    return clicked
+
+
+async def fetch_single_doc(page, download_url: str, base_url: str, folder: str,
+                           saved_count: int, max_docs: int,
+                           content_hashes: set) -> Optional[str]:
+    """Download one file and save it. Returns the filename, or None on failure."""
+    if saved_count >= max_docs:
+        return None
+
+    try:
+        response = await page.context.request.get(
+            download_url,
+            timeout=25000,
+            headers={
+                "Accept": "application/pdf,application/zip,application/octet-stream,*/*;q=0.8",
+                "Referer": base_url,
+                "Accept-Language": "de-DE,de;q=0.9,en;q=0.8",
+                "Cache-Control": "no-cache",
+            },
+        )
+
+        if response.status >= 400:
+            return None
+
+        content_type = response.headers.get("content-type", "").lower()
+        if "text/html" in content_type:
+            return None
+
+        body = await response.body()
+        if len(body) < 300:
+            return None
+
+        # De-duplicate by content hash
+        content_hash = hashlib.md5(body[:4096]).hexdigest()
+        if content_hash in content_hashes:
+            log.debug("    dup skipped (same content hash)")
+            return None
+        content_hashes.add(content_hash)
+
+        # Figure out a good filename
+        cd = response.headers.get("content-disposition", "")
+        filename = ""
+
+        m = re.search(r"filename\*=(?:[Uu][Tt][Ff]-8'')?([^\s;]+)", cd)
+        if m:
+            filename = unquote(m.group(1))
+        if not filename:
+            m = re.search(r'filename=["\']?([^"\';\r\n]+)', cd)
+            if m:
+                filename = m.group(1).strip("\"' ")
+        if not filename:
+            url_path = urlparse(download_url).path
+            filename = unquote(url_path.split("/")[-1].split("?")[0])
+
+        generic_names = {"download", "document", "file", "attachment", "", "get"}
+        if filename.lower() in generic_names or not filename:
+            ext_map = {
+                "pdf": "pdf", "zip": "zip", "msword": "doc",
+                "vnd.openxmlformats-officedocument.wordprocessingml": "docx",
+                "vnd.ms-excel": "xls",
+                "vnd.openxmlformats-officedocument.spreadsheetml": "xlsx",
+                "x-gaeb": "x83",
+            }
+            ext = "bin"
+            for key, value in ext_map.items():
+                if key in content_type:
+                    ext = value
+                    break
+            filename = f"doc_{saved_count + 1}_{content_hash[:6]}.{ext}"
+
+        filename = re.sub(r"[^\w.\-]", "_", filename)[:120]
+        dest = os.path.join(folder, filename)
+
+        if os.path.exists(dest):
+            return filename
+
+        with open(dest, "wb") as fh:
+            fh.write(body)
+
+        size_kb = len(body) // 1024
+        log.info(f"    ↓ {filename}  ({size_kb}KB)  [{content_type.split(';')[0]}]")
+        return filename
+
+    except Exception as exc:
+        log.debug(f"    fetch failed {download_url[:80]}: {str(exc)[:80]}")
+        return None
+
+
+async def try_js_download_buttons(page, base_url: str, folder: str,
+                                  saved_count: int, max_docs: int,
+                                  content_hashes: set) -> List[str]:
+    """Click JS-powered download buttons and intercept the resulting requests."""
+    saved = []
+    btn_xpaths = [
+        "//button[contains(.,'Unterlagen herunterladen')]",
+        "//button[contains(.,'Alle Unterlagen')]",
+        "//button[contains(.,'ZIP herunterladen')]",
+        "//button[contains(.,'Dokumente herunterladen')]",
+        "//a[contains(@class,'download') and contains(.,'Unterlagen')]",
+        "//a[contains(@class,'zipDownload')]",
+        "//button[contains(@class,'download')]",
+    ]
+    intercepted_urls = []
+
+    async def on_request(req):
+        url_lower = req.url.lower()
+        if any(ext in url_lower for ext in [".pdf", ".zip", ".docx", ".doc", "download", "attachment"]):
+            intercepted_urls.append(req.url)
+
+    page.on("request", on_request)
+    for xp in btn_xpaths:
+        try:
+            btn = page.locator(f"xpath={xp}").first
+            if await btn.is_visible(timeout=400):
+                await btn.click()
+                await page.wait_for_timeout(1500)
+        except Exception:
+            pass
+    page.remove_listener("request", on_request)
+
+    for url in intercepted_urls:
+        if len(saved) + saved_count >= max_docs:
+            break
+        fn = await fetch_single_doc(page, url, base_url, folder,
+                                    len(saved) + saved_count, max_docs, content_hashes)
+        if fn:
+            saved.append(fn)
+    return saved
+
+
+def _sanitise_path(s: str, maxlen: int = 80) -> str:
+    """Turn an arbitrary string into something safe for a folder name."""
+    s = str(s).strip()
+    s = re.sub(r'[\\/:"*?<>|]', "", s)
+    s = re.sub(r"\s+", "_", s)
