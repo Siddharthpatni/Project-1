@@ -798,3 +798,203 @@ Use null for missing fields.
 
 {{"title":"tender title","authority":"Auftraggeber/Vergabestelle","description":"what is being procured (2-3 sentences max)","deadline":"Angebotsfrist/Teilnahmefrist date","pub_date":"Veröffentlichungsdatum","proc_type":"Verfahrensart","cpv":"CPV codes if present","location":"Erfüllungsort","ref_num":"Vergabenummer/Aktenzeichen","contact":"contact name/email/phone"}}"""
 
+
+def extract_with_llm(client, page_text: str, url: str, domain: str,
+                     model_chain: list = None) -> Tuple[Optional[dict], Optional[str], int, float]:
+    """
+    Send the page text to an LLM and parse the returned JSON.
+    Walks through the model chain on failure. Returns (data, model_name, tokens, cost).
+    """
+    if model_chain is None:
+        model_chain = MODEL_CHAIN
+
+    prompt = LLM_EXTRACTION_PROMPT.format(url=url, text=page_text)
+    STATS["total_calls"] += 1
+    STATS["calls_per_domain"].setdefault(domain, 0)
+    STATS["calls_per_domain"][domain] += 1
+
+    for model in model_chain:
+        for attempt in range(2):
+            try:
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": "Extract structured data from German procurement pages. Return ONLY valid JSON."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0,
+                    max_tokens=1000,
+                )
+
+                tokens = 0
+                cost = 0.0
+                if resp.usage:
+                    tokens = resp.usage.total_tokens or 0
+                    STATS["total_tokens"] += tokens
+                    STATS["prompt_tokens"] += resp.usage.prompt_tokens or 0
+                    STATS["completion_tokens"] += resp.usage.completion_tokens or 0
+                    if hasattr(resp.usage, "cost") and resp.usage.cost:
+                        cost = float(resp.usage.cost)
+                        STATS["total_cost"] += cost
+
+                STATS["model_usage"].setdefault(model, 0)
+                STATS["model_usage"][model] += 1
+
+                raw = (resp.choices[0].message.content or "").strip()
+                # Strip markdown code fences that some models add
+                if raw.startswith("```"):
+                    raw = re.sub(r"^```[a-z]*\n?", "", raw)
+                    raw = re.sub(r"\n?```$", "", raw).strip()
+
+                if not raw:
+                    STATS["retries"] += 1
+                    continue
+
+                data = json.loads(raw)
+                return data, model, tokens, cost
+
+            except json.JSONDecodeError:
+                STATS["retries"] += 1
+                log.debug(f"    bad JSON from {model} (attempt {attempt + 1})")
+                time.sleep(0.3)
+
+            except Exception as exc:
+                msg = str(exc)
+                STATS["retries"] += 1
+                log.debug(f"    {model} error: {msg[:80]}")
+                if "rate" in msg.lower() or "429" in msg:
+                    break  # rate-limited — move to next model
+                time.sleep(0.5)
+
+    return None, None, 0, 0.0
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  DOCUMENT DOWNLOAD
+# ═══════════════════════════════════════════════════════════════════════════
+
+DOCUMENT_EXTENSIONS = {
+    ".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".rar", ".7z",
+    ".odt", ".ods", ".p7s", ".gaeb", ".x81", ".x83", ".d83", ".d84",
+}
+
+# Keywords in link text that strongly suggest a tender document
+DOC_TEXT_KEYWORDS = [
+    "unterlag", "leistungsverzeichnis", "leistungsbeschreibung",
+    "ausschreibung", "vergabeunterlag", "angebotsunterlag",
+    "teilnahmeunterlag", "lv ", "gaeb", "formular", "bewerbungsbogen",
+    "eignungsnachweis", "auftragsbekanntmachung", "bekanntmachung",
+    "vertragsbedingung", "leistungsheft", "baubeschreibung",
+    "planunterlag", "herunterladen", "download", "dokument",
+    "zip herunterladen", "als zip", "unterlagen herunterladen",
+    "alle dokumente", "bieterunterlagen",
+]
+
+# Link text that means "skip — not a document"
+DOC_SKIP_TEXT = [
+    "agb", "datenschutz", "impressum", "nutzungsbedingung",
+    "hilfe", "handbuch", "anleitung", "tutorial", "newsletter",
+    "broschüre", "flyer", "logo", "registrierung", "anmelden",
+    "login", "startseite", "home", "zurück", "weiter",
+    "mehr erfahren", "read more", "alle ausschreibungen",
+    "suche", "merkliste", "favoriten", "cookie", "sprachauswahl",
+]
+
+# URL paths that mean "skip"
+DOC_SKIP_URL = [
+    "/agb", "/datenschutz", "/impressum", "/hilfe", "/help",
+    "/login", "/register", "/auth", "/account",
+    "/news/", "/blog/", "/presse/", "/aktuell",
+    ".css", ".js", ".png", ".jpg", ".gif", ".svg",
+    ".ico", ".woff", ".ttf", ".eot",
+]
+
+# URL keywords (weaker signal than link text)
+DOC_URL_KEYWORDS = [
+    "unterlag", "leistung", "vergabe", "gaeb", "dokument",
+    "formular", "ausschreibung", "download", "attachment", "file",
+    "bieter", "angebot", "tender",
+]
+
+# XPaths for hidden document sections behind tabs / accordions
+REVEAL_BUTTON_XPATHS = [
+    "//button[contains(.,'Vergabeunterlagen')]",
+    "//button[contains(.,'Unterlagen')]",
+    "//button[contains(.,'Dokumente')]",
+    "//a[contains(@class,'tab') and contains(.,'Unterlagen')]",
+    "//a[contains(@class,'tab') and contains(.,'Dokumente')]",
+    "//li[contains(@class,'tab') and contains(.,'Unterlagen')]",
+    "//div[contains(@class,'tab') and contains(.,'Unterlagen')]",
+    "//button[contains(.,'Dokumente anzeigen')]",
+    "//button[contains(.,'Unterlagen anzeigen')]",
+    "//button[contains(.,'Unterlagen herunterladen')]",
+    "//div[contains(@class,'accordion') and contains(.,'Unterlagen')]//button",
+    "//div[contains(@class,'collapse') and contains(.,'Dokumente')]//button",
+    "//a[@id='documents-tab']",
+    "//a[@href='#documents']",
+    "//a[@href='#unterlagen']",
+    "//button[@data-target='#documents']",
+    "//button[@data-target='#unterlagen']",
+    "//button[contains(text(),'Unterlagen')]",
+    "//div[contains(@class,'dashboard')]//a[contains(.,'Unterlagen')]",
+    "//a[contains(@class,'BekSummary')]",
+    "//div[contains(@class,'dx-tab')]//span[contains(text(),'Dokumente')]",
+    "//div[contains(@class,'dx-tab')]//span[contains(text(),'Unterlagen')]",
+    "//a[contains(text(),'bitte hier klicken')]",
+]
+
+
+def score_doc_link(href: str, link_text: str, page_domain: str) -> int:
+    """
+    Rate how likely a link is to be a tender document (0–3).
+      0 = skip,  1 = possible,  2 = likely,  3 = definite
+    """
+    lower_href = href.lower()
+    lower_text = (link_text or "").strip().lower()
+    path = urlparse(href).path.lower()
+    link_domain = urlparse(href).netloc.lower()
+
+    # Cross-domain links are almost never tender docs
+    if link_domain and link_domain != page_domain:
+        known_doc_domains = ["evergabe", "vergabe", "subreport", "had.de", "tender24", "ausschreibungsblatt", "bi-medien"]
+        if not any(x in link_domain for x in known_doc_domains):
+            return 0
+
+    if any(k in lower_href for k in DOC_SKIP_URL):
+        return 0
+    if any(k in lower_text for k in DOC_SKIP_TEXT):
+        return 0
+
+    ext = Path(path).suffix.lower()
+    has_doc_ext     = ext in DOCUMENT_EXTENSIONS
+    has_strong_text = any(k in lower_text for k in DOC_TEXT_KEYWORDS)
+    has_url_hint    = any(k in lower_href for k in DOC_URL_KEYWORDS)
+
+    if not has_doc_ext and not has_strong_text and not has_url_hint:
+        return 0
+
+    score = 0
+    if has_doc_ext:
+        score += 1
+    if has_strong_text:
+        score += 2
+    elif has_url_hint:
+        score += 1
+
+    return min(score, 3)
+
+
+async def collect_doc_links(page, base_url: str) -> List[Tuple[str, str, int]]:
+    """Scan the page for candidate document links, scored and sorted best-first."""
+    page_domain = urlparse(base_url).netloc.lower()
+    candidates = []
+    seen = set()
+
+    # Scan <a> tags
+    try:
+        for link in await page.locator("xpath=//a[@href]").all():
+            try:
+                href = await link.get_attribute("href")
+                if not href or href.startswith(("javascript:", "mailto:", "tel:", "#")):
+                    continue
+                full_url = urljoin(base_url, href)
