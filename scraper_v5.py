@@ -598,3 +598,203 @@ async def load_with_recovery(page, row: dict) -> Tuple[str, str, Optional[str]]:
                     await dismiss_cookies(page)
 
                 await page.wait_for_timeout(1500)
+            else:
+                await page.wait_for_timeout(1000)
+
+            final_url = page.url
+            if resp and resp.status >= 400 and not ("token=" in final_url or ".ashx" in final_url):
+                return None
+
+            await dismiss_cookies(page)
+            text = await get_page_text(page)
+
+            is_download_link = any(x in final_url.lower() for x in (".ashx", ".php", ".zip", ".pdf", "/download"))
+            if not text or len(text) < 50:
+                return ("DOWNLOAD_LINK", final_url) if is_download_link else None
+            if is_login_wall(text):
+                return None
+            if is_gone(text):
+                return None
+
+            return text, final_url
+
+        except Exception as exc:
+            log.debug(f"    {label} failed: {str(exc)[:60]}")
+            return None
+        finally:
+            page.remove_listener("request", catch_request)
+
+    # -- recovery chain ------------------------------------------------------
+    normalized = fix_double_encoding(original_url)
+
+    # Special handling for vergabe24 / tender24 — try HTTP recovery first
+    domain_check = urlparse(normalized).netloc.lower()
+    if "vergabe24" in domain_check or "tender24" in domain_check:
+        recovery = recover_vergabe24_url(normalized)
+        if recovery["found_url"]:
+            log.info(f"    🔄 vergabe24 recovery: {recovery['found_url'][:80]}")
+            res = await try_url(recovery["found_url"], "vergabe24-netserver")
+            if res:
+                return res[0], res[1], f"vergabe24_{recovery['strategy']}"
+
+    # Attempt 1: normalised URL
+    res = await try_url(normalized, "original")
+    if res:
+        return res[0], res[1], None
+
+    # Attempt 2: strip /documents suffix
+    stripped = strip_documents_suffix(normalized)
+    if stripped:
+        res = await try_url(stripped, "strip-/documents")
+        if res:
+            return res[0], res[1], "strip_documents"
+
+    # Attempt 3: portal-specific URL rewrites
+    for alt in portal_rewrite(normalized):
+        res = await try_url(alt, "portal-rewrite")
+        if res:
+            return res[0], res[1], "portal_rewrite"
+
+    # Attempt 4: try the raw (un-normalised) URL if it differs
+    if normalized != original_url:
+        res = await try_url(original_url, "original-raw")
+        if res:
+            return res[0], res[1], "original_raw"
+
+    # Attempt 5: search engine fallback
+    query = build_search_query(row, normalized)
+    log.info(f"    🔍 trying search fallback: {query}")
+    found_url = await browser_search_for_url(page, query)
+    if found_url and found_url != normalized:
+        res = await try_url(found_url, "search-fallback")
+        if res:
+            return res[0], res[1], "search_fallback"
+
+    # All strategies exhausted
+    return "", original_url, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  XPATH DATA EXTRACTION  (Phase 1)
+# ═══════════════════════════════════════════════════════════════════════════
+
+FIELD_XPATHS = {
+    "title": [
+        "//h1",
+        "//*[contains(@class,'title') and (self::h1 or self::h2)]",
+        "//title",
+    ],
+    "authority": [
+        "//dt[contains(.,'Auftraggeber')]/following-sibling::dd[1]",
+        "//th[contains(.,'Auftraggeber')]/following-sibling::td[1]",
+        "//td[contains(.,'Auftraggeber')]/following-sibling::td[1]",
+        "//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
+        "//*[contains(text(),'Vergabestelle')]/following-sibling::*[1]",
+        "//*[contains(@class,'vergabestelle')]",
+        "//*[contains(@class,'auftraggeber')]",
+    ],
+    "description": [
+        "//*[contains(text(),'Beschreibung') or contains(text(),'Leistung')]/following-sibling::*[1]",
+        "//*[contains(@class,'description')]",
+        "//*[contains(@class,'leistung')]",
+    ],
+    "deadline": [
+        "//dt[contains(.,'Angebotsfrist') or contains(.,'Frist')]/following-sibling::dd[1]",
+        "//th[contains(.,'Frist')]/following-sibling::td[1]",
+        "//td[contains(.,'Frist')]/following-sibling::td[1]",
+        "//*[contains(text(),'Angebotsfrist') or contains(text(),'Teilnahmefrist')]/following-sibling::*[1]",
+        "//*[contains(text(),'Abgabetermin')]/following-sibling::*[1]",
+        "//span[contains(@id,'Frist') or contains(@id,'frist')]",
+    ],
+    "pub_date": [
+        "//dt[contains(.,'Veröffentlich')]/following-sibling::dd[1]",
+        "//*[contains(text(),'Veröffentlich')]/following-sibling::*[1]",
+        "//*[contains(text(),'Bekanntmachung')]/following-sibling::*[1]",
+    ],
+    "proc_type": [
+        "//dt[contains(.,'Verfahrensart') or contains(.,'Vergabeart')]/following-sibling::dd[1]",
+        "//*[contains(text(),'Verfahrensart')]/following-sibling::*[1]",
+    ],
+    "cpv": [
+        "//*[contains(text(),'CPV')]/following-sibling::*[1]",
+        "//dt[contains(.,'CPV')]/following-sibling::dd[1]",
+    ],
+    "location": [
+        "//*[contains(text(),'Erfüllungsort') or contains(text(),'Ort der Leistung')]/following-sibling::*[1]",
+        "//dt[contains(.,'Ort')]/following-sibling::dd[1]",
+    ],
+    "ref_num": [
+        "//dt[contains(.,'Vergabenummer') or contains(.,'Aktenzeichen')]/following-sibling::dd[1]",
+        "//*[contains(text(),'Vergabenummer') or contains(text(),'Aktenzeichen')]/following-sibling::*[1]",
+    ],
+    "contact": [
+        "//*[contains(text(),'Kontakt')]/following-sibling::*[1]",
+        "//*[contains(@class,'contact')]",
+    ],
+}
+
+
+async def _xpath_get_first(page, xpaths: list) -> Optional[str]:
+    """Try each XPath in order, return the first non-empty text match."""
+    for xp in xpaths:
+        try:
+            elements = await page.locator(f"xpath={xp}").all()
+            if elements:
+                txt = (await elements[0].inner_text()).strip()
+                if txt and len(txt) < 2000:
+                    return txt
+        except Exception:
+            pass
+    return None
+
+
+async def xpath_extract(page) -> dict:
+    """
+    Extract tender data from the page using XPath selectors.
+    Falls back to scanning <dt>/<dd> pairs if the main selectors miss.
+    """
+    extracted = {}
+    for field, xpaths in FIELD_XPATHS.items():
+        value = await _xpath_get_first(page, xpaths)
+        if value:
+            extracted[field] = value
+
+    # Fallback: scan definition lists for known German labels
+    if not extracted.get("title") and not extracted.get("authority"):
+        try:
+            for dt in await page.locator("xpath=//dt").all():
+                label = (await dt.inner_text()).strip()
+                value = await dt.evaluate("el => el.nextElementSibling?.textContent?.trim()")
+                if not label or not value or len(label) >= 150:
+                    continue
+
+                label_lower = label.lower()
+                if "auftraggeber" in label_lower or "vergabestelle" in label_lower:
+                    extracted.setdefault("authority", value)
+                elif "frist" in label_lower or "angebotsfrist" in label_lower:
+                    extracted.setdefault("deadline", value)
+                elif "veröffentlich" in label_lower:
+                    extracted.setdefault("pub_date", value)
+                elif "verfahren" in label_lower or "vergabeart" in label_lower:
+                    extracted.setdefault("proc_type", value)
+        except Exception:
+            pass
+
+    return extracted
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  LLM DATA EXTRACTION  (Phase 2)
+# ═══════════════════════════════════════════════════════════════════════════
+
+LLM_EXTRACTION_PROMPT = """Extract procurement tender data from this German page text.
+URL: {url}
+
+PAGE TEXT:
+{text}
+
+Return ONLY valid JSON. No markdown, no backticks, no explanation.
+Use null for missing fields.
+
+{{"title":"tender title","authority":"Auftraggeber/Vergabestelle","description":"what is being procured (2-3 sentences max)","deadline":"Angebotsfrist/Teilnahmefrist date","pub_date":"Veröffentlichungsdatum","proc_type":"Verfahrensart","cpv":"CPV codes if present","location":"Erfüllungsort","ref_num":"Vergabenummer/Aktenzeichen","contact":"contact name/email/phone"}}"""
+
