@@ -1498,3 +1498,250 @@ CSV_COLUMNS = [
     "proc_type", "cpv", "location", "ref_num", "contact",
     "model_used", "llm_tokens", "llm_cost",
     "downloaded_docs", "url_recovery", "err", "ms", "ts",
+]
+
+
+def save_results(results: list, output_json: str) -> str:
+    """Write results to JSON and CSV files. Returns the CSV path."""
+    with open(output_json, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+
+    csv_path = output_json.replace(".json", ".csv")
+    with open(csv_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+        writer.writeheader()
+        for rec in results:
+            row = dict(rec)
+            row["downloaded_docs"] = ";".join(rec.get("downloaded_docs") or [])
+            writer.writerow(row)
+
+    return csv_path
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  SUMMARY
+# ═══════════════════════════════════════════════════════════════════════════
+
+def print_summary(results: list, use_llm: bool, download_docs: bool):
+    """Print a human-readable summary of the scraping run."""
+    total = len(results) or 1
+    ok  = sum(1 for r in results if r["status"] == "success")
+    err = sum(1 for r in results if r["status"] == "error")
+    to  = sum(1 for r in results if r["status"] == "timeout")
+    inv = sum(1 for r in results if r["status"] == "invalid")
+    avg = sum(r["ms"] for r in results) / total
+    total_docs = sum(len(r.get("downloaded_docs") or []) for r in results)
+    recovered = sum(1 for r in results if r.get("url_recovery"))
+
+    label = "Phase 2 — LLM" if use_llm else "Phase 1 — XPath"
+    sep = "=" * 62
+
+    print(f"\n{sep}")
+    print(f"  RESULTS ({label})")
+    print(sep)
+    print(f"  total:          {total}")
+    print(f"  success:        {ok}  ({100 * ok / total:.1f}%)")
+    print(f"  errors:         {err}  ({100 * err / total:.1f}%)")
+    print(f"  timeouts:       {to}  ({100 * to / total:.1f}%)")
+    print(f"  invalid:        {inv}  ({100 * inv / total:.1f}%)")
+    print(f"  URL recovered:  {recovered}  ({100 * recovered / total:.1f}%)")
+    print(f"  avg time:       {avg:.0f}ms/url")
+    if download_docs:
+        print(f"  docs saved:     {total_docs}")
+
+    if STATS["url_recoveries"]:
+        print(f"\n  URL RECOVERY BREAKDOWN:")
+        for strategy, count in sorted(STATS["url_recoveries"].items(), key=lambda x: -x[1]):
+            print(f"    {strategy:25s}: {count}")
+
+    print(sep)
+
+    if use_llm and STATS["total_calls"]:
+        print(f"\n  LLM STATS:")
+        print(f"    api calls:     {STATS['total_calls']}")
+        print(f"    retries:       {STATS['retries']}")
+        print(f"    total tokens:  {STATS['total_tokens']:,}")
+        print(f"    total cost:    ${STATS['total_cost']:.4f}")
+        print(f"    avg tok/call:  {STATS['total_tokens'] // STATS['total_calls']}")
+        print(f"    models used:")
+        for m, c in STATS["model_usage"].items():
+            print(f"      {m}: {c} calls")
+        print(sep)
+
+    # Per-domain breakdown
+    dom_stats = {}
+    for r in results:
+        d = r["domain"]
+        dom_stats.setdefault(d, [0, 0])
+        dom_stats[d][1] += 1
+        if r["status"] == "success":
+            dom_stats[d][0] += 1
+
+    print("\n  domains:")
+    for d, (s, t) in sorted(dom_stats.items(), key=lambda x: -x[1][1]):
+        calls = STATS["calls_per_domain"].get(d, 0)
+        call_str = f"  calls: {calls}" if use_llm else ""
+        print(f"    {d:48s} {s:>4}/{t:<4} ({100 * s / t:.0f}%){call_str}")
+    print()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  MAIN
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def main(args):
+    use_llm = args.llm
+
+    # Set up LLM client (OpenRouter) if needed
+    client = None
+    if use_llm:
+        try:
+            from openai import OpenAI
+        except ImportError:
+            print("pip install openai")
+            exit(1)
+
+        api_key = args.api_key or os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            print("Need API key: set OPENROUTER_API_KEY or use --api-key")
+            exit(1)
+
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
+
+        log.info(f"Testing API with model: {MODEL_CHAIN[0]}")
+        try:
+            test = client.chat.completions.create(
+                model=MODEL_CHAIN[0],
+                messages=[{"role": "user", "content": "reply ok"}],
+                max_tokens=5,
+            )
+            log.info(f"API ok: {test.choices[0].message.content or '(empty)'}")
+        except Exception as exc:
+            print(f"API test failed: {exc}")
+            exit(1)
+
+    # Load input CSV
+    rows = []
+    with open(args.input, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            url = row.get("url", "").strip()
+            if url:
+                rows.append(row)
+    log.info(f"{len(rows)} URLs loaded from {args.input}")
+
+    # Filter out irrelevant rows
+    before = len(rows)
+    if args.skip_done:
+        rows = [r for r in rows if r.get("state", "") not in ("COMPLETED",)]
+    rows = [r for r in rows if r.get("state", "") not in ("UNSUPPORTED",)]
+
+    junk_paths = ["/login", "/register", "/auth", "/passwort", "/password",
+                  "/account", "/warenkorb"]
+    rows = [r for r in rows if not any(j in r["url"].lower() for j in junk_paths)]
+
+    if len(rows) != before:
+        log.info(f"Filtered to {len(rows)} rows")
+
+    if args.limit > 0:
+        rows = rows[:args.limit]
+        log.info(f"Limited to {args.limit}")
+
+    if not rows:
+        print("Nothing to scrape")
+        return
+
+    # Group URLs by domain
+    groups = {}
+    for r in rows:
+        d = urlparse(r["url"]).netloc.lower()
+        groups.setdefault(d, []).append(r)
+
+    for d, g in sorted(groups.items(), key=lambda x: -len(x[1])):
+        log.info(f"    {d}: {len(g)}")
+
+    if args.download_docs:
+        os.makedirs(args.download_dir, exist_ok=True)
+        log.info(f"  Document download ON → {args.download_dir}/")
+
+    # Launch browser and run
+    results = []
+    sem = asyncio.Semaphore(min(args.workers, 10))
+    prog = {"n": 0}
+    total = len(rows)
+
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError:
+        print("pip install playwright && playwright install chromium")
+        exit(1)
+
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
+                "--disable-extensions",
+                "--blink-settings=imagesEnabled=false",
+                "--disable-background-networking",
+                "--disable-background-timer-throttling",
+            ],
+        )
+        ctx = await browser.new_context(
+            locale="de-DE",
+            timezone_id="Europe/Berlin",
+            user_agent=(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1280, "height": 900},
+            accept_downloads=True,
+        )
+
+        tasks = [
+            run_domain(
+                d, g, results, sem, ctx, prog, total,
+                client, use_llm, args.download_docs, args.download_dir,
+                folder_by_company=args.folder_by_company,
+            )
+            for d, g in groups.items()
+        ]
+        await asyncio.gather(*tasks)
+        await browser.close()
+
+    # Save outputs
+    csv_path = save_results(results, args.output)
+    stats_path = args.output.replace(".json", "_stats.json")
+    with open(stats_path, "w") as f:
+        json.dump(STATS, f, indent=2)
+
+    print_summary(results, use_llm, args.download_docs)
+    log.info(f"Done → {args.output}  {csv_path}  {stats_path}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  CLI ENTRY POINT
+# ═══════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="German procurement tender scraper — XPath + LLM + URL recovery + document download",
+    )
+    parser.add_argument("-i", "--input",       default="publications_b.csv", help="input CSV file")
+    parser.add_argument("-o", "--output",      default="results.json",       help="output JSON file")
+    parser.add_argument("-w", "--workers",     type=int, default=8,          help="parallel browser tabs")
+    parser.add_argument("-n", "--limit",       type=int, default=0,          help="max URLs to process (0 = all)")
+    parser.add_argument("--llm",              action="store_true",           help="enable LLM extraction (Phase 2)")
+    parser.add_argument("--api-key",          default=None,                  help="OpenRouter API key")
+    parser.add_argument("--skip-done",        action="store_true",           help="skip already COMPLETED rows")
+    parser.add_argument("--download-docs",    action="store_true",           help="download tender documents")
+    parser.add_argument("--download-dir",     default="downloads",           help="folder for downloaded docs")
+    parser.add_argument("--folder-by-company", action="store_true",          help="organise downloads by contracting authority")
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.input):
+        print(f"File not found: {args.input}")
+        exit(1)
+
+    asyncio.run(main(args))
