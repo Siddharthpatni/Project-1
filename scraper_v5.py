@@ -398,3 +398,203 @@ def build_search_query(row: dict, original_url: str) -> str:
     # Try to pull a meaningful identifier from the URL
     tid = None
     m = re.search(r"(54321-(?:Tender|PublishingProcess)-[a-f0-9-]+)", original_url, re.IGNORECASE)
+    if m:
+        tid = m.group(1)
+
+    if not tid:
+        m = re.search(r"/E(\d{6,10})$", path)
+        if m:
+            tid = "E" + m.group(1)
+
+    if not tid:
+        m = re.search(r"/notice/([A-Z0-9]{6,20})", path)
+        if m:
+            tid = m.group(1)
+
+    if not tid:
+        m = re.search(r"/(\d{6,10})$", path)
+        if m:
+            tid = m.group(1)
+
+    if tid:
+        return f'site:{domain} "{tid}"'
+
+    # No ID found — use last path segment as a hint
+    authority_hint = re.sub(r"[^\w\s]", " ", unquote(path).split("/")[-2])[:40]
+    return f"site:{domain} {authority_hint} ausschreibung"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  PAGE CLASSIFICATION (login walls, gone pages)
+# ═══════════════════════════════════════════════════════════════════════════
+
+LOGIN_WALL_PHRASES = [
+    "bitte melden sie sich an", "please log in", "login required",
+    "session abgelaufen", "session expired", "ihre sitzung ist abgelaufen",
+    "zugangsdaten", "passwort eingeben", "anmelden, um", "zugang gesperrt",
+    "sicherheitsabfrage", "captcha", "not authorized", "403 forbidden",
+    "zugang verweigert", "sie sind nicht eingeloggt",
+]
+
+GONE_PHRASES = [
+    "nicht mehr verfügbar", "nicht gefunden", "abgelaufen",
+    "seite existiert nicht", "page not found",
+    "vergabe wurde aufgehoben", "bekanntmachung wurde gelöscht",
+    "kein ergebnis", "kein treffer", "404", "403 forbidden",
+    "diese ausschreibung existiert nicht",
+    "could not extract tender id",
+    "there is no documents section",
+]
+
+
+def is_login_wall(text: str) -> bool:
+    """Return True if the page looks like it's behind a login / session wall."""
+    snippet = text.lower()[:3000]
+    return any(phrase in snippet for phrase in LOGIN_WALL_PHRASES)
+
+
+def is_gone(text: str) -> bool:
+    """Return True if the page says the tender has been removed or expired."""
+    snippet = text.lower()[:6000]
+    return any(phrase in snippet for phrase in GONE_PHRASES)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  COOKIE BANNER DISMISSAL
+# ═══════════════════════════════════════════════════════════════════════════
+
+COOKIE_BUTTON_SELECTORS = [
+    "xpath=//button[contains(text(),'Akzeptieren')]",
+    "xpath=//button[contains(text(),'Alle akzeptieren')]",
+    "xpath=//button[contains(text(),'Annehmen')]",
+    "xpath=//button[contains(text(),'Accept')]",
+    "xpath=//button[contains(text(),'Zustimmen')]",
+    "xpath=//button[contains(text(),'Nur notwendige')]",
+    "xpath=//button[contains(text(),'Einverstanden')]",
+    "xpath=//button[contains(@class,'accept') or contains(@class,'consent')]",
+    "xpath=//button[@id='accept' or @id='acceptCookies' or @id='cookieAccept']",
+    "xpath=//a[contains(text(),'Akzeptieren') or contains(text(),'Accept')]",
+    "xpath=//button[contains(@class,'cookie') and contains(@class,'btn')]",
+]
+
+
+async def dismiss_cookies(page) -> bool:
+    """Try to click a cookie-consent button. Returns True if one was clicked."""
+    for selector in COOKIE_BUTTON_SELECTORS:
+        try:
+            btn = page.locator(selector).first
+            if await btn.is_visible(timeout=500):
+                await btn.click()
+                await page.wait_for_timeout(500)
+                return True
+        except Exception:
+            pass
+    return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  PAGE TEXT EXTRACTION
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def get_page_text(page, max_chars: int = 8000) -> str:
+    """
+    Grab the visible text from the page body.
+    Scrolls to the bottom first to trigger lazy-loaded content.
+    """
+    try:
+        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        await page.wait_for_timeout(300)
+        await page.evaluate("window.scrollTo(0, 0)")
+    except Exception:
+        pass
+
+    try:
+        text = await page.inner_text("body")
+    except Exception:
+        return ""
+
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r" {2,}", " ", text).strip()
+
+    # JS-heavy pages sometimes need an extra moment
+    if len(text) < 100:
+        await page.wait_for_timeout(2000)
+        try:
+            text = await page.inner_text("body")
+            text = re.sub(r"\n{3,}", "\n\n", text)
+            text = re.sub(r" {2,}", " ", text).strip()
+        except Exception:
+            pass
+
+    return text[:max_chars]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  SEARCH-ENGINE FALLBACK  (uses DuckDuckGo via the browser)
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def browser_search_for_url(page, query: str) -> Optional[str]:
+    """Open DuckDuckGo in the browser tab, scrape the first relevant link."""
+    search_url = f"https://duckduckgo.com/?q={quote(query)}&ia=web"
+    try:
+        await page.goto(search_url, wait_until="domcontentloaded", timeout=15000)
+        await page.wait_for_timeout(1500)
+        await dismiss_cookies(page)
+        await page.wait_for_timeout(500)
+
+        for link in await page.locator("xpath=//a[@href]").all():
+            try:
+                href = await link.get_attribute("href")
+                if not href:
+                    continue
+                if any(x in href for x in ["duckduckgo.com", "google.com", "bing.com", "javascript:", "#"]):
+                    continue
+                parsed = urlparse(href)
+                if parsed.scheme in ("http", "https") and parsed.netloc:
+                    log.info(f"    🔍 search fallback found: {href[:80]}")
+                    return href
+            except Exception:
+                pass
+    except Exception as exc:
+        log.debug(f"    search failed: {str(exc)[:60]}")
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  PAGE LOADING — FULL RECOVERY CHAIN
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def load_with_recovery(page, row: dict) -> Tuple[str, str, Optional[str]]:
+    """
+    Try to load the tender page, cycling through several fallback strategies
+    if the original URL fails. Returns (page_text, final_url, recovery_label).
+    """
+    original_url = row.get("url", "").strip()
+
+    # -- inner helper: attempt a single URL ----------------------------------
+    async def try_url(url: str, label: str, timeout: int = 15000):
+        sniffed_url = None
+
+        def catch_request(req):
+            nonlocal sniffed_url
+            if "token=" in req.url and "europa.vergabe24.de" in req.url:
+                sniffed_url = req.url
+
+        page.on("request", catch_request)
+        try:
+            resp = await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+            await dismiss_cookies(page)
+
+            # vergabe24 / tender24 pages do a JS redirect that adds a token
+            if "vergabe24.de" in url or "tender24.de" in url:
+                for _ in range(12):
+                    if "token=" in page.url or sniffed_url:
+                        break
+                    await page.wait_for_timeout(1000)
+                    await dismiss_cookies(page)
+
+                if sniffed_url and "token=" not in page.url:
+                    await page.goto(sniffed_url, wait_until="domcontentloaded", timeout=timeout)
+                    await dismiss_cookies(page)
+
+                await page.wait_for_timeout(1500)
