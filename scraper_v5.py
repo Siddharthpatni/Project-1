@@ -1198,3 +1198,303 @@ def _sanitise_path(s: str, maxlen: int = 80) -> str:
     s = str(s).strip()
     s = re.sub(r'[\\/:"*?<>|]', "", s)
     s = re.sub(r"\s+", "_", s)
+    s = re.sub(r"[^\w\-]", "_", s)
+    s = re.sub(r"_+", "_", s).strip("_")
+    return s[:maxlen] or "unknown"
+
+
+def make_download_folder(download_dir: str, tender_id: str,
+                         authority: Optional[str], folder_by_company: bool) -> str:
+    """Build the output folder path for a tender's documents."""
+    tid_safe = _sanitise_path(tender_id, 60)
+    if folder_by_company and authority:
+        company_safe = _sanitise_path(authority, 80)
+        return os.path.join(download_dir, company_safe, tid_safe)
+    return os.path.join(download_dir, tid_safe)
+
+
+async def download_documents(page, tender_id: str, base_url: str,
+                             download_dir: str, max_docs: int = 15,
+                             authority: str = None,
+                             folder_by_company: bool = False) -> List[str]:
+    """
+    Multi-pass document download strategy:
+      Pass 1 — score all links on the page
+      Pass 2 — click reveal buttons, re-scan if few strong links found
+      Pass 3 — try JS download buttons
+      Pass 4 — portal-specific API patterns
+      Pass 5 — download scored links (strong first, weak as fallback)
+    """
+    saved = []
+    folder = make_download_folder(download_dir, tender_id, authority, folder_by_company)
+    os.makedirs(folder, exist_ok=True)
+    attempted = set()
+    content_hashes = set()
+
+    # Pass 1: score all links on the current page
+    candidates = await collect_doc_links(page, base_url)
+
+    # Pass 2: click reveal buttons if few strong links found
+    strong = [c for c in candidates if c[2] >= 2]
+    if len(strong) < 2:
+        if await click_reveal_buttons(page):
+            await page.wait_for_timeout(1000)
+            candidates = await collect_doc_links(page, base_url)
+            strong = [c for c in candidates if c[2] >= 2]
+
+    # Pass 3: try JS download buttons
+    if not saved:
+        js_docs = await try_js_download_buttons(page, base_url, folder,
+                                                len(saved), max_docs, content_hashes)
+        saved.extend(js_docs)
+
+    # Pass 4: portal-specific API patterns
+    parsed = urlparse(base_url)
+    netloc = parsed.netloc.lower()
+    portal_urls = []
+
+    if "evergabe" in netloc or "auftraege.bayern.de" in netloc:
+        m_oid = re.search(r"/tenders?/(\d+)", parsed.path)
+        m_sid = re.search(r"([0-9a-f-]{36}|[A-Za-z0-9+/]{10,50}={0,2})", parsed.path + parsed.query)
+        m_sid_q = re.search(r"subProjectId=([^&]+)", parsed.query)
+
+        sid = None
+        if m_sid_q:
+            sid = m_sid_q.group(1)
+        elif m_sid:
+            sid = m_sid.group(1)
+
+        base = f"{parsed.scheme}://{parsed.netloc}"
+        if m_oid:
+            portal_urls.append(f"{base}/tender/{m_oid.group(1)}/documents")
+            portal_urls.append(f"{base}/tender/{m_oid.group(1)}/documents/download")
+        if sid and len(sid) > 10:
+            if "auftraege.bayern.de" in netloc:
+                portal_urls.append(f"https://www.auftraege.bayern.de/evergabe.bieter/DownloadTenderFiles.ashx?subProjectId={sid}")
+                portal_urls.append(f"https://bieterzugang.auftraege.bayern.de/evergabe.bieter/DownloadTenderFiles.ashx?subProjectId={sid}")
+            else:
+                portal_urls.append(f"https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/DownloadTenderFiles.ashx?subProjectId={sid}")
+                portal_urls.append(f"https://www.deutsche-evergabe.de/dashboards/DetailsDashboard/{sid}")
+
+    if "subreport" in netloc:
+        m = re.search(r"[?&]id=(\d+)", parsed.query + "?" + parsed.path)
+        if m:
+            base = f"{parsed.scheme}://{parsed.netloc}"
+            portal_urls.append(f"{base}/dokumente.aspx?id={m.group(1)}")
+
+    if "vergabe24" in netloc or "tender24" in netloc:
+        m_tid = re.search(r"(54321-Tender-[a-f0-9-]+)", base_url)
+        if m_tid:
+            tid = m_tid.group(1)
+            base = f"{parsed.scheme}://{parsed.netloc}"
+            portal_urls.append(f"{base}/NetServer/TenderingProcedureDetails?function=_Details&TenderOID={tid}&view=documents")
+
+        m_tok = re.search(r"token=([a-zA-Z0-9_-]+)", base_url)
+        if m_tok:
+            tok = m_tok.group(1)
+            base = f"{parsed.scheme}://{parsed.netloc}"
+            portal_urls.append(f"{base}/download.php?token={tok}")
+
+    for pu in portal_urls:
+        if pu not in attempted and len(saved) < max_docs:
+            attempted.add(pu)
+            fn = await fetch_single_doc(page, pu, base_url, folder,
+                                        len(saved), max_docs, content_hashes)
+            if fn:
+                saved.append(fn)
+
+    # Pass 5: download scored links
+    threshold = 2 if (strong or saved) else 1
+    for doc_url, text, score in candidates:
+        if len(saved) >= max_docs:
+            break
+        if score < threshold or doc_url in attempted:
+            continue
+        attempted.add(doc_url)
+        fn = await fetch_single_doc(page, doc_url, base_url, folder,
+                                    len(saved), max_docs, content_hashes)
+        if fn:
+            saved.append(fn)
+
+    if not saved:
+        log.debug(f"    no docs found: {base_url[:60]}")
+
+    return saved
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  URL SKIP PATTERNS
+# ═══════════════════════════════════════════════════════════════════════════
+
+SKIP_URL_PATTERNS = [
+    "/login", "/register", "/auth",
+    "/passwort", "/password", "/account", "/warenkorb", "/cart",
+    "/impressum", "/datenschutz", "/agb", "/hilfe",
+    "zustellweg",
+]
+
+
+def should_skip_url(url: str) -> bool:
+    """Return True if the URL is clearly not a tender detail page."""
+    low = url.lower()
+    if "zustellweg" in low:
+        return True
+    if re.search(r"/unterlagen/[0-9a-f-]{36}/zustellweg", low):
+        return True
+    return any(p in low for p in SKIP_URL_PATTERNS)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  SCRAPE ONE URL
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def scrape_one(page, row: dict, client=None, use_llm: bool = False,
+                     download_docs: bool = False, download_dir: str = "downloads",
+                     folder_by_company: bool = False) -> dict:
+    """Scrape a single tender URL and return a result dict."""
+    url = row.get("url", "").strip()
+    domain = urlparse(url).netloc.lower()
+    result = empty_result(row, domain)
+    t0 = time.time()
+
+    try:
+        if should_skip_url(url):
+            result["status"] = "invalid"
+            result["err"] = "non-tender URL (delivery/login page)"
+            return result
+
+        # Load the page (with full recovery chain)
+        page_text, used_url, recovery = await load_with_recovery(page, row)
+        result["url_used"] = used_url
+        result["url_recovery"] = recovery
+
+        if recovery:
+            STATS["url_recoveries"].setdefault(recovery, 0)
+            STATS["url_recoveries"][recovery] += 1
+            log.info(f"    🔄 URL recovered via {recovery}: {used_url[:70]}")
+
+        if not page_text or len(page_text) < 50:
+            result["status"] = "error"
+            result["err"] = "empty page after all recovery attempts"
+            return result
+
+        # Extraction
+        try:
+            if use_llm and client:
+                data, model_used, tok, cost = extract_with_llm(client, page_text, used_url, domain)
+                result["model_used"] = model_used
+                result["llm_tokens"] = tok
+                result["llm_cost"] = cost
+
+                if data:
+                    for field in ("title", "authority", "description", "deadline",
+                                  "pub_date", "proc_type", "cpv", "location",
+                                  "ref_num", "contact"):
+                        result[field] = data.get(field)
+
+                # If LLM returned nothing useful, fall back to XPath
+                if not result["title"] and not result["authority"]:
+                    xpath_data = await xpath_extract(page)
+                    for k, v in xpath_data.items():
+                        if not result.get(k):
+                            result[k] = v
+                    if result["title"] or result["authority"]:
+                        result["model_used"] = "xpath_fallback"
+            else:
+                # Phase 1: pure XPath
+                xpath_data = await xpath_extract(page)
+                for k, v in xpath_data.items():
+                    result[k] = v
+
+        except Exception as exc:
+            if "closed" not in str(exc).lower():
+                log.debug(f"    extraction failed: {exc}")
+
+        # Status
+        if result["title"] or result["authority"]:
+            result["status"] = "success"
+        else:
+            result["status"] = "error"
+            result["err"] = "nothing extracted"
+
+        # Document download (only for successful extractions)
+        if download_docs and result["status"] == "success":
+            try:
+                tender_id = result["id"] or re.sub(r"[^\w]", "_", used_url[-40:])
+                docs = await download_documents(
+                    page, tender_id, used_url, download_dir,
+                    authority=result.get("authority"),
+                    folder_by_company=folder_by_company,
+                )
+                result["downloaded_docs"] = docs
+                if docs:
+                    log.info(f"    saved {len(docs)} doc(s) for {str(tender_id)[:20]}")
+            except Exception as exc:
+                log.debug(f"    downloads failed: {exc}")
+                result["err"] = f"downloads: {str(exc)[:100]}"
+
+    except Exception as exc:
+        result["status"] = "error"
+        result["err"] = str(exc)[:300]
+        if "closed" not in str(exc).lower():
+            log.error(f"    !!! error on {url[:60]}: {exc}")
+
+    result["ms"] = int((time.time() - t0) * 1000)
+    result["ts"] = datetime.now().isoformat()
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  BATCH RUNNER — one browser tab per domain
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def run_domain(domain: str, rows: list, results: list,
+                     sem: asyncio.Semaphore, ctx, prog: dict, total: int,
+                     client, use_llm: bool, download_docs: bool,
+                     download_dir: str, folder_by_company: bool = False):
+    """Process all URLs for a single domain in one persistent browser tab."""
+    log.info(f"  {domain}  ({len(rows)} urls)")
+    page = await ctx.new_page()
+
+    for row in rows:
+        async with sem:
+            if page.is_closed():
+                try:
+                    page = await ctx.new_page()
+                except Exception:
+                    pass
+
+            rec = await scrape_one(
+                page, row, client=client, use_llm=use_llm,
+                download_docs=download_docs, download_dir=download_dir,
+                folder_by_company=folder_by_company,
+            )
+            results.append(rec)
+
+            prog["n"] += 1
+            n = prog["n"]
+            icon = {"success": "✓", "timeout": "⏱"}.get(rec["status"], "✗")
+            recovery_label = f" [{rec['url_recovery']}]" if rec.get("url_recovery") else ""
+            model_label = f" [{rec['model_used']}]" if rec.get("model_used") else ""
+            log.info(
+                f"  {icon} [{n}/{total} {100 * n / total:.1f}%] "
+                f"{domain} {rec['status']} {rec['ms']}ms{model_label}{recovery_label}"
+            )
+
+    try:
+        if not page.is_closed():
+            await page.close()
+    except Exception:
+        pass
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  SAVING RESULTS
+# ═══════════════════════════════════════════════════════════════════════════
+
+CSV_COLUMNS = [
+    "id", "url", "url_used", "domain", "status",
+    "title", "authority", "description", "deadline", "pub_date",
+    "proc_type", "cpv", "location", "ref_num", "contact",
+    "model_used", "llm_tokens", "llm_cost",
+    "downloaded_docs", "url_recovery", "err", "ms", "ts",
