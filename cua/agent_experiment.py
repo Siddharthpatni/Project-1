@@ -2,8 +2,10 @@ import os
 import asyncio
 import logging
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from browser_use import Agent, Browser, BrowserConfig
+from browser_use.llm.openrouter.chat import ChatOpenRouter
+from browser_use import Agent, Browser
+
+load_dotenv()
 
 # Set up simple logging to see what the agent is thinking
 logging.basicConfig(level=logging.INFO)
@@ -16,19 +18,15 @@ load_dotenv()
 # - google/gemini-2.5-flash-lite
 # - meta-llama/llama-3-8b-instruct:free
 # - qwen/qwen-2.5-72b-instruct
-llm = ChatOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.environ.get("OPENROUTER_API_KEY", ""),
+llm = ChatOpenRouter(
     model="google/gemini-2.5-flash-lite", 
 )
 
 # Configure the browser to be fully visible (headless=False)
 # This allows you to visually watch the Agent move the mouse, click buttons, and read the page!
-browser = Browser(
-    config=BrowserConfig(
-        headless=False,
-    )
-)
+downloads_path = os.path.join(os.getcwd(), "downloads")
+os.makedirs(downloads_path, exist_ok=True)
+browser = Browser(headless=False, downloads_path=downloads_path)
 
 async def main():
     # Example target tender URL (ensure this is currently active or pick one from your CSV)
@@ -60,6 +58,7 @@ async def main():
     print("✅ Agent Execution Finished!")
     print("Final Result Memory:")
     print(result)
+    await browser.stop()
 
 if __name__ == "__main__":
     # Ensure OPENROUTER_API_KEY is present in the environment before running
