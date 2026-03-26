@@ -61,7 +61,8 @@ load_dotenv()
 def build_agent_task(url: str) -> str:
     """
     This is the core prompt driving the GUI agent's behavior.
-    It instructs the agent on how to interact with the page visually/structurally.
+    It instructs the agent on how to interact with the page visually/structurally,
+    including handling redirects to external e-Vergabe portals.
     """
     return f"""
     Your objective is to download public procurement tender documents from a German website.
@@ -70,13 +71,14 @@ def build_agent_task(url: str) -> str:
     
     Instructions:
     1. Navigate to the Target URL.
-    2. Immediately look for a cookie consent banner. If present, click "Akzeptieren", "Alle akzeptieren", or "Zustimmen".
-    3. Look for a section or button related to documents (e.g., "Vergabeunterlagen", "Dokumente"). Click it.
-    4. Once the document list is visible, click ALL unique "Datei herunterladen" (Download file) buttons in ONE step if possible.
-    5. CRITICAL: You must STOP once you have clicked the visible buttons. Do NOT click the same button more than once.
-    6. If you see a "Download" has started or the file is in `available_file_paths`, DO NOT click it again.
-    7. After your first batch of clicks, scroll down ONCE to check for more. If no new buttons appear, CONCLUDE immediately. 
-    8. Do NOT exceed 10 steps for a single page. If you are repeating actions, STOP and finish.
+    2. Handle Cookies: Look for a cookie consent banner. If present, click "Akzeptieren", "Alle akzeptieren", or "Zustimmen".
+    3. Locate Documents or Portal Redirects: Scan the page to understand how documents are provided.
+       - IF direct document sections exist: Click on "Vergabeunterlagen", "Dokumente", or similar.
+       - IF documents are hosted elsewhere: Look for and click redirect links to the external portal (e.g., "Zum Vergabeportal", "Zur Ausschreibung", "Link zur e-Vergabe", "Unterlagen anfordern").
+    4. Download Files: Once you are on the actual page containing the files, click ALL unique download buttons (e.g., "Datei herunterladen", "Download") in ONE step if possible.
+    5. CRITICAL - Prevent Duplicates: You must STOP once you have clicked the visible buttons. Do NOT click the same button more than once. If a file is in `available_file_paths` or a download has clearly started, ignore it.
+    6. Check for More: After your first batch of clicks, scroll down ONCE. If no new download buttons appear, CONCLUDE immediately. 
+    7. Hard Limit: Do NOT exceed 10 steps in total. If you are repeating actions or stuck in a loop, STOP and finish the task.
     """
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -160,7 +162,7 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
         log.error(f"Agent failed or crashed on {url}: {e}")
         result_data["status"] = "error"
     finally:
-        result_data["ms"] = (time.time() - start_time) * 1000
+        result_data["ms"] = (time.time() - start_time) * 3000
         await browser.stop()
         return result_data
 
