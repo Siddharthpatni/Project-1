@@ -1,310 +1,123 @@
-# Vergabepilot.AI — Phase 1: Manual Web Scraping
+# Tender Document Agent
 
-> **Hackathon Phase 1** — Manual scraping of German public procurement portals using Playwright + XPath. **No LLMs used during scraping.** Goal: maximize scraped websites from `publications_b.csv` (~7,500 URLs).
+This project turns your prompt into a runnable Python agent that:
 
----
+- opens tender pages in Chromium with Playwright
+- captures screenshots while exploring the page
+- discovers document links and document-related subpages
+- supports direct URLs or a CSV file of URLs
+- uses `gpt-4o-mini` for document selection when an API key is available
+- downloads only high-value documents
+- deletes duplicates and obviously irrelevant files after download
+- writes cleaner per-run artifacts for discovery, downloads, and final results
 
-## 📁 Project Files
+## Files
 
-| File | What it does |
-|------|-------------|
-| `publications_b.csv` | **Input** — 7,500 URLs to German procurement portals |
-| `scraper_b.py` | **Main scraper** — Playwright + XPath, handles 25+ domains |
-| `scraper.py` | Original prototype scraper (reference only) |
-| `results_b.json` | **Output** — Full scraped data (JSON, one record per URL) |
-| `results_b.csv` | **Output** — Quick-review summary spreadsheet |
-| `scraper_b.log` | Live log of every URL scraped |
-| `requirements.txt` | Python dependencies |
-| `inspect_page.py` | Helper to manually inspect a single page's structure |
+- `system_prompt.py`: the prompt you supplied
+- `main.py`: CLI entrypoint
+- `tender_agent/config.py`: runtime settings and API key wiring
+- `tender_agent/input_loader.py`: direct URL and CSV loading
+- `tender_agent/browser.py`: page exploration, screenshots, link discovery
+- `tender_agent/llm_selector.py`: OpenAI `gpt-4o-mini` document selection
+- `tender_agent/filtering.py`: importance scoring and post-download validation
+- `tender_agent/downloader.py`: selective downloads and cleanup
+- `tender_agent/storage.py`: structured artifact layout for each run and site
+- `tender_agent/runner.py`: orchestration and JSON output
 
----
+## Install
 
-## ⚡ Quick Start
-
-```bash
-# Install dependencies
-pip3 install playwright
-python3 -m playwright install chromium
-
-# Scrape first 100 URLs (fast test)
-python3 scraper_b.py --limit 100
-
-# Scrape first 100 URLs and download PDFs/ZIPs
-python3 scraper.py --limit 100 --download-docs
-
-# Scrape only FAILED rows (skip already-completed ones)
-python3 scraper.py --skip-completed --workers 8
-
-# Full run — all 7,500 URLs
-python3 scraper.py --workers 8
-
-# Watch live progress
-tail -f scraper.log
+```powershell
+pip install -r requirements.txt
+python -m playwright install chromium
 ```
 
-### All CLI Options
+## Configure Keys
 
-```
---input    -i   Input CSV file          (default: publications_b.csv)
---output   -o   Output JSON file        (default: results.json)
---workers  -w   Parallel browser tabs   (default: 8)
---limit    -n   Only scrape first N URLs (0 = all)
---skip-completed  Skip rows where state=COMPLETED in CSV
---download-docs   Download any PDF/ZIP/DOC files found on each page
---download-dir    Folder to save downloaded docs (default: downloads/)
+You can set environment variables directly:
+
+```powershell
+$env:AGENT_API_KEY="sk-..."
+$env:AGENT_BASE_URL=""
+$env:OPENAI_MODEL="gpt-4o-mini"
 ```
 
----
+Compatibility aliases also work if you want to keep your current naming:
 
-## 🏗️ How the Scraper Works — Step by Step
-
-```
-publications_b.csv
-       │
-       ▼
-① load_urls()           — reads CSV, extracts all rows with a URL
-       │
-       ▼
-② group_urls_by_domain() — groups e.g. all 1,351 evergabe.de URLs together
-       │
-       ▼
-③ For each domain group → scrape_domain_batch()
-   (one persistent Playwright browser tab per domain = efficient)
-       │
-       ▼
-④ scrape_single_url()    — the core function per URL:
-   a. page.goto(url)          → navigate
-   b. handle_cookie_consent() → dismiss GDPR banner if present
-   c. wait_for_selector()     → wait for key content to load
-   d. check expired_indicators → mark as "invalid" if page deleted
-   e. extract_field()         → run XPath selectors for each field
-   f. extract_all_key_value_pairs() → fallback: grab ALL label/value pairs
-   g. download_documents()    → if --download-docs is on, save PDFs/ZIPs
-       │
-       ▼
-⑤ save_results()         — writes results.json + results.csv
-⑥ print_summary()        — shows success rate per domain
+```powershell
+$env:PLAYWRIGHT_API_KEY="sk-..."
+$env:PLAYWRIGHT_BASE_URL=""
 ```
 
----
+Or copy `.env.example` into `.env` and load it in your shell before running.
+If `.env` does not exist, the app also falls back to `.env.example`.
 
-## 🔑 Two Core Technologies
+You can also set a default CSV path in `.env`:
 
-### Playwright — Browser Automation
-
-Playwright drives a real Chromium browser in the background (invisible/headless). This is necessary because German procurement sites use **JavaScript** to render content — a plain `requests.get()` would return empty HTML.
-
-```python
-# Launch invisible Chrome
-browser = await p.chromium.launch(headless=True)
-
-# Open a URL like a real user would
-response = await page.goto(url, wait_until="domcontentloaded", timeout=20000)
-
-# Dismiss cookie popup
-await page.locator("xpath=//button[contains(text(),'Akzeptieren')]").click()
+```powershell
+$env:TENDER_CSV_PATH="C:\data\tenders.csv"
 ```
 
-### XPath — GPS for Web Pages
+## Run
 
-XPath is a standard query language (W3C spec) for finding elements in HTML. Think of it as a precise address inside a web page.
-
-```
-//h1
-    → Any <h1> tag anywhere on the page
-
-//dt[contains(.,'Auftraggeber')]/following-sibling::dd[1]
-    → The <dd> immediately after a <dt> that contains "Auftraggeber"
-    → Example result: "Stadt München"
-
-//*[contains(text(),'Frist')]/following-sibling::*[1]
-    → Any element containing "Frist", then its next sibling element
-    → Catches deadline dates
+```powershell
+python main.py "https://example.com/tender"
 ```
 
-**Real-world example from a tender page:**
-```html
-<dt>Auftraggeber</dt>        ← XPath finds this label
-<dd>Landratsamt Bautzen</dd> ← returns THIS value ✓
-<dt>Angebotsfrist</dt>
-<dd>15.04.2026 12:00 Uhr</dd>
+Process the first 10 URLs from a CSV:
+
+```powershell
+python main.py --csv "C:\data\tenders.csv" --limit 10
 ```
 
----
+Run with no command-line arguments after setting `TENDER_CSV_PATH` and `TENDER_LIMIT`:
 
-## 📊 Input CSV Columns (`publications_b.csv`)
-
-| Column | Meaning |
-|--------|---------|
-| `id` | Unique ID for this procurement record |
-| `url` | **The URL we scrape** |
-| `domain` | Domain extracted from URL (e.g. `vergabe.niedersachsen.de`) |
-| `state` | Previous system result: `COMPLETED` / `FAILED` / `UNSUPPORTED` |
-| `error` | Error message from the previous system (if FAILED) |
-
----
-
-## 📤 Output Fields (per scraped URL)
-
-| Field | What it captures |
-|-------|-----------------|
-| `status` | `success` / `error` / `timeout` / `invalid` |
-| `title` | Tender name (from `<h1>`) |
-| `contracting_authority` | Who is purchasing (Auftraggeber / Vergabestelle) |
-| `deadline` | Submission deadline (Angebotsfrist) |
-| `publication_date` | When the notice was published |
-| `tender_type` | Procedure type (Verfahrensart) |
-| `reference_number` | Internal tender reference (Vergabenummer) |
-| `cpv_codes` | EU procurement category codes |
-| `location` | Place of performance (Erfüllungsort) |
-| `extra_fields` | All other label/value pairs found on the page |
-| `downloaded_docs`| List of downloaded filenames (`--download-docs`) |
-| `scrape_time_ms` | How long this URL took (milliseconds) |
-| `row_state` | Original `state` from input CSV |
-
----
-
-## 🌐 Supported Domains (25+)
-
-| Domain | Portal Name | URLs in CSV |
-|--------|-------------|-------------|
-| `www.evergabe.de` | eVergabe.de | 1,351 |
-| `www.subreport.de` | Subreport | 1,333 |
-| `vergabemarktplatz.brandenburg.de` | Vergabemarktplatz Brandenburg | 695 |
-| `vergabe.niedersachsen.de` | Vergabe Niedersachsen | 599 |
-| `bieterzugang.deutsche-evergabe.de` | Deutsche eVergabe | 416 |
-| `www.evergabe.nrw.de` | eVergabe NRW | 383 |
-| `www.vergabe-westfalen.de` | Vergabe Westfalen | 322 |
-| `www.deutsches-ausschreibungsblatt.de` | Deutsches Ausschreibungsblatt | 305 |
-| `www.had.de` | HAD | 283 |
-| `www.vergabe.metropoleruhr.de` | Vergabe Metropole Ruhr | 276 |
-| `fbhh-evergabe.web.hamburg.de` | eVergabe Hamburg | 156 |
-| `bi-medien.de` | BI Medien | 154 |
-| `www.tender24.de` | Tender24 | 131 |
-| `vergabe.landbw.de` | Vergabe LandBW | 129 |
-| `www.vergabe24.de` | Vergabe24 | 107 |
-| `vergabekooperation.berlin` | Vergabekooperation Berlin | 100 |
-| `www.evergabe.bayern.de` | eVergabe Bayern | 92 |
-| `vergabeportal-bw.de` | Vergabeportal BW | 75 |
-| `vergabe.fraunhofer.de` | Vergabe Fraunhofer | 72 |
-| + 6 more smaller domains | — | ~300 |
-
-All other domains fall back to the **Generic config** which still extracts `<h1>`, definition lists, and table data.
-
----
-
-## ⚙️ Key Design Decisions
-
-### Why group by domain first?
-Creating a browser tab has overhead. Reusing **one tab per domain** means we navigate within the same context → faster, fewer resources, and cookies/sessions are preserved across URLs on the same site.
-
-### Why multiple XPath fallbacks?
-Every portal has different HTML structure. We try specific selectors first, then fall back to generic German-language patterns:
-```python
-# Tries these in order — first non-empty result wins
-"//dt[contains(.,'Auftraggeber')]/following-sibling::dd[1]",
-"//td[contains(text(),'Auftraggeber')]/following-sibling::td[1]",
-"//*[contains(text(),'Auftraggeber')]/following-sibling::*[1]",
+```powershell
+python main.py
 ```
 
-### Why `asyncio`?
-Scraping 7,500 pages one-by-one ≈ 17 hours. With 8 parallel workers via `asyncio`, it finishes in ~2 hours. The `semaphore` ensures we never exceed 8 simultaneous open browser tabs.
+Use a specific CSV column and explicit API keys:
 
-### The `extra_fields` fallback
-If none of the custom XPaths find a field, the code dumps **all** `<dt>/<dd>` and `<table>` label-value pairs into `extra_fields`. This is a safety net — even unknown page layouts still yield some data.
-
-### `invalid` status (0ms)
-Some evergabe.de URLs instantly return `invalid` with `0ms` — these were pre-filtered based on known error patterns detected from the CSV's `error` column (e.g., `IllegalStateException: Could not extract tender ID`). No HTTP request is made for those.
-
----
-
-## 🚫 Compliance with "No LLMs" Rule
-
-This scraper uses **zero AI inference**:
-- **Playwright** — open-source browser automation library
-- **XPath** — W3C standard query language (1999)
-- **asyncio** — Python standard library concurrency
-- Domain configs — hand-written by inspecting real HTML pages
-
-No API calls to any AI service are made during scraping. ✅
-
----
-
-## 📈 Performance Observed
-
-From a test run (interrupted at ~2,500 URLs):
-- ~250 URLs/minute with 8 workers
-- ~3s per `evergabe.de` URL (fast)
-- ~7s per `vergabemarktplatz.brandenburg.de` URL (heavier JS)
-- Estimated full run: **~30 minutes** for 7,500 URLs
-
----
-
-## 🐛 Common Errors & What They Mean
-
-| Status | Cause |
-|--------|-------|
-| `success` | Data extracted (title and/or authority and/or extra fields found) |
-| `invalid` | Page returned 404, or tender was deleted/expired |
-| `timeout` | Page took >20s to load |
-| `error` | Page loaded but no data could be extracted |
-
----
-
-## 🤖 Phase 2: LLM-Assisted Scraping (OpenRouter Integration)
-
-> **Hackathon Phase 2** — Shifting away from fragile XPath selectors, we utilize LLMs to dynamically parse the text content of the webpage and precisely extract structured fields into a robust JSON schema.
-
-### Why LLMs?
-In Phase 1, we wrote handcrafted XPath selectors (like `//dt[contains(.,'Auftraggeber')]/following-sibling::dd[1]`) for every domain. This becomes unmanageable at scale when handling 25+ unique frontends built by different developers. LLMs solve this out-of-the-box by generically interpreting human-facing text.
-
-### How it Works
-1. **Unified Scrapers (V3/V4)**: Both `scraper_v3.py` and the newer `scraper_v4.py` combine Phase 1 (XPath) and Phase 2 (LLM) into one robust script, yielding the exact same columns and JSON schema.
-2. **Playwright Renders JS & Downloads**: Playwright bypasses JS walls, simulates a real user, clicks Cookie consent banners, and performs smart project-relevant document downloading (identifying PDFs vs generic site docs).
-3. **OpenRouter API**: You can run standard extraction via XPath, or pass the `--llm` flag to send the visible text to OpenRouter.
-4. **V4 Advanced URL Recovery**: `scraper_v4.py` implements a robust URL recovery chain (handling double-encoded URLs, portal specific rewrites, and even Google Search fallbacks) to rescue 404/expired links!
-
-### Configuration & Flexibility
-Different teams can use **different LLMs**. The scrapers are configured specifically for **OpenRouter**, meaning anyone can seamlessly switch out models just by changing the `MODEL_CHAIN` inside the script or testing different providers!
-
-### 💻 Proper Code (Quick Start)
-
-Install Dependencies including the OpenAI SDK (which natively interfaces with OpenRouter):
-```bash
-pip3 install openai playwright
-python3 -m playwright install chromium
+```powershell
+python main.py --csv "C:\data\tenders.csv" --csv-column tender_url --limit 10 --api-key "sk-..."
 ```
 
-Set your API Key:
-```bash
-export OPENROUTER_API_KEY="sk-or-v1-****************************"
+Use an OpenAI-compatible provider endpoint:
+
+```powershell
+python main.py --csv "C:\data\tenders.csv" --limit 10 --api-key "provider-key" --base-url "https://provider.example/api/v1"
 ```
 
-**Run Phase 1 (XPath only, no LLM):**
-```bash
-python3 scraper_v3.py -i publications_b.csv -n 100
-# Or use V4 for higher success rate via URL Recovery:
-python3 scraper_v4.py -i publications_b.csv -n 100
-```
+Optional flags:
 
-**Run Phase 2 (LLM-Assisted Extraction):**
-```bash
-python3 scraper_v3.py -i publications_b.csv -n 100 --llm
-# With V4:
-python3 scraper_v4.py -i publications_b.csv -n 100 --llm
-```
+- `--csv C:\data\tenders.csv`
+- `--csv-column tender_url`
+- `--limit 10`
+- `--output-dir artifacts`
+- `--max-pages 12`
+- `--max-scrolls 6`
+- `--headful`
+- `--show-prompt`
+- `--model gpt-4o-mini`
+- `--api-key ...`
+- `--playwright-api-key ...`
+- `--base-url https://provider.example/api/v1`
 
-**Run Phase 2 WITH Document Downloading:**
-```bash
-python3 scraper_v4.py -i publications_b.csv --llm --download-docs
-# Group downloads by contracting authority folder:
-python3 scraper_v4.py -i publications_b.csv --llm --download-docs --folder-by-company
-```
+## Output
 
-*(You can also pass your key directly if you don't want to export it: `--api-key YOUR_KEY`)*
+For each run, the agent writes:
 
-### Tracking Iterations
-During your team's evaluation:
-1. Note the number of iterations required to refine the exact prompt schema.
-2. Monitor latency (`ms` field per URL query) across different providers via OpenRouter.
-3. Compare the generated `results_v4_stats.json` which tracks total tokens, API calls, URL recoveries, and costs!
+- run summary under `artifacts/runs/<timestamp>/run.json`
+- per-site metadata under `artifacts/runs/<timestamp>/sites/<index>_<host>_<hash>/site.json`
+- screenshots under `.../discovery/screenshots/`
+- candidate, selection, and download manifests under `.../results/`
+- final kept files under `.../documents/kept/<bucket>/`
+- final JSON under `.../results/final.json`
+
+Download buckets are organized into folders such as `pdf`, `spreadsheets`, `text`, `archives`, `cad`, `presentations`, and `other`.
+
+## Notes
+
+- Playwright itself does not require an API key in this project. The single configured key is only for the `gpt-4o-mini` model call.
+- The crawler follows same-site pages that look like document hubs, attachments, downloads, notices, or pagination.
+- If the OpenAI call fails, the agent automatically falls back to the heuristic filter in `tender_agent/filtering.py`.
+- Some tender sites hide files behind JavaScript flows or authentication. For those cases, run with `--headful` and extend the click logic in `tender_agent/browser.py`.

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+artifacts/
+.env
+.tmp_test_workspace/
