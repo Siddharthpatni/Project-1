@@ -37,6 +37,20 @@ logging.basicConfig(
     ],
 )
 log = logging.getLogger("cua")
+from urllib.parse import urlparse
+import time
+
+# Global stats tracker
+stats = {
+    "total_calls": 0,
+    "retries": 0,
+    "total_tokens": 0,
+    "total_cost": 0.0,
+    "model_usage": {},
+    "calls_per_domain": {},
+    "url_recoveries": {}
+}
+
 
 load_dotenv()
 
@@ -57,11 +71,12 @@ def build_agent_task(url: str) -> str:
     Instructions:
     1. Navigate to the Target URL.
     2. Immediately look for a cookie consent banner. If present, click "Akzeptieren", "Alle akzeptieren", or "Zustimmen".
-    3. Look for a section, tab, or button related to documents. Common German labels include "Vergabeunterlagen", "Dokumente", or "Unterlagen". Click it to reveal the files.
-    4. Identify links or buttons to download PDF or ZIP files. 
-    6. Click the download buttons/links to initiate the downloads.
-    7. VISUAL VERIFICATION: Before finishing, look at the screen and confirm that the documents you intended to download are indeed represented as having been clicked or initiated. If there is a "Downloads" status or a change in the button state, verify it visually.
-    8. Once you have successfully initiated the downloads and visually verified the action, conclude the task successfully.
+    3. Look for a section or button related to documents (e.g., "Vergabeunterlagen", "Dokumente"). Click it.
+    4. Once the document list is visible, click ALL unique "Datei herunterladen" (Download file) buttons in ONE step if possible.
+    5. CRITICAL: You must STOP once you have clicked the visible buttons. Do NOT click the same button more than once.
+    6. If you see a "Download" has started or the file is in `available_file_paths`, DO NOT click it again.
+    7. After your first batch of clicks, scroll down ONCE to check for more. If no new buttons appear, CONCLUDE immediately. 
+    8. Do NOT exceed 10 steps for a single page. If you are repeating actions, STOP and finish.
     """
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -74,10 +89,11 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
     """
     log.info(f"Initiating CUA sequence for: {url}")
     
-    # Configure persistent download directory
-    downloads_path = os.path.join(os.getcwd(), "downloads")
+    # Configure persistent download directory organized by domain
+    domain = urlparse(url).netloc
+    downloads_path = os.path.join(os.getcwd(), "downloads", domain)
     os.makedirs(downloads_path, exist_ok=True)
-    log.info(f"💾 Downloads will be saved to: {downloads_path}")
+    log.info(f"💾 Downloads for {domain} will be saved to: {downloads_path}")
 
     # Configure browser. Setting headless=False is highly recommended for
     # debugging CUAs so you can watch the agent click and type.
@@ -87,24 +103,130 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
     agent = Agent(
         task=task_prompt,
         llm=llm,
-        browser=browser
+        browser=browser,
+        max_steps=15,  # Prevent runaway loops (like Step 55 in your log)
+        max_actions_per_step=10  # Allow multiple clicks in one vision frame
     )
     
+    start_time = time.time()
+    domain = urlparse(url).netloc
+    result_data = {
+        "url": url,
+        "domain": domain,
+        "status": "failed",
+        "ms": 0,
+        "downloaded_docs": [],
+        "url_recovery": None
+    }
+
     try:
         # The agent enters its Observation -> Action -> State loop here
         result = await agent.run()
-        log.info(f"Agent finished task for {url}.")
-        log.debug(f"Agent History/Result: {result}")
-        return True
+        
+        # Track downloaded files from history (attachments is a dict in browser-use 0.12+)
+        downloaded = []
+        for history in result.history:
+            for act_res in history.result:
+                if act_res.attachments:
+                    # attachments is dict[sha256, path]
+                    downloaded.extend(act_res.attachments.values())
+        
+        result_data["status"] = "success"
+        result_data["downloaded_docs"] = list(set(downloaded))
+        result_data["url_recovery"] = "cua_agent"
+        
+        # Update global stats
+        if result.usage:
+            stats["total_tokens"] += result.usage.total_tokens
+            # Fallback estimation for Gemini 2.5 Flash if cost is 0
+            # Approx $0.15 per 1M tokens
+            cost = result.usage.total_cost
+            if cost == 0 and result.usage.total_tokens > 0:
+                cost = (result.usage.total_tokens / 1_000_000) * 0.15
+            
+            stats["total_cost"] += cost
+            stats["total_calls"] += 1
+            model_name = getattr(llm, "model_name", "unknown")
+            stats["model_usage"][model_name] = stats["model_usage"].get(model_name, 0) + 1
+            stats["calls_per_domain"][domain] = stats["calls_per_domain"].get(domain, 0) + 1
+
     except Exception as e:
         log.error(f"Agent failed or crashed on {url}: {e}")
-        return False
+        result_data["status"] = "error"
     finally:
+        result_data["ms"] = (time.time() - start_time) * 1000
         await browser.stop()
+        return result_data
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  MAIN LOOP
-# ═══════════════════════════════════════════════════════════════════════════
+
+# ---------------------------------------------------------------------------
+# PRINT SUMMARY
+# ---------------------------------------------------------------------------
+def print_summary(results, use_llm, download_docs):
+    t   = len(results) or 1
+    ok  = sum(1 for x in results if x["status"] == "success")
+    err = sum(1 for x in results if x["status"] == "error")
+    to  = sum(1 for x in results if x["status"] == "timeout")
+    inv = sum(1 for x in results if x["status"] == "invalid")
+    exp = sum(1 for x in results if x["status"] == "expired")
+    avg = sum(x["ms"] for x in results) / t
+    
+    # Use the actual downloaded files list from the results
+    all_docs = []
+    for x in results:
+        all_docs.extend(x.get("downloaded_docs", []))
+    total_docs = len(list(set(all_docs)))
+    
+    recovered  = sum(1 for x in results if x.get("url_recovery"))
+
+    mode_label = "Phase 2 - LLM" if use_llm else "Phase 1 - XPath"
+    print(f"\n{'='*62}")
+    print(f"  RESULTS ({mode_label})")
+    print(f"{'='*62}")
+    print(f"  total:          {t}")
+    print(f"  success:        {ok}  ({100*ok/t:.1f}%)")
+    print(f"  errors:         {err}  ({100*err/t:.1f}%)")
+    print(f"  expired (dead): {exp}  ({100*exp/t:.1f}%)")
+    print(f"  timeouts:       {to}  ({100*to/t:.1f}%)")
+    print(f"  invalid:        {inv}  ({100*inv/t:.1f}%)")
+    print(f"  URL recovered:  {recovered}  ({100*recovered/t:.1f}%)")
+    print(f"  avg time:       {avg:.0f}ms/url")
+    if download_docs:
+        print(f"  docs saved:     {total_docs}")
+
+    if stats["url_recoveries"]:
+        print(f"\n  URL RECOVERY BREAKDOWN:")
+        for strategy, count in sorted(stats["url_recoveries"].items(), key=lambda x: -x[1]):
+            print(f"    {strategy:25s}: {count}")
+
+    print(f"{'='*62}")
+
+    if use_llm and stats["total_calls"]:
+        print(f"\n  LLM STATS:")
+        print(f"    api calls:     {stats['total_calls']}")
+        print(f"    retries:       {stats['retries']}")
+        print(f"    total tokens:  {stats['total_tokens']:,}")
+        print(f"    total cost:    ${stats['total_cost']:.4f}")
+        print(f"    avg tok/call:  {stats['total_tokens']//stats['total_calls']}")
+        print(f"    models used:")
+        for m, c in stats["model_usage"].items():
+            print(f"      {m}: {c} calls")
+        print(f"{'='*62}")
+
+    dom_stats = {}
+    for x in results:
+        d = x["domain"]
+        dom_stats.setdefault(d, [0, 0])
+        dom_stats[d][1] += 1
+        if x["status"] == "success":
+            dom_stats[d][0] += 1
+
+    print("\n  domains:")
+    for d, (s, tot) in sorted(dom_stats.items(), key=lambda x: -x[1][1]):
+        calls = stats["calls_per_domain"].get(d, 0)
+        call_str = f"  calls: {calls}" if use_llm else ""
+        print(f"    {d:48s} {s:>4}/{tot:<4} ({100*s/tot:.0f}%){call_str}")
+    print()
 
 async def main(args):
     api_key = args.api_key or os.getenv("OPENROUTER_API_KEY")
@@ -127,10 +249,12 @@ async def main(args):
         sys.exit(1)
         
     with open(args.input, encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+        reader = csv.reader(f)
         for row in reader:
-            if row.get("url", "").strip():
-                urls.append(row["url"].strip())
+            if len(row) > 4:
+                url = row[4].strip()
+                if url.startswith("http"):
+                    urls.append(url)
 
     if args.limit > 0:
         urls = urls[:args.limit]
@@ -138,16 +262,14 @@ async def main(args):
     log.info(f"Loaded {len(urls)} URLs. Starting CUA experiments...")
 
     # Run the agent sequentially (parallelizing GUI agents requires heavy system resources)
-    success_count = 0
+    all_results = []
     for i, url in enumerate(urls, 1):
         log.info(f"--- Processing {i}/{len(urls)} ---")
-        success = await run_cua_for_url(url, llm, headless=args.headless)
-        if success:
-            success_count += 1
+        res = await run_cua_for_url(url, llm, headless=args.headless)
+        all_results.append(res)
             
-    log.info("==================================================")
-    log.info(f"Experiment Complete. Agent succeeded on {success_count}/{len(urls)} URLs.")
-    log.info("==================================================")
+    # Print the final summary dashboard
+    print_summary(all_results, use_llm=True, download_docs=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Pure CUA GUI Agent for Tender Downloading")

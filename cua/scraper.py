@@ -84,17 +84,29 @@ async def run_agent(url):
     agent = Agent(task=task, llm=llm, browser=browser)
 
     try:
-        await agent.run()
-        return True
+        result = await agent.run()
+        # Find all successfully downloaded files in history
+        downloaded = []
+        for history in result.history:
+            for res in history.result:
+                if res.attachments:
+                    downloaded.extend(res.attachments)
+        
+        return {
+            "files": list(set(downloaded)) if downloaded else [],
+            "usage": result.usage.total_cost if result.usage else 0,
+            "tokens": result.usage.total_tokens if result.usage else 0
+        }
     except Exception as e:
         logging.error(f"Agent failed: {e}")
-        return False
+        return None
 
 # ====== DOWNLOAD HANDLER ======
 async def handle_download(page, url):
     try:
         async with page.expect_download(timeout=10000) as download_info:
-            await page.click("a[href$='.pdf'], a[href$='.zip']")
+            # Look for common download links
+            await page.click("a[href$='.pdf'], a[href$='.zip'], [role='button']:has-text('Download'), [role='button']:has-text('Datei')")
         download = await download_info.value
 
         filename = safe_filename(url) + "_" + download.suggested_filename
@@ -102,9 +114,9 @@ async def handle_download(page, url):
         await download.save_as(path)
 
         logging.info(f"Downloaded: {filename}")
-        return True
+        return filename
     except:
-        return False
+        return None
 
 # ====== MAIN WORKER ======
 async def process_url(browser, url):
@@ -122,23 +134,29 @@ async def process_url(browser, url):
 
         # LAYER 1
         if await fast_scrape(page):
-            if await handle_download(page, url):
-                return "fast_success"
+            file = await handle_download(page, url)
+            if file:
+                return {"status": "success", "layer": "fast", "files": [file]}
 
         # LAYER 2
         if await heuristic_scrape(page):
-            if await handle_download(page, url):
-                return "heuristic_success"
+            file = await handle_download(page, url)
+            if file:
+                return {"status": "success", "layer": "heuristic", "files": [file]}
 
         # LAYER 3
-        if await run_agent(url):
-            return "agent_success"
+        agent_res = await run_agent(url)
+        if agent_res:
+            files = agent_res.get("files", []) if isinstance(agent_res, dict) else (agent_res if isinstance(agent_res, list) else [])
+            usage = agent_res.get("usage", 0) if isinstance(agent_res, dict) else 0
+            tokens = agent_res.get("tokens", 0) if isinstance(agent_res, dict) else 0
+            return {"status": "success", "layer": "agent", "files": files, "usage": usage, "tokens": tokens}
 
-        return "failed"
+        return {"status": "failed", "files": []}
 
     except Exception as e:
         logging.error(f"{url} failed: {e}")
-        return "error"
+        return {"status": "error", "files": [], "error": str(e)}
 
     finally:
         await context.close()
