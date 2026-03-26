@@ -250,22 +250,28 @@ async def main(args):
 
     # Read target URLs
     urls = []
-    if not os.path.exists(args.input):
-        log.error(f"Input file not found: {args.input}")
-        sys.exit(1)
+    if args.url:
+        urls = [args.url.strip()]
+        log.info(f"Using single URL provided via --url.")
+    else:
+        if not os.path.exists(args.input):
+            log.error(f"Input file not found: {args.input}")
+            sys.exit(1)
+            
+        with open(args.input, encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if len(row) > 4:
+                    url = row[4].strip()
+                    if url.startswith("http"):
+                        urls.append(url)
+
+        if args.limit > 0:
+            urls = urls[:args.limit]
         
-    with open(args.input, encoding="utf-8") as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if len(row) > 4:
-                url = row[4].strip()
-                if url.startswith("http"):
-                    urls.append(url)
+        log.info(f"Loaded {len(urls)} URLs from {args.input}.")
 
-    if args.limit > 0:
-        urls = urls[:args.limit]
-
-    log.info(f"Loaded {len(urls)} URLs. Starting CUA experiments...")
+    log.info("Starting CUA experiments...")
 
     # Run the agent sequentially (parallelizing GUI agents requires heavy system resources)
     all_results = []
@@ -281,6 +287,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Pure CUA GUI Agent for Tender Downloading")
     parser.add_argument("-i", "--input", default="publications_b.csv", help="Input CSV file")
     parser.add_argument("-n", "--limit", type=int, default=0, help="Max URLs to process (0 = all)")
+    parser.add_argument("--url", help="Run a specific URL directly (bypasses CSV)")
     parser.add_argument("--api-key", default=None, help="OpenRouter API Key")
     parser.add_argument("--model", default="google/gemini-2.5-flash-lite", help="LLM to drive the agent")
     parser.add_argument("--headless", action="store_true", help="Run browser in background (hidden)")
