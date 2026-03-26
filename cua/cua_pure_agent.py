@@ -19,15 +19,24 @@ import csv
 import logging
 import os
 import sys
+import time
+from urllib.parse import urlparse
 from dotenv import load_dotenv
-
-# Import the CUA framework components
-from browser_use.llm.openrouter.chat import ChatOpenRouter
-from browser_use import Agent, Browser
 
 load_dotenv()
 
-# ── Logging Setup ──────────────────────────────────────────────────────────
+# ── TIMEOUT CONFIGURATION ──────────────────────────────────────────────────
+# Increased from 40s to 60s to handle slow "Bieter" portals and heavy DOMs
+os.environ["TIMEOUT_NavigateToUrlEvent"] = "60.0"
+os.environ["TIMEOUT_BrowserStateRequestEvent"] = "60.0"
+os.environ["TIMEOUT_ClickElementEvent"] = "60.0"
+os.environ["TIMEOUT_WaitEvent"] = "60.0"
+os.environ["TIMEOUT_FileDownloadedEvent"] = "60.0"
+# ───────────────────────────────────────────────────────────────────────────
+
+from browser_use.llm.openrouter.chat import ChatOpenRouter
+from browser_use import Agent, Browser
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [CUA] %(message)s",
@@ -37,10 +46,7 @@ logging.basicConfig(
     ],
 )
 log = logging.getLogger("cua")
-from urllib.parse import urlparse
-import time
 
-# Global stats tracker
 stats = {
     "total_calls": 0,
     "retries": 0,
@@ -51,18 +57,13 @@ stats = {
     "url_recoveries": {}
 }
 
-
-load_dotenv()
-
 # ═══════════════════════════════════════════════════════════════════════════
 #  CUA AGENT TASK DEFINITION
 # ═══════════════════════════════════════════════════════════════════════════
 
 def build_agent_task(url: str) -> str:
     """
-    This is the core prompt driving the GUI agent's behavior.
-    It instructs the agent on how to interact with the page visually/structurally,
-    handling redirects, pop-ups, and bulk downloads.
+    Core prompt driving the GUI agent's behavior.
     """
     return f"""
     Your objective is to download public procurement tender documents from a German website.
@@ -72,16 +73,18 @@ def build_agent_task(url: str) -> str:
     Instructions:
     1. Navigate to the Target URL.
     2. Handle Cookies: Look for a cookie consent banner. If present, click "Akzeptieren", "Alle akzeptieren", or "Zustimmen".
-    3. Locate Documents or Portal Redirects: Scan the page to understand how documents are provided.
-       - IF direct document sections exist: Click on "Vergabeunterlagen", "Dokumente", or similar.
-       - IF documents are hosted elsewhere: Look for and click redirect links to the external portal (e.g., "Zum Vergabeportal", "Zur Ausschreibung", "Link zur e-Vergabe", "Unterlagen anfordern").
-    4. Handle Bulk Downloads & Pop-ups (PRIORITY): Pay close attention if a pop-up/modal opens or if a document list has checkboxes.
-       - Look for a "Select All" option (e.g., "Alle auswählen", "Alle markieren", "Gesamtdownload"). If present, click it.
-       - Then, click the primary submit/download button for the selection (e.g., "Ausgewählte herunterladen", "Herunterladen", "Download").
-    5. Handle Individual Files (Fallback): If no bulk download or "Select All" option exists, click ALL unique download buttons (e.g., "Datei herunterladen") for the listed files in ONE step if possible.
-    6. Prevent Duplicates: You must STOP once you have initiated the downloads. Do NOT click the same button more than once. If a file is in `available_file_paths` or a download has clearly started, ignore it.
-    7. Check for More: After your first batch of clicks, scroll down ONCE. If no new download buttons appear, CONCLUDE immediately. 
-    8. Hard Limit: Do NOT exceed 10 steps in total. If you are repeating actions or stuck in a loop, STOP and finish the task.
+    3. Open Tender Details (If needed): If you land on a page with a table/list of tenders and NO immediate document buttons, you must open the details first. Click on the tender's title (usually a blue hyperlink) or an info icon (e.g., "i") to open the details modal.
+    4. Locate Documents Section: Once the tender details are open (either on the main page or in a pop-up modal), scan for tabs or buttons related to documents. 
+       - Click on "Dokumente", "Vergabeunterlagen", or similar tabs to reveal the files.
+       - IF documents are hosted elsewhere: Look for redirect links (e.g., "Zum Vergabeportal", "Zur Ausschreibung", "Link zur e-Vergabe", "Bieterzugang").
+    5. HIGHEST PRIORITY - "Download All" / ZIP: BEFORE clicking any individual files, vigorously search for a single button to download everything at once.
+       - Look for terms like "Alle Unterlagen herunterladen", "Als ZIP herunterladen", "Gesamtdownload", "ZIP-Download".
+       - OR look for a "Select All" ("Alle auswählen") checkbox followed by a primary download button. 
+       - If you successfully trigger a bulk/ZIP download, you are DONE. Do not click individual files.
+    6. Handle Individual Files (FALLBACK ONLY): Only if NO bulk download or ZIP option exists, click ALL unique download buttons (e.g., "hier klicken", "hier bitte klicken", "Datei herunterladen", "Download") for the listed files in ONE step if possible.
+    7. TRUST YOUR CLICKS (CRITICAL): Browser downloads happen silently in the background. The UI might NOT change after you click download. If you have clicked a download button ONCE, assume it is downloading. DO NOT click the same button again under any circumstances.
+8. Check for More: After your first batch of clicks, scroll down ONCE. If you see more documents that you haven't downloaded yet, click them. If NO new buttons appear, CONCLUDE immediately. 
+    9. Hard Limit: Do NOT exceed 25 steps. If you are stuck in a loop repeating the exact same actions without downloading new files, STOP and finish.
     """
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -89,22 +92,15 @@ def build_agent_task(url: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════════
 
 async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False):
-    """
-    Spins up a fresh browser session for the agent to complete its task.
-    """
     log.info(f"Initiating CUA sequence for: {url}")
     
-    # Configure persistent download directory organized by domain
     domain = urlparse(url).netloc
     downloads_path = os.path.join(os.getcwd(), "downloads", domain)
     os.makedirs(downloads_path, exist_ok=True)
     log.info(f"💾 Downloads for {domain} will be saved to: {downloads_path}")
 
-    # Snapshot files before run to detect new ones
     before_files = set(os.listdir(downloads_path)) if os.path.exists(downloads_path) else set()
 
-    # Configure browser. Setting headless=False is highly recommended for
-    # debugging CUAs so you can watch the agent click and type.
     browser = Browser(headless=headless, downloads_path=downloads_path)
     task_prompt = build_agent_task(url)
     
@@ -112,12 +108,11 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
         task=task_prompt,
         llm=llm,
         browser=browser,
-        max_steps=15,  # Prevent runaway loops (like Step 55 in your log)
-        max_actions_per_step=10  # Allow multiple clicks in one vision frame
+        max_steps=25,             
+        max_actions_per_step=30   
     )
-    
+
     start_time = time.time()
-    domain = urlparse(url).netloc
     result_data = {
         "url": url,
         "domain": domain,
@@ -128,13 +123,24 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
     }
 
     try:
-        # The agent enters its Observation -> Action -> State loop here
         result = await agent.run()
         
-        # Check if the agent actually finished successfully
+        # --- WAIT LOGIC FOR MULTIPLE / HEAVY DOWNLOADS ---
+        wait_time = 0
+        max_wait = 300  # Increased to 5 minutes to allow heavy multi-file operations to finish
+        while wait_time < max_wait:
+            current_files = os.listdir(downloads_path) if os.path.exists(downloads_path) else []
+            # Chromium uses .crdownload, Firefox uses .part for active downloads
+            if any(f.endswith('.crdownload') or f.endswith('.part') for f in current_files):
+                log.info(f"⏳ Files are still downloading in {domain}... waiting ({wait_time}s / {max_wait}s)")
+                await asyncio.sleep(5)
+                wait_time += 5
+            else:
+                break
+        # ------------------------------------------------------
+
         is_actually_successful = any(h.result[-1].is_done for h in result.history if h.result) if result.history else False
         
-        # Detect new files by snapshotting the folder again
         after_files = set(os.listdir(downloads_path)) if os.path.exists(downloads_path) else set()
         new_files = list(after_files - before_files)
         
@@ -146,11 +152,8 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
         result_data["downloaded_docs"] = new_files
         result_data["url_recovery"] = "cua_agent"
         
-        # Update global stats
         if result.usage:
             stats["total_tokens"] += result.usage.total_tokens
-            # Fallback estimation for Gemini 2.5 Flash if cost is 0
-            # Approx $0.15 per 1M tokens
             cost = result.usage.total_cost
             if cost == 0 and result.usage.total_tokens > 0:
                 cost = (result.usage.total_tokens / 1_000_000) * 0.15
@@ -165,10 +168,9 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
         log.error(f"Agent failed or crashed on {url}: {e}")
         result_data["status"] = "error"
     finally:
-        result_data["ms"] = (time.time() - start_time) * 3000
+        result_data["ms"] = (time.time() - start_time) * 1000
         await browser.stop()
         return result_data
-
 
 # ---------------------------------------------------------------------------
 # PRINT SUMMARY
@@ -182,7 +184,6 @@ def print_summary(results, use_llm, download_docs):
     exp = sum(1 for x in results if x["status"] == "expired")
     avg = sum(x["ms"] for x in results) / t
     
-    # Use the actual downloaded files list from the results
     all_docs = []
     for x in results:
         all_docs.extend(x.get("downloaded_docs", []))
@@ -245,15 +246,11 @@ async def main(args):
         log.error("OPENROUTER_API_KEY is missing. Please set it in your .env file or pass via --api-key.")
         sys.exit(1)
 
-    # Note: CUAs are vision and DOM heavy. While qwen3-14b or gemini-flash-lite 
-    # might work, stronger models like gpt-4o or claude-3.5-sonnet usually perform 
-    # much better for GUI tasks.
     llm = ChatOpenRouter(
         model=args.model,
         api_key=api_key,
     )
 
-    # Read target URLs
     urls = []
     if args.url:
         urls = [args.url.strip()]
@@ -278,14 +275,12 @@ async def main(args):
 
     log.info("Starting CUA experiments...")
 
-    # Run the agent sequentially (parallelizing GUI agents requires heavy system resources)
     all_results = []
     for i, url in enumerate(urls, 1):
         log.info(f"--- Processing {i}/{len(urls)} ---")
         res = await run_cua_for_url(url, llm, headless=args.headless)
         all_results.append(res)
             
-    # Print the final summary dashboard
     print_summary(all_results, use_llm=True, download_docs=True)
 
 if __name__ == "__main__":
