@@ -95,6 +95,9 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
     os.makedirs(downloads_path, exist_ok=True)
     log.info(f"💾 Downloads for {domain} will be saved to: {downloads_path}")
 
+    # Snapshot files before run to detect new ones
+    before_files = set(os.listdir(downloads_path)) if os.path.exists(downloads_path) else set()
+
     # Configure browser. Setting headless=False is highly recommended for
     # debugging CUAs so you can watch the agent click and type.
     browser = Browser(headless=headless, downloads_path=downloads_path)
@@ -123,16 +126,12 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
         # The agent enters its Observation -> Action -> State loop here
         result = await agent.run()
         
-        # Track downloaded files from history (attachments is a dict in browser-use 0.12+)
-        downloaded = []
-        for history in result.history:
-            for act_res in history.result:
-                if act_res.attachments:
-                    # attachments is dict[sha256, path]
-                    downloaded.extend(act_res.attachments.values())
+        # Detect new files by snapshotting the folder again
+        after_files = set(os.listdir(downloads_path)) if os.path.exists(downloads_path) else set()
+        new_files = list(after_files - before_files)
         
         result_data["status"] = "success"
-        result_data["downloaded_docs"] = list(set(downloaded))
+        result_data["downloaded_docs"] = new_files
         result_data["url_recovery"] = "cua_agent"
         
         # Update global stats
