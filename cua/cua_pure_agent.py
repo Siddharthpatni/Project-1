@@ -126,11 +126,18 @@ async def run_cua_for_url(url: str, llm: ChatOpenRouter, headless: bool = False)
         # The agent enters its Observation -> Action -> State loop here
         result = await agent.run()
         
+        # Check if the agent actually finished successfully
+        is_actually_successful = any(h.result[-1].is_done for h in result.history if h.result) if result.history else False
+        
         # Detect new files by snapshotting the folder again
         after_files = set(os.listdir(downloads_path)) if os.path.exists(downloads_path) else set()
         new_files = list(after_files - before_files)
         
-        result_data["status"] = "success"
+        if is_actually_successful or len(new_files) > 0:
+            result_data["status"] = "success"
+        else:
+            result_data["status"] = "failed"
+            
         result_data["downloaded_docs"] = new_files
         result_data["url_recovery"] = "cua_agent"
         
@@ -275,7 +282,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input", default="publications_b.csv", help="Input CSV file")
     parser.add_argument("-n", "--limit", type=int, default=0, help="Max URLs to process (0 = all)")
     parser.add_argument("--api-key", default=None, help="OpenRouter API Key")
-    parser.add_argument("--model", default="google/gemini-2.5-flash", help="LLM to drive the agent")
+    parser.add_argument("--model", default="google/gemini-2.5-flash-lite", help="LLM to drive the agent")
     parser.add_argument("--headless", action="store_true", help="Run browser in background (hidden)")
     
     args = parser.parse_args()
