@@ -62,7 +62,7 @@ def build_agent_task(url: str) -> str:
     """
     This is the core prompt driving the GUI agent's behavior.
     It instructs the agent on how to interact with the page visually/structurally,
-    including handling redirects to external e-Vergabe portals.
+    handling redirects, pop-ups, and bulk downloads.
     """
     return f"""
     Your objective is to download public procurement tender documents from a German website.
@@ -75,10 +75,13 @@ def build_agent_task(url: str) -> str:
     3. Locate Documents or Portal Redirects: Scan the page to understand how documents are provided.
        - IF direct document sections exist: Click on "Vergabeunterlagen", "Dokumente", or similar.
        - IF documents are hosted elsewhere: Look for and click redirect links to the external portal (e.g., "Zum Vergabeportal", "Zur Ausschreibung", "Link zur e-Vergabe", "Unterlagen anfordern").
-    4. Download Files: Once you are on the actual page containing the files, click ALL unique download buttons (e.g., "Datei herunterladen", "Download") in ONE step if possible.
-    5. CRITICAL - Prevent Duplicates: You must STOP once you have clicked the visible buttons. Do NOT click the same button more than once. If a file is in `available_file_paths` or a download has clearly started, ignore it.
-    6. Check for More: After your first batch of clicks, scroll down ONCE. If no new download buttons appear, CONCLUDE immediately. 
-    7. Hard Limit: Do NOT exceed 10 steps in total. If you are repeating actions or stuck in a loop, STOP and finish the task.
+    4. Handle Bulk Downloads & Pop-ups (PRIORITY): Pay close attention if a pop-up/modal opens or if a document list has checkboxes.
+       - Look for a "Select All" option (e.g., "Alle auswählen", "Alle markieren", "Gesamtdownload"). If present, click it.
+       - Then, click the primary submit/download button for the selection (e.g., "Ausgewählte herunterladen", "Herunterladen", "Download").
+    5. Handle Individual Files (Fallback): If no bulk download or "Select All" option exists, click ALL unique download buttons (e.g., "Datei herunterladen") for the listed files in ONE step if possible.
+    6. Prevent Duplicates: You must STOP once you have initiated the downloads. Do NOT click the same button more than once. If a file is in `available_file_paths` or a download has clearly started, ignore it.
+    7. Check for More: After your first batch of clicks, scroll down ONCE. If no new download buttons appear, CONCLUDE immediately. 
+    8. Hard Limit: Do NOT exceed 10 steps in total. If you are repeating actions or stuck in a loop, STOP and finish the task.
     """
 
 # ═══════════════════════════════════════════════════════════════════════════
