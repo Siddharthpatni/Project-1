@@ -73,18 +73,20 @@ def build_agent_task(url: str) -> str:
     Instructions:
     1. Navigate to the Target URL.
     2. Handle Cookies: Look for a cookie consent banner. If present, click "Akzeptieren", "Alle akzeptieren", or "Zustimmen".
-    3. Open Tender Details (If needed): If you land on a page with a table/list of tenders and NO immediate document buttons, you must open the details first. Click on the tender's title (usually a blue hyperlink) or an info icon (e.g., "i") to open the details modal.
-    4. Locate Documents Section: Once the tender details are open (either on the main page or in a pop-up modal), scan for tabs or buttons related to documents. 
-       - Click on "Dokumente", "Vergabeunterlagen", or similar tabs to reveal the files.
-       - IF documents are hosted elsewhere: Look for redirect links (e.g., "Zum Vergabeportal", "Zur Ausschreibung", "Link zur e-Vergabe", "Bieterzugang").
-    5. HIGHEST PRIORITY - "Download All" / ZIP: BEFORE clicking any individual files, vigorously search for a single button to download everything at once.
-       - Look for terms like "Alle Unterlagen herunterladen", "Als ZIP herunterladen", "Gesamtdownload", "ZIP-Download".
-       - OR look for a "Select All" ("Alle auswählen") checkbox followed by a primary download button. 
-       - If you successfully trigger a bulk/ZIP download, you are DONE. Do not click individual files.
-    6. Handle Individual Files (FALLBACK ONLY): Only if NO bulk download or ZIP option exists, click ALL unique download buttons (e.g., "hier klicken", "hier bitte klicken", "Datei herunterladen", "Download") for the listed files in ONE step if possible.
-    7. TRUST YOUR CLICKS (CRITICAL): Browser downloads happen silently in the background. The UI might NOT change after you click download. If you have clicked a download button ONCE, assume it is downloading. DO NOT click the same button again under any circumstances.
-8. Check for More: After your first batch of clicks, scroll down ONCE. If you see more documents that you haven't downloaded yet, click them. If NO new buttons appear, CONCLUDE immediately. 
-    9. Hard Limit: Do NOT exceed 25 steps. If you are stuck in a loop repeating the exact same actions without downloading new files, STOP and finish.
+    3. EARLY EXIT (EXPIRED/MISSING): Immediately scan the page text. If the tender is clearly expired (look for terms like "abgelaufen", "nicht mehr aktiv", "aufgehoben", "beendet", "Frist abgelaufen") or documents are explicitly missing, STOP immediately and conclude. Do not waste steps searching for files that do not exist.
+    4. Open Tender Details: If you land on a page with a table/list of tenders and NO immediate document buttons, click on the tender's title (usually a blue hyperlink) or an info icon (e.g., "i") to open the details modal.
+    5. Locate the Files: Scan the page to find where the documents are located. If they are hiding behind a hyperlink, tab, or button that opens a popup/modal, use your intuition to find and open that section.
+    6. HIGHEST PRIORITY - "Download All" / ZIP: ALWAYS check first if there is a single button to download everything at once (e.g., "Alle Unterlagen herunterladen", "Als ZIP", "Gesamtdownload", or a "Select All" checkbox + download). If you successfully trigger this, you are DONE. Do not click individual files.
+    7. Handle Individual Files: If NO bulk download option exists, locate and click ALL unique individual download buttons for the listed files in ONE step if possible.
+    8. MEMORY & TRUST YOUR CLICKS (CRITICAL): You MUST memorize every button you click. Browser downloads happen silently in the background. The UI WILL NOT change after you click download. 
+       - If you have clicked a download button ONCE, it registered 100%. 
+       - DO NOT verify. DO NOT wait for a confirmation. 
+       - NEVER click the exact same button twice under ANY circumstances. Move immediately to the next file or conclude.
+    9. Handle Redirects & In-Browser PDFs (BOOMERANG RULE): Sometimes a download link redirects you to a COMPLETELY DIFFERENT website or opens a PDF directly. Wh
+       - IF this happens, locate and click the final download/save button on that new page.
+       - AFTER the download starts, you MUST use the browser's "Go Back" action to return to the original document list so you can continue OR if there is no "Go Back" action, close the tab to return to the tender page.
+    10. Check for More: After your first batch of clicks, scroll down ONCE. If you see more documents that you haven't downloaded yet, click them. If NO new buttons appear, CONCLUDE immediately. 
+    11. Hard Limit: Do NOT exceed 25 steps. If you are stuck in a loop repeating the exact same actions, STOP and finish.
     """
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -289,7 +291,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--limit", type=int, default=0, help="Max URLs to process (0 = all)")
     parser.add_argument("--url", help="Run a specific URL directly (bypasses CSV)")
     parser.add_argument("--api-key", default=None, help="OpenRouter API Key")
-    parser.add_argument("--model", default="google/gemini-2.5-flash-lite", help="LLM to drive the agent")
+    parser.add_argument("--model", default="google/gemini-2.5-pro", help="LLM to drive the agent")
     parser.add_argument("--headless", action="store_true", help="Run browser in background (hidden)")
     
     args = parser.parse_args()
