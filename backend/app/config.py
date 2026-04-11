@@ -19,9 +19,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     google_api_key: str = ""
 
-    llm_model_primary: str = "anthropic/claude-sonnet-4.5"
-    llm_model_fallback: str = "openai/gpt-4o"
-    llm_model_vision: str = "anthropic/claude-sonnet-4.5"
+    llm_model_primary: str = "google/gemini-2.5-flash-lite"
+    llm_model_fallback: str = "openai/gpt-4o-mini"
+    llm_model_vision: str = "google/gemini-2.5-flash-lite"
 
     # --- Database ---
     database_url: str = "sqlite:///./vergabepilot.db"
