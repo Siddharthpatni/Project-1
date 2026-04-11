@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     cua_screenshot_dir: str = "/tmp/vergabepilot-screenshots"
 
     # --- Phase 3 ---
+    downloads_dir: str = "/app/data/downloads"
     scraper_registry_path: str = "/app/data/scrapers"
     enable_fallback_cua: bool = True
     versioning_check_interval_hours: int = 24

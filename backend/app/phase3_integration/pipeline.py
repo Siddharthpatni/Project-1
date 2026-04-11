@@ -141,7 +141,7 @@ async def _try_manual(url: str, result: PipelineResult) -> StrategyOutcome:
                 # But _persist_documents is called AFTER the strategy loop.
                 # So we need to copy them to a more permanent 'downloads' dir.
                 
-                out_dir = os.path.join(settings.workspace_dir, "downloads", str(time.time()))
+                out_dir = os.path.join(settings.downloads_dir, str(time.time()))
                 os.makedirs(out_dir, exist_ok=True)
                 
                 saved_files = []
