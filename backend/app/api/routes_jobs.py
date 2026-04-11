@@ -9,8 +9,10 @@ DELETE /api/jobs/{id}           → cancel / delete
 """
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
+import pandas as pd
+import io
 
 from app.database import get_db
 from app.models import Document, Job, JobItem, JobStatus
@@ -47,6 +49,75 @@ def create_job(payload: JobCreateRequest, db: Session = Depends(get_db)):
         job.id,
         force_strategy=payload.force_strategy.value if payload.force_strategy else None,
     )
+
+    return _to_job_read(job)
+
+
+@router.post("/upload", response_model=JobRead, status_code=201)
+async def upload_job(
+    file: UploadFile = File(...),
+    submitted_by: str | None = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Upload a CSV or Excel file containing a list of URLs to scrape.
+    Logic:
+    1. Read file into a DataFrame.
+    2. Look for a 'url' or 'URL' column.
+    3. If not found, use the first column.
+    4. Validate URLs and create a job.
+    """
+    content = await file.read()
+    filename = file.filename or "upload"
+    
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(content))
+        elif filename.endswith((".xls", ".xlsx")):
+            df = pd.read_excel(io.BytesIO(content))
+        else:
+            raise HTTPException(400, "Unsupported file format. Use CSV or Excel.")
+    except Exception as e:
+        raise HTTPException(400, f"Failed to parse file: {str(e)}")
+
+    # Extract URLs
+    url_col = None
+    for col in df.columns:
+        if str(col).lower() == "url":
+            url_col = col
+            break
+    
+    if url_col is not None:
+        urls = df[url_col].dropna().astype(str).tolist()
+    else:
+        # Fallback to first column
+        urls = df.iloc[:, 0].dropna().astype(str).tolist()
+
+    # Simple validation (ensure it looks like a URL)
+    valid_urls = []
+    for u in urls:
+        u = u.strip()
+        if u.startswith(("http://", "https://")):
+            valid_urls.append(u)
+    
+    if not valid_urls:
+        raise HTTPException(400, "No valid URLs found in file.")
+
+    job = Job(
+        submitted_by=submitted_by or f"upload:{filename}",
+        total_urls=len(valid_urls),
+        status=JobStatus.PENDING,
+    )
+    db.add(job)
+    db.flush()
+
+    for url in valid_urls:
+        db.add(JobItem(job_id=job.id, url=url, domain=urlparse(url).netloc))
+
+    db.commit()
+    db.refresh(job)
+
+    process_job_task.delay(job.id)
 
     return _to_job_read(job)
 

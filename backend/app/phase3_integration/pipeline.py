@@ -22,6 +22,7 @@ from app.config import settings
 from app.core.llm_client import LLMClient
 from app.core.storage import ObjectStorage
 from app.models import Document, JobItem, JobStatus, Strategy
+from app.phase0_manual.v1_reference import scrape as manual_scrape
 from app.phase1_llm_scraper.executor import execute as exec_scraper
 from app.phase1_llm_scraper.feedback_loop import run_feedback_loop
 from app.phase2_cua.orchestrator import run_agent
@@ -59,6 +60,7 @@ async def process_url(
     t0 = time.time()
 
     strategies = [force_strategy] if force_strategy else [
+        Strategy.MANUAL,
         Strategy.EXISTING,
         Strategy.LLM_GENERATED,
         Strategy.CUA,
@@ -113,6 +115,8 @@ async def _run_strategy(
     llm: LLMClient,
     result: PipelineResult,
 ) -> StrategyOutcome:
+    if strategy is Strategy.MANUAL:
+        return await _try_manual(url, result)
     if strategy is Strategy.EXISTING:
         return await _try_existing(db, url, domain, result)
     if strategy is Strategy.LLM_GENERATED:
@@ -120,6 +124,38 @@ async def _run_strategy(
     if strategy is Strategy.CUA:
         return await _try_cua(url, llm, result)
     return StrategyOutcome(strategy=strategy, success=False, downloaded=0, error="no runner")
+
+
+async def _try_manual(url: str, result: PipelineResult) -> StrategyOutcome:
+    import os
+    import tempfile
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # run in thread pool since playwright.sync_api is used in scrape
+        try:
+            files = await asyncio.to_thread(manual_scrape, url, tmpdir)
+            if files:
+                # Scrape returns list of local paths. We need to move them 
+                # or read them before the tmpdir is deleted.
+                # Actually, result.downloaded should contain paths that _persist_documents can read.
+                # But _persist_documents is called AFTER the strategy loop.
+                # So we need to copy them to a more permanent 'downloads' dir.
+                
+                out_dir = os.path.join(settings.workspace_dir, "downloads", str(time.time()))
+                os.makedirs(out_dir, exist_ok=True)
+                
+                saved_files = []
+                for f in files:
+                    target = os.path.join(out_dir, os.path.basename(f))
+                    import shutil
+                    shutil.copy(f, target)
+                    saved_files.append(target)
+                
+                result.downloaded.extend(saved_files)
+                return StrategyOutcome(Strategy.MANUAL, True, len(saved_files))
+            return StrategyOutcome(Strategy.MANUAL, False, 0, "no files found")
+        except Exception as e:
+            return StrategyOutcome(Strategy.MANUAL, False, 0, str(e))
 
 
 async def _try_existing(db: Session, url: str, domain: str, result: PipelineResult) -> StrategyOutcome:

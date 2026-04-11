@@ -29,3 +29,15 @@ export async function postJSON<T = any>(path: string, body: unknown): Promise<T>
   }
   return r.json();
 }
+
+export async function postMultipart<T = any>(path: string, formData: FormData): Promise<T> {
+  const r = await fetch(api(path), {
+    method: "POST",
+    body: formData,
+  });
+  if (!r.ok) {
+    const text = await r.text();
+    throw new Error(`POST (multipart) ${path} failed: ${r.status} ${text}`);
+  }
+  return r.json();
+}

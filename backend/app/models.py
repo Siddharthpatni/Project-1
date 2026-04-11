@@ -34,6 +34,7 @@ class JobStatus(str, PyEnum):
 
 
 class Strategy(str, PyEnum):
+    MANUAL = "manual_scraper"
     EXISTING = "existing_scraper"
     LLM_GENERATED = "llm_generated_scraper"
     CUA = "computer_use_agent"

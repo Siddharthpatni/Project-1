@@ -23,9 +23,9 @@
 ┌───────▼──────┐    ┌──────────▼──────────┐    ┌──────▼──────┐
 │ Phase 3      │    │ Phase 1             │    │ Phase 2     │
 │ pipeline.py  │───▶│ feedback_loop.py    │───▶│ orchestrator│
-│ (cascade)    │    │  ↳ generator        │    │  ↳ Playwright│
+│ (cascade)    │    │  ↳ generator        │    │ ↳ Playwright│
 │              │    │  ↳ validator        │    │     CUA     │
-│              │    │  ↳ executor (sandbox)│   │             │
+│              │    │  ↳ executor(sandbox)│    │             │
 │              │    │  ↳ evaluator        │    │             │
 └──────┬───────┘    └─────────────────────┘    └─────────────┘
        │
