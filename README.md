@@ -54,7 +54,7 @@ docker compose up --build
 | 2 | `backend/app/phase2_cua/orchestrator.py`          | Screenshot-based agent loop using Playwright + LLM vision |
 | 3 | `backend/app/phase3_integration/pipeline.py`      | Cascaded strategy with automatic fallback and error reporting |
 
-See `docs/ARCHITECTURE.md` for the high-level picture, `docs/CONNECTIONS.md` for detailed internal connections, and `docs/PHASE{1,2,3}.md` for logic details.
+See `docs/ARCHITECTURE.md` for the high-level picture, `docs/CONNECTIONS.md` for detailed internal connections, `docs/apis.md` for low-cost LLM selection, and `docs/PHASE{1,2,3}.md` for logic details.
 
 ## Grading alignment
 
