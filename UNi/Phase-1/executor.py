@@ -60,7 +60,10 @@ import ast
 import json
 import logging
 import os
-import resource
+try:
+    import resource
+except ImportError:
+    resource = None  # no resource module in Windows
 import shutil
 import subprocess
 import sys
