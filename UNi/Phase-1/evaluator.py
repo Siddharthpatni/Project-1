@@ -8,8 +8,6 @@ What does this script do?
 This is the final judge of Phase 1. It compares the actual execution results 
 of the LLM-generated scrapers against your manual annotations (the "spreadsheet").
 
-It strictly adheres to Checklist Rule #6: "The spreadsheet is the source of truth."
-
 It calculates:
   - Overall Success Rate (did the scraper run without crashing?)
   - Document Recall (how many documents were downloaded vs. expected?)
@@ -21,23 +19,8 @@ Usage
     # Run the evaluation against your spreadsheet and pipeline results:
     python evaluator.py evaluate ground_truth.csv pipeline_results.jsonl
 
-    # Save the flagged URLs to a separate file for human review:
-    python evaluator.py evaluate ground_truth.csv pipeline_results.jsonl --export-flags flagged.csv
-
-Input Formats
--------------
-1. ground_truth.csv
-   Must have a header. Must contain at least 'url' and 'expected_docs'.
-   Example:
-     url,expected_docs
-     https://example.com/tenders/1,3
-     https://example.com/tenders/2,0
-
-2. pipeline_results.jsonl
-   A JSON Lines file where each line is the combined output of the Generator 
-   and Executor for a single URL.
-   Example JSON line:
-     {"url": "https://example.com/tenders/1", "success": true, "downloaded_count": 3, "runtime_seconds": 12.5, "cost_usd": 0.002}
+    # Save the flagged URLs to CSV and the full report to JSON:
+    python evaluator.py evaluate ground_truth.csv pipeline_results.jsonl --export-flags flagged.csv --export-json report.json
 """
 from __future__ import annotations
 
@@ -56,7 +39,6 @@ from textwrap import dedent
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _load_dotenv():
-    """Loads .env file just to maintain architecture consistency across Phase 1."""
     possible_locations = [
         Path(__file__).parent / ".env",
         Path.cwd() / ".env",
@@ -115,6 +97,7 @@ class EvaluationReport:
     total_cost_usd: float = 0.0
     total_runtime_seconds: float = 0.0
     flagged_urls: list[FlaggedURL] = field(default_factory=list)
+    per_run_data: list[dict] = field(default_factory=list)
 
     @property
     def success_rate(self) -> float:
@@ -124,7 +107,6 @@ class EvaluationReport:
     @property
     def document_recall(self) -> float:
         if self.total_expected_docs == 0: return 100.0 if self.total_downloaded_docs == 0 else 0.0
-        # Cap recall at 100% in case it downloaded more than expected (which is still a flag)
         recall = (self.total_downloaded_docs / self.total_expected_docs) * 100
         return min(recall, 100.0)
 
@@ -133,7 +115,6 @@ class EvaluationReport:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def load_ground_truth(csv_path: Path) -> dict[str, GroundTruthRecord]:
-    """Reads manual annotations from a CSV file into a dictionary keyed by URL."""
     truth_map = {}
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -152,7 +133,6 @@ def load_ground_truth(csv_path: Path) -> dict[str, GroundTruthRecord]:
     return truth_map
 
 def load_pipeline_results(jsonl_path: Path) -> list[PipelineResultRecord]:
-    """Reads execution results from a JSON Lines file."""
     results = []
     with open(jsonl_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -172,7 +152,6 @@ def load_pipeline_results(jsonl_path: Path) -> list[PipelineResultRecord]:
     return results
 
 def evaluate(truth_map: dict[str, GroundTruthRecord], results: list[PipelineResultRecord]) -> EvaluationReport:
-    """Compares the pipeline runs against the ground truth spreadsheet."""
     report = EvaluationReport()
     
     for res in results:
@@ -189,16 +168,21 @@ def evaluate(truth_map: dict[str, GroundTruthRecord], results: list[PipelineResu
             report.flagged_urls.append(FlaggedURL(
                 url=res.url, expected=-1, downloaded=res.downloaded_count, reason="Missing in Spreadsheet"
             ))
+            # Track per-run data even if invalid
+            report.per_run_data.append({
+                "url": res.url,
+                "success_rate": 100.0 if res.success else 0.0,
+                "recall": 0.0, 
+                "runtime_s": res.runtime_seconds,
+                "cost_usd": res.cost_usd
+            })
             continue
 
         report.total_expected_docs += truth.expected_docs
         
-        # Only count downloaded docs up to the expected amount for pure recall calculation, 
-        # but we track the raw number for flagging.
         if res.success:
             report.total_downloaded_docs += min(res.downloaded_count, truth.expected_docs)
 
-        # CHECKLIST #6: Flag mismatches for human review
         if not res.success:
             report.flagged_urls.append(FlaggedURL(
                 url=res.url, expected=truth.expected_docs, downloaded=0, reason=f"Execution Failed: {res.error}"
@@ -209,14 +193,45 @@ def evaluate(truth_map: dict[str, GroundTruthRecord], results: list[PipelineResu
                 url=res.url, expected=truth.expected_docs, downloaded=res.downloaded_count, reason=reason
             ))
 
+        # Calculate individual run recall
+        run_recall = 0.0
+        if truth.expected_docs > 0:
+            run_recall = min((res.downloaded_count / truth.expected_docs) * 100, 100.0)
+        elif truth.expected_docs == 0 and res.downloaded_count == 0:
+            run_recall = 100.0
+
+        # Store per-run data mapping strictly to acceptance criteria keys
+        report.per_run_data.append({
+            "url": res.url,
+            "success_rate": 100.0 if res.success else 0.0,
+            "recall": run_recall,
+            "runtime_s": res.runtime_seconds,
+            "cost_usd": res.cost_usd
+        })
+
     return report
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 3 :  CLI  (Command-Line Interface)
+#  SECTION 3 :  Outputs & CLI
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _print_evaluation_report(report: EvaluationReport, export_flags_path: str | None = None):
-    """Pretty-print the final metrics."""
+def _export_json_report(report: EvaluationReport, json_path: str):
+    """Exports the exact JSON structure requested in the Acceptance Criteria."""
+    output_data = {
+        "aggregated": {
+            "success_rate": report.success_rate,
+            "recall": report.document_recall,
+            "runtime_s": report.total_runtime_seconds,
+            "cost_usd": report.total_cost_usd
+        },
+        "per_run": report.per_run_data
+    }
+    
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(output_data, f, indent=2)
+    log.info("Exported JSON report to: %s", json_path)
+
+def _print_evaluation_report(report: EvaluationReport, export_flags_path: str | None = None, export_json_path: str | None = None):
     print(f"\n{'═'*60}")
     print(f"  VERGABEPILOT.AI - PHASE 1 EVALUATION REPORT")
     print(f"{'═'*60}")
@@ -246,8 +261,10 @@ def _print_evaluation_report(report: EvaluationReport, export_flags_path: str | 
                 writer.writerow([flag.url, flag.expected, flag.downloaded, flag.reason])
         log.info("Exported flagged URLs for human review to: %s", path.name)
 
+    if export_json_path:
+        _export_json_report(report, export_json_path)
+
 def cmd_evaluate(args: argparse.Namespace):
-    """Run the evaluation sequence."""
     truth_path = Path(args.truth)
     results_path = Path(args.results)
 
@@ -267,30 +284,22 @@ def cmd_evaluate(args: argparse.Namespace):
     log.info("Step 3/3: Evaluating results against source of truth...")
     report = evaluate(truth_map, results)
 
-    _print_evaluation_report(report, export_flags_path=args.export_flags)
+    _print_evaluation_report(report, export_flags_path=args.export_flags, export_json_path=args.export_json)
     
-    # Exit with 1 if there are flags, which is useful if running in CI/CD pipelines
     sys.exit(1 if report.flagged_urls else 0)
 
 def main():
     parser = argparse.ArgumentParser(
         description="Phase-1 Scraper Evaluator — Standalone",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=dedent("""\
-            Examples:
-              # Run evaluation:
-              python evaluator.py evaluate annotations.csv run_results.jsonl
-              
-              # Run evaluation and save flagged URLs:
-              python evaluator.py evaluate annotations.csv run_results.jsonl --export-flags flagged_urls.csv
-        """),
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
 
     p_eval = subcommands.add_parser("evaluate", help="Compare execution results against the spreadsheet")
-    p_eval.add_argument("truth", help="Path to the manual annotations CSV (must have 'url' and 'expected_docs')")
+    p_eval.add_argument("truth", help="Path to the manual annotations CSV")
     p_eval.add_argument("results", help="Path to the pipeline execution results (.jsonl)")
-    p_eval.add_argument("--export-flags", "-e", default=None, help="Save flagged URLs to this CSV file for human review")
+    p_eval.add_argument("--export-flags", "-e", default=None, help="Save flagged URLs to CSV")
+    p_eval.add_argument("--export-json", "-j", default=None, help="Save aggregated and per-run metrics to JSON")
 
     args = parser.parse_args()
     
