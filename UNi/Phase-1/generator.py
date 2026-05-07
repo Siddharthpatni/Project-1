@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Phase-1 : LLM Scraper Generator  (Standalone)
-================================================
+Phase-1 : LLM Scraper Generator (Unified Edition)
+=================================================
 
 What does this script do?
 -------------------------
@@ -12,32 +12,43 @@ It takes a URL of a public procurement / tender website and asks an LLM
 
 Think of it as:  URL  →  LLM  →  ready-to-run scraper code (.py file)
 
-Two modes of operation
-----------------------
-1. `generate`   – Give it a URL, it fetches the page HTML, sends it to
-                   the LLM along with our carefully crafted prompt, and
-                   saves the resulting scraper code to a file.
+Three modes of operation
+------------------------
+1. `generate`    – Give it a URL; it renders the page with Playwright,
+                    sends the HTML to the LLM with a strong prompt, and
+                    saves the resulting scraper code to a file.
 
-2. `regenerate` – When the first attempt didn't work (the scraper
-                   crashed, downloaded 0 files, etc.), someone from the
-                   team feeds the error back in, and the LLM gets a
-                   second (or third …) chance to fix its code.
+2. `regenerate`  – When a previous attempt didn't work (crashed,
+                    downloaded 0 files, etc.), feed the error back in
+                    and let the LLM fix it.
+
+3. `modify`      – Take an EXISTING scraper file and ask the LLM to
+                    modify/improve it based on a free-text instruction
+                    ("add pagination", "handle iframes", etc.).
 
 Quick start
 -----------
     # 1. Put your API key in a .env file next to this script:
     #    OPENROUTER_API_KEY=sk-or-...
     #
-    # 2. Run:
-    python generator.py generate "https://example.com/tenders"
-    python generator.py generate "https://example.com/tenders" --model "openai/gpt-4o"
+    # 2. Install deps:
+    #    pip install httpx playwright
+    #    playwright install chromium
+    #
+    # 3. Run:
+    python generator.py generate    "https://example.com/tenders"
+    python generator.py regenerate  "https://example.com/tenders" \\
+        --iteration 2 --outcome execution_failed --error "TimeoutError ..."
+    python generator.py modify      ./generated_scrapers/scraper_example_com.py \\
+        --instruction "Add pagination handling and dedupe filenames"
 
-    # 3. The scraper code lands in ./generated_scrapers/scraper_<domain>.py
+Generated scrapers land in  ./generated_scrapers/scraper_<domain>.py
 
-Needed
-------
+Requirements
+------------
 - Python 3.10+
-- pip install httpx
+- pip install httpx playwright
+- playwright install chromium
 - A valid OPENROUTER_API_KEY (free-tier models work too)
 """
 
@@ -53,35 +64,35 @@ from pathlib import Path
 from textwrap import dedent
 from urllib.parse import urlparse
 
-import httpx  # The only external dependency — used for HTTP requests
+import httpx
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  SECTION 0 :  Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
-# We read settings from environment variables.  If a .env file exists in
-# the same folder as this script (or in the current working directory),
-# we load it automatically — no extra library required.
-# ═══════════════════════════════════════════════════════════════════════════════
 
-def _load_dotenv():
+def _load_dotenv() -> None:
     """
     Dead-simple .env file reader.
 
-    Looks for a file called `.env` next to this script or in the current
-    working directory.  Each line should look like:
-
-        OPENROUTER_API_KEY=sk-or-v1-abc123
-        LLM_MODEL=openai/gpt-4o
-
-    Lines starting with '#' are ignored (comments).
-    We only set a variable if it isn't already set in the real environment,
-    so real env vars always win.
+    Looks for a `.env` file next to this script, in the CWD, and up to 5
+    parent directories above. Real env vars always win (we use setdefault).
     """
     possible_locations = [
-        Path(__file__).parent / ".env",   # same folder as generator.py
-        Path.cwd() / ".env",             # wherever you ran the command from
+        Path(__file__).parent / ".env",
+        Path.cwd() / ".env",
     ]
+
+    # Walk up to 5 parent directories looking for a .env
+    parent = Path(__file__).parent.parent
+    for _ in range(5):
+        candidate = parent / ".env"
+        if candidate.is_file() and candidate not in possible_locations:
+            possible_locations.append(candidate)
+        if parent == parent.parent:
+            break
+        parent = parent.parent
+
     for env_file in possible_locations:
         if env_file.is_file():
             for line in env_file.read_text().splitlines():
@@ -90,23 +101,21 @@ def _load_dotenv():
                     continue
                 key, _, value = line.partition("=")
                 key = key.strip()
-                value = value.strip().strip("\"'")  # remove surrounding quotes
+                value = value.strip().strip("\"'")
                 os.environ.setdefault(key, value)
-            break  # stop after the first .env file found
+            break
 
 
-# Load .env right away so the constants below can read from it
 _load_dotenv()
 
-# --- The three things you might want to change ---
-OPENROUTER_API_KEY  = os.getenv("OPENROUTER_API_KEY", "")        # required!
-OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL",           # almost never needs changing
-                                "https://openrouter.ai/api/v1").rstrip("/")
-LLM_MODEL           = os.getenv("LLM_MODEL",                     # which model to use
-                                "google/gemini-2.5-flash-lite")
-LOG_LEVEL           = os.getenv("LOG_LEVEL", "INFO").upper()
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_BASE_URL = os.getenv(
+    "OPENROUTER_BASE_URL",
+    "https://openrouter.ai/api/v1",
+).rstrip("/")
+LLM_MODEL = os.getenv("LLM_MODEL", "google/gemini-2.5-flash-lite")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
-# Set up logging so we can see what's happening
 logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s  %(message)s",
     level=getattr(logging, LOG_LEVEL, logging.INFO),
@@ -117,24 +126,15 @@ log = logging.getLogger("phase1.generator")
 # ═══════════════════════════════════════════════════════════════════════════════
 #  SECTION 1 :  Prompt Templates
 # ═══════════════════════════════════════════════════════════════════════════════
-# These are the instructions we send to the LLM.  Getting these right is
-# the single most important thing in this file — they control the quality
-# of the generated scrapers.
-#
-# There are three prompts:
-#
-#   SYSTEM_PROMPT             – "Who you are and what the rules are."
-#                                Sent with every request.
-#
-#   GENERATION_USER_PROMPT    – "Here's the page, write the scraper."
-#                                Used on the first attempt.
-#
-#   FEEDBACK_PROMPT           – "Your code failed, here's why. Fix it."
-#                                Used on retries (2nd, 3rd, … attempt).
+# Four prompts:
+#   SYSTEM_PROMPT             – the engineer's "rulebook" (sent every time)
+#   GENERATION_USER_PROMPT    – first attempt (URL + rendered HTML)
+#   FEEDBACK_PROMPT           – retry after failure (error + diagnostics)
+#   MODIFY_PROMPT             – tweak an existing scraper by instruction
 # ═══════════════════════════════════════════════════════════════════════════════
 
 SYSTEM_PROMPT = dedent("""\
-    You are an expert Python web-scraping engineer specializing in public
+    You are an elite Python web-scraping engineer specializing in public
     procurement / tender portals. Your job is to generate a single
     self-contained Python script that does TWO things:
 
@@ -149,46 +149,59 @@ SYSTEM_PROMPT = dedent("""\
        - Any other clearly visible metadata
 
     B) DOWNLOAD all attached documents:
-       - PDFs, DOCX, ZIPs, XML, XLS/XLSX, or any other linked files
+       - PDF, DOC, DOCX, XLS, XLSX, ZIP, XML, CSV, PPT, PPTX, JPG, PNG, RAR
        - Save each file into `output_dir` with its original filename
        - If filenames are not available, use a meaningful name based on
          the tender ID or link text
+       - Deduplicate filenames (append _1, _2, ... on collision)
 
     Hard requirements:
-    1. The script must define:
-       `def scrape(url: str, output_dir: str) -> dict`
-       that returns a dictionary with two keys:
-         - "tenders": a list of dicts, each containing the structured
-           fields listed above (use None for fields not found on page)
-         - "downloaded_files": a list of file paths successfully saved
-       Example return value:
-         {
-           "tenders": [
-             {"title": "Road construction project", "deadline": "2025-06-01", ...},
-             ...
-           ],
-           "downloaded_files": ["/output/tender_123.pdf", ...]
-         }
+    1. The script MUST define exactly:
+           def scrape(url: str, output_dir: str) -> dict
+       and return:
+           {
+             "tenders": [ {title, authority, deadline, ...}, ... ],
+             "downloaded_files": [ "/abs/path/to/file.pdf", ... ]
+           }
+       Use None for fields that are not visible on the page.
+
     2. Use `playwright.sync_api` for browser automation. Assume Chromium
        is installed. Run headless.
-    3. Never call `os.system`, `subprocess`, `eval`, `exec`, or open
-       network sockets directly. Only HTTP(S) traffic via Playwright
-       or `requests`.
-    4. Respect a 60-second total wall-clock budget.
-    5. Do not write to any path outside `output_dir`.
-    6. Save the scraped tender data as `tenders.json` inside `output_dir`.
-    7. Return ONLY the Python code inside a ```python``` fenced block.
-       No prose, no explanations — just the code.
+
+    3. REQUIRED scraping strategy:
+       - Extract ALL <a href> on the page and follow likely detail links
+       - Click possible "download / Dokumente / Unterlagen / mehr / Details"
+         buttons (German + English keywords)
+       - Handle pagination (next-page links, "Weiter", "Nächste Seite")
+       - Wait for `networkidle` after navigation
+       - Use `page.expect_download()` for JS-triggered downloads
+       - Inspect iframes (`page.frames`) for embedded download links
+       - Capture network traffic with `page.on("response", handler)` and
+         save responses whose Content-Type is application/pdf,
+         application/octet-stream, application/zip, msword, excel, etc.
+
+    4. Save the structured data as `tenders.json` inside `output_dir`.
+
+    5. STRICTLY FORBIDDEN: `os.system`, `subprocess`, `eval`, `exec`,
+       raw socket use. Only HTTP(S) via Playwright or `requests`/`httpx`.
+
+    6. Do not write outside `output_dir`. Total wall-clock budget: 120 s.
+
+    7. Print debug info: discovered URLs, download attempts, failures,
+       navigation steps. (`print(...)` is fine.)
+
+    8. Do NOT include an `if __name__ == "__main__":` block, sample
+       usage, demo prints, or test-cleanup code. The scraper is
+       imported by a runner that calls `scrape()` directly. No
+       `shutil.rmtree`, no example output paths, no `__main__` guard.
 """)
 
-# This is what we send the FIRST time we ask the LLM to write a scraper.
-# We include the actual HTML of the target page so the LLM can see what
-# elements (links, buttons, tables, download links) it needs to interact with.
+
 GENERATION_USER_PROMPT = dedent("""\
     Target URL: {url}
     Detected domain: {domain}
 
-    Page structure (first 4000 chars of rendered HTML):
+    Rendered HTML (after JS execution):
     ```html
     {html_snippet}
     ```
@@ -197,19 +210,15 @@ GENERATION_USER_PROMPT = dedent("""\
     {failed_selectors}
 
     Your tasks:
-    1. SCRAPE all visible tender information (titles, deadlines, descriptions,
-       reference numbers, contracting authority, links, etc.) into structured
-       dicts.
-    2. DOWNLOAD every linked document (PDF, DOCX, ZIP, XML, XLS, etc.)
-       into output_dir.
+    1. SCRAPE all visible tender information into structured dicts.
+    2. DOWNLOAD every linked document into output_dir.
     3. Save the structured data as tenders.json in output_dir.
     4. Return the dict with "tenders" and "downloaded_files" keys.
 
     Generate the scraper now.
 """)
 
-# This is what we send on RETRIES when the previous scraper didn't work.
-# We tell the LLM exactly what went wrong so it can fix its approach.
+
 FEEDBACK_PROMPT = dedent("""\
     Your previous scraper attempt failed. Here is the diagnostic information:
 
@@ -225,18 +234,41 @@ FEEDBACK_PROMPT = dedent("""\
     Documents expected (approx): {expected_docs}
     Documents actually downloaded: {downloaded}
 
+    Previous scraper code:
+    ```python
+    {previous_code}
+    ```
+
     Fix the code. Key rules:
     - Keep the `scrape(url, output_dir) -> dict` signature unchanged.
-    - The return dict must have "tenders" (list of dicts with scraped data)
-      and "downloaded_files" (list of saved file paths).
+    - The return dict must have "tenders" and "downloaded_files" keys.
     - Make sure you are BOTH extracting structured tender data AND
       downloading attached documents.
     - If the site uses JavaScript to reveal content or download links,
       wait for network idle / relevant DOM selectors before extracting.
     - If downloads happen via POST, use `page.expect_download()` and
       save via `download.save_as()`.
-    - Don't forget to save tenders.json inside output_dir.
-    - Return ONLY the corrected Python code in a fenced block.
+    - Save tenders.json inside output_dir.
+    - Return ONLY the corrected Python code in a fenced ```python``` block.
+""")
+
+
+MODIFY_PROMPT = dedent("""\
+    Modify the following existing scraper according to the user's instruction.
+    Keep the public interface (`scrape(url, output_dir) -> dict`) and the
+    return-value contract intact.
+
+    Target URL (for reference): {url}
+
+    User instruction:
+    \"\"\"{instruction}\"\"\"
+
+    Current scraper code:
+    ```python
+    {current_code}
+    ```
+
+    Return ONLY the full, modified Python code in a fenced ```python``` block.
 """)
 
 
@@ -246,18 +278,11 @@ def build_generation_prompt(
     html_snippet: str,
     failed_selectors: list[str] | None = None,
 ) -> str:
-    """
-    Fill in the generation prompt template with real data.
-
-    We cap the HTML snippet at 4000 chars to avoid blowing up the LLM's
-    context window (and the bill).  For most tender pages, the first 4k
-    chars contain enough structure (nav, table headers, first few links)
-    for the LLM to figure out the page layout.
-    """
+    """Fill in the generation prompt with real data (HTML capped at 12k chars)."""
     return GENERATION_USER_PROMPT.format(
         url=url,
         domain=domain,
-        html_snippet=html_snippet[:4000],
+        html_snippet=html_snippet[:12000],
         failed_selectors=", ".join(failed_selectors or []) or "none",
     )
 
@@ -270,85 +295,63 @@ def build_feedback_prompt(
     error: str,
     expected_docs: int,
     downloaded: int,
+    previous_code: str = "",
 ) -> str:
-    """
-    Fill in the feedback prompt template with error diagnostics.
-
-    The error message is capped at 2000 chars — long tracebacks waste
-    tokens without adding useful information for the LLM.
-    """
+    """Fill in the feedback prompt; cap error at 3000 chars and code at 8000."""
     return FEEDBACK_PROMPT.format(
         iteration=iteration,
         max_iterations=max_iterations,
         url=url,
         outcome=outcome,
-        error=error[:2000],
+        error=error[:3000],
         expected_docs=expected_docs,
         downloaded=downloaded,
+        previous_code=previous_code[:8000] if previous_code else "(not provided)",
+    )
+
+
+def build_modify_prompt(url: str, instruction: str, current_code: str) -> str:
+    """Fill in the modify prompt for editing an existing scraper."""
+    return MODIFY_PROMPT.format(
+        url=url or "(not provided)",
+        instruction=instruction.strip(),
+        current_code=current_code[:12000],
     )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 2 :  LLM Client
-# ═══════════════════════════════════════════════════════════════════════════════
-# Handles the actual HTTP calls to the OpenRouter API.
-#
-# OpenRouter is a unified gateway that lets us use models from OpenAI,
-# Anthropic, Google, etc. through a single API key and endpoint.
-# The request/response format follows the OpenAI chat-completions spec.
-#
-# We also do rough cost tracking so we know how much each generation costs.
+#  SECTION 2 :  LLM Client (OpenRouter)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Approximate price per 1 million tokens, in USD.
-# Format:  "model_name": (input_price, output_price)
-# These are ballpark numbers for cost tracking — real billing comes from OpenRouter.
+# Approximate price per 1 million tokens in USD: (input_price, output_price)
 COST_PER_MILLION_TOKENS: dict[str, tuple[float, float]] = {
-    "anthropic/claude-sonnet-4.5":  (3.0, 15.0),
-    "anthropic/claude-haiku-4.5":   (1.0,  5.0),
-    "openai/gpt-4o":                (2.5, 10.0),
-    "openai/gpt-4o-mini":           (0.15, 0.6),
-    "google/gemini-2.5-pro":        (1.25, 5.0),
-    "google/gemini-2.5-flash-lite": (0.0,  0.0),   # free tier 🎉
+    "anthropic/claude-sonnet-4.5":   (3.0, 15.0),
+    "anthropic/claude-haiku-4.5":    (1.0,  5.0),
+    "openai/gpt-4o":                 (2.5, 10.0),
+    "openai/gpt-4o-mini":            (0.15, 0.6),
+    "google/gemini-2.5-pro":         (1.25, 5.0),
+    "google/gemini-2.5-flash-lite":  (0.0,  0.0),  # free tier
 }
 
 
 @dataclass
 class LLMResponse:
-    """What we get back from the LLM after a chat call."""
-    text: str                   # the actual response content
-    model: str                  # which model answered
-    input_tokens: int = 0       # how many tokens our prompt used
-    output_tokens: int = 0      # how many tokens the response used
-    cost_usd: float = 0.0       # estimated cost of this call
+    text: str
+    model: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0.0
 
 
 def _estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    """
-    Rough cost estimate based on token counts.
-    Returns 0 if we don't have pricing info for the model.
-    """
     if model not in COST_PER_MILLION_TOKENS:
         return 0.0
-    input_price, output_price = COST_PER_MILLION_TOKENS[model]
-    return (
-        (input_tokens  / 1_000_000) * input_price +
-        (output_tokens / 1_000_000) * output_price
-    )
+    in_price, out_price = COST_PER_MILLION_TOKENS[model]
+    return (input_tokens / 1_000_000) * in_price + (output_tokens / 1_000_000) * out_price
 
 
 class LLMClient:
-    """
-    Talks to the OpenRouter API (or any OpenAI-compatible endpoint).
-
-    Usage:
-        client = LLMClient()
-        response = await client.chat(
-            system="You are a helpful assistant.",
-            user="Write me a Python function that adds two numbers.",
-        )
-        print(response.text)
-    """
+    """Thin async wrapper around OpenRouter's OpenAI-compatible chat endpoint."""
 
     def __init__(
         self,
@@ -356,12 +359,9 @@ class LLMClient:
         base_url: str = OPENROUTER_BASE_URL,
         default_model: str = LLM_MODEL,
     ):
-        self.base_url = base_url
         self.api_key = api_key
+        self.base_url = base_url
         self.default_model = default_model
-
-        # We keep one HTTP client alive for the lifetime of this object
-        # so we can reuse connections (faster for multiple calls).
         self._http = httpx.AsyncClient(timeout=120)
 
     async def chat(
@@ -370,20 +370,7 @@ class LLMClient:
         user: str,
         model: str | None = None,
     ) -> LLMResponse:
-        """
-        Send a system + user message to the LLM and get a response.
-
-        Args:
-            system: The system prompt (sets the LLM's behavior/role).
-            user:   The user message (the actual task/question).
-            model:  Override the default model for this call.
-
-        Returns:
-            LLMResponse with the generated text, token counts, and cost.
-        """
         model = model or self.default_model
-
-        # Build the payload in OpenAI chat-completions format
         payload = {
             "model": model,
             "messages": [
@@ -391,47 +378,48 @@ class LLMClient:
                 {"role": "user",   "content": user},
             ],
         }
-        return await self._call(payload, model)
 
-    async def _call(self, payload: dict, model: str) -> LLMResponse:
-        """
-        Internal: actually send the HTTP request to the API.
-
-        If no API key is set, we return a harmless stub so the script
-        doesn't crash during development/testing.
-        """
-        # --- Safety net for missing API key ---
+        # Safety net: no API key → return a harmless stub.
         if not self.api_key:
-            log.warning("No OPENROUTER_API_KEY set — returning stub response. "
-                        "Add your key to .env to get real results.")
+            log.warning(
+                "No OPENROUTER_API_KEY set — returning stub response. "
+                "Add your key to .env to get real results."
+            )
             return LLMResponse(
                 text=(
                     "```python\n"
                     "# stub: no API key configured\n"
                     "def scrape(url, output_dir):\n"
-                    "    return []\n"
+                    '    return {"tenders": [], "downloaded_files": []}\n'
                     "```"
                 ),
                 model=model,
             )
 
-        # --- Build and send the request ---
-        url = f"{self.base_url}/chat/completions"
+        # HTTP headers MUST be ASCII — strip any stray non-ASCII chars
+        # (e.g. an en-dash that snuck in from copy-paste) before sending.
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer":  "https://vergabepilot.ai",       # identifies our app to OpenRouter
-            "X-Title":       "Vergabepilot.AI – Phase1",      # shows up in your OpenRouter dashboard
             "Content-Type":  "application/json",
+            "HTTP-Referer":  "https://vergabepilot.ai",
+            "X-Title":       "Vergabepilot.AI - Phase1",
+        }
+        headers = {
+            k: v.encode("ascii", "ignore").decode("ascii")
+            for k, v in headers.items()
         }
 
         try:
-            response = await self._http.post(url, json=payload, headers=headers)
+            response = await self._http.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+            )
             response.raise_for_status()
         except httpx.HTTPError as e:
             log.error("LLM API call failed: %s", e)
             raise
 
-        # --- Parse the response ---
         data = response.json()
         content = data["choices"][0]["message"]["content"]
 
@@ -441,103 +429,97 @@ class LLMClient:
                 part.get("text", "") for part in content if isinstance(part, dict)
             )
 
-        # --- Track token usage and cost ---
         usage = data.get("usage", {})
-        input_tokens  = usage.get("prompt_tokens", 0)
+        input_tokens = usage.get("prompt_tokens", 0)
         output_tokens = usage.get("completion_tokens", 0)
-        cost = _estimate_cost(model, input_tokens, output_tokens)
 
         return LLMResponse(
             text=content,
             model=model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            cost_usd=cost,
+            cost_usd=_estimate_cost(model, input_tokens, output_tokens),
         )
+
+    async def aclose(self) -> None:
+        await self._http.aclose()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  SECTION 3 :  Scraper Generator
 # ═══════════════════════════════════════════════════════════════════════════════
-# This is the core piece — it ties together the prompts and the LLM client.
+# Three public methods:
+#   generate(url, ...)      – first attempt
+#   regenerate(url, ...)    – retry with error feedback
+#   modify(code, instruction, ...) – tweak an existing scraper
 #
-# Flow for a first-time generation:
-#   1. Fetch the target page's HTML (so the LLM can see the page structure)
-#   2. Build the prompt with the URL + HTML snippet
-#   3. Send it to the LLM
-#   4. Extract the Python code from the ```python``` block in the response
-#   5. Return the code (someone else validates and runs it)
-#
-# Flow for a retry (regeneration):
-#   1. Build a feedback prompt with the error details
-#   2. Send it to the LLM
-#   3. Extract and return the corrected code
+# Includes:
+#   - Playwright-rendered HTML (better than raw requests for JS-heavy sites)
+#   - Graceful fallback to raw HTTP when Playwright is unavailable
+#   - Automatic syntax validation + retries
+#   - Robust code-fence extraction
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Regex to pull code out of a ```python ... ``` fenced block
-_CODE_FENCE_PATTERN = re.compile(r"```(?:python)?\s*(.*?)```", re.DOTALL)
+# Match a fenced ```python ... ``` block (the language tag is optional).
+_CODE_FENCE_PATTERN = re.compile(
+    r"```(?:python)?\s*([\s\S]*?)```",
+    re.MULTILINE,
+)
+
+# Keywords we click when rendering a page, to expose hidden detail/download links.
+_INTERACTIVE_KEYWORDS = (
+    "download", "dokument", "unterlagen", "details", "mehr", "anzeigen",
+    "vergabeunterlagen", "ausschreibungsunterlagen", "more", "show",
+)
+
+MAX_SYNTAX_RETRIES = 3
 
 
 @dataclass
 class GeneratedScraper:
-    """The output of a generation or regeneration call."""
-    code: str             # the Python scraper code (ready to save to a .py file)
-    model: str            # which LLM model wrote it
-    cost_usd: float       # how much this generation cost (approx)
-    raw_response: str     # the full response from the LLM (for debugging)
+    code: str
+    model: str
+    cost_usd: float
+    raw_response: str
+
+
+def _is_valid_python(code: str) -> tuple[bool, str]:
+    """Compile-check the code; return (ok, error_message)."""
+    try:
+        compile(code, "<generated>", "exec")
+        return True, ""
+    except SyntaxError as e:
+        return False, f"{e.__class__.__name__}: {e}"
 
 
 class ScraperGenerator:
-    """
-    Uses an LLM to write scraper code for a given URL.
-
-    This class handles two scenarios:
-    - generate()    →  first attempt, no prior context
-    - regenerate()  →  retry with feedback from a failed attempt
-
-    It does NOT validate or execute the code — that's handled by the
-    validator and executor modules (maintained by other team members).
-    """
+    """Uses an LLM to write/fix/modify scraper code for a given URL."""
 
     def __init__(self, llm: LLMClient):
         self.llm = llm
 
-    # ── First attempt ─────────────────────────────────────────────────
+    # ── Public API ────────────────────────────────────────────────────
 
-    async def generate(self, url: str, model: str | None = None) -> GeneratedScraper:
-        """
-        Generate a scraper for the given URL from scratch.
-
-        Steps:
-          1. Fetch the page HTML (best-effort — it's okay if this fails)
-          2. Build the prompt with URL + HTML snippet
-          3. Send to LLM
-          4. Extract code from the response
-        """
-        # Step 1: Get the page HTML so the LLM knows what it's working with
+    async def generate(
+        self,
+        url: str,
+        model: str | None = None,
+    ) -> GeneratedScraper:
+        """First-attempt generation: render the page, prompt the LLM, validate."""
         html_snippet = await self._fetch_page_html(url)
-
-        # Step 2: Extract the domain (e.g. "www.example.com") for the prompt
         domain = urlparse(url).netloc
 
-        # Step 3: Build the full prompt
         user_message = build_generation_prompt(
             url=url,
             domain=domain,
             html_snippet=html_snippet,
         )
 
-        # Step 4: Ask the LLM to write the scraper
-        llm_response = await self.llm.chat(
+        return await self._chat_with_syntax_retries(
             system=SYSTEM_PROMPT,
             user=user_message,
             model=model,
         )
-
-        # Step 5: Extract the Python code from the response
-        return self._extract_code(llm_response)
-
-    # ── Retry with feedback ───────────────────────────────────────────
 
     async def regenerate(
         self,
@@ -548,25 +530,10 @@ class ScraperGenerator:
         error: str,
         expected_docs: int,
         downloaded: int,
+        previous_code: str = "",
         model: str | None = None,
     ) -> GeneratedScraper:
-        """
-        Ask the LLM to fix its previous scraper attempt.
-
-        This is called by the feedback loop (managed externally) when
-        the previous scraper failed or didn't download enough files.
-
-        Args:
-            url:             The target URL (same as before)
-            iteration:       Which attempt this is (2, 3, 4, ...)
-            max_iterations:  Total allowed attempts
-            outcome:         What went wrong ("execution_failed" or "insufficient_recall")
-            error:           The error message or traceback from the failed run
-            expected_docs:   How many documents we expected to find
-            downloaded:      How many documents were actually downloaded
-            model:           LLM model override (optional)
-        """
-        # Build a prompt that tells the LLM exactly what went wrong
+        """Retry with feedback: include error details and previous code."""
         user_message = build_feedback_prompt(
             iteration=iteration,
             max_iterations=max_iterations,
@@ -575,32 +542,135 @@ class ScraperGenerator:
             error=error,
             expected_docs=expected_docs,
             downloaded=downloaded,
+            previous_code=previous_code,
         )
 
-        # Ask the LLM to fix its code
-        llm_response = await self.llm.chat(
+        return await self._chat_with_syntax_retries(
             system=SYSTEM_PROMPT,
             user=user_message,
             model=model,
         )
 
-        return self._extract_code(llm_response)
+    async def modify(
+        self,
+        current_code: str,
+        instruction: str,
+        url: str = "",
+        model: str | None = None,
+    ) -> GeneratedScraper:
+        """Take an existing scraper file and modify it per a free-text instruction."""
+        user_message = build_modify_prompt(
+            url=url,
+            instruction=instruction,
+            current_code=current_code,
+        )
 
-    # ── Helper: fetch the target page ─────────────────────────────────
+        return await self._chat_with_syntax_retries(
+            system=SYSTEM_PROMPT,
+            user=user_message,
+            model=model,
+        )
+
+    # ── Internal helpers ──────────────────────────────────────────────
+
+    async def _chat_with_syntax_retries(
+        self,
+        system: str,
+        user: str,
+        model: str | None,
+    ) -> GeneratedScraper:
+        """
+        Call the LLM and validate that the returned code is syntactically valid.
+        On failure, append the syntax error to the prompt and retry.
+        """
+        prompt = user
+        last_err = ""
+
+        for attempt in range(1, MAX_SYNTAX_RETRIES + 1):
+            llm_response = await self.llm.chat(
+                system=system,
+                user=prompt,
+                model=model,
+            )
+            scraper = self._extract_code(llm_response)
+
+            valid, err = _is_valid_python(scraper.code)
+            if valid:
+                if attempt > 1:
+                    log.info("Generated valid Python on retry %d", attempt)
+                return scraper
+
+            last_err = err
+            log.warning(
+                "Generated invalid Python on attempt %d/%d: %s",
+                attempt, MAX_SYNTAX_RETRIES, err,
+            )
+            prompt = (
+                f"{user}\n\n"
+                f"PREVIOUS CODE FAILED SYNTAX VALIDATION.\n"
+                f"ERROR:\n{err}\n\n"
+                f"Generate corrected Python."
+            )
+
+        raise RuntimeError(
+            f"LLM failed to generate valid Python after {MAX_SYNTAX_RETRIES} "
+            f"attempts. Last error: {last_err}"
+        )
 
     async def _fetch_page_html(self, url: str) -> str:
         """
-        Download the raw HTML of the target page.
-
-        This gives the LLM something concrete to work with — it can see
-        the actual links, table structures, and button labels on the page.
-
-        If fetching fails (timeout, SSL error, etc.), we return a
-        placeholder comment.  The LLM can still try to generate a
-        scraper based on the URL alone — it just won't be as accurate.
+        Fetch the page using Playwright (full JS render), with a graceful
+        fallback to plain HTTP if Playwright is unavailable or fails.
         """
         try:
-            async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            return await self._fetch_with_playwright(url)
+        except Exception as e:
+            log.warning(
+                "Playwright render failed for %s — falling back to raw HTTP. (%s)",
+                url, e,
+            )
+            return await self._fetch_with_httpx(url)
+
+    async def _fetch_with_playwright(self, url: str) -> str:
+        """Render the page with Chromium, scroll, click likely buttons, return HTML."""
+        from playwright.async_api import async_playwright  # imported lazily
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            try:
+                page = await browser.new_page()
+                await page.goto(url, timeout=45000, wait_until="networkidle")
+
+                # Trigger lazy-loading by scrolling to the bottom.
+                await page.evaluate(
+                    "async () => { window.scrollTo(0, document.body.scrollHeight); }"
+                )
+                await page.wait_for_timeout(2000)
+
+                # Best-effort: click the first ~25 buttons whose label looks
+                # like it might reveal documents / details. Errors are ignored.
+                buttons = await page.query_selector_all("button")
+                for btn in buttons[:25]:
+                    try:
+                        text = (await btn.inner_text()).lower()
+                        if any(k in text for k in _INTERACTIVE_KEYWORDS):
+                            await btn.click(timeout=1000)
+                            await page.wait_for_timeout(400)
+                    except Exception:
+                        pass
+
+                html = await page.content()
+                return html
+            finally:
+                await browser.close()
+
+    async def _fetch_with_httpx(self, url: str) -> str:
+        """Plain-HTTP fallback when Playwright is unavailable."""
+        try:
+            async with httpx.AsyncClient(
+                timeout=15,
+                follow_redirects=True,
+            ) as client:
                 response = await client.get(
                     url,
                     headers={"User-Agent": "VergabepilotBot/0.1"},
@@ -610,26 +680,16 @@ class ScraperGenerator:
             log.warning("Could not fetch page HTML for %s — %s", url, e)
             return "<!-- could not fetch page -->"
 
-    # ── Helper: extract code from LLM response ───────────────────────
-
     def _extract_code(self, response: LLMResponse) -> GeneratedScraper:
-        """
-        Pull the Python code out of the LLM's response.
-
-        The LLM is instructed to wrap its code in a ```python``` block.
-        We regex-match that block and extract the code inside.
-
-        If there's no fenced block (the LLM didn't follow instructions),
-        we fall back to using the entire response as code — sometimes
-        that works, sometimes it doesn't, but it's better than nothing.
-        """
+        """Pull the Python code out of the LLM's ```python ... ``` block."""
         match = _CODE_FENCE_PATTERN.search(response.text)
-
         if match:
             code = match.group(1).strip()
         else:
-            log.warning("LLM response didn't contain a ```python``` block — "
-                        "using raw response as code")
+            log.warning(
+                "LLM response didn't contain a ```python``` block — "
+                "using raw response as code"
+            )
             code = response.text.strip()
 
         return GeneratedScraper(
@@ -641,132 +701,163 @@ class ScraperGenerator:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 4 :  CLI  (Command-Line Interface)
-# ═══════════════════════════════════════════════════════════════════════════════
-# So you can run this script directly from the terminal.
-#
-#   python generator.py generate "https://example.com/tenders"
-#   python generator.py regenerate "https://example.com/tenders" --iteration 2 ...
-#
-# Generated scraper code is saved to ./generated_scrapers/ by default.
+#  SECTION 4 :  CLI
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _save_scraper_to_file(code: str, url: str, output_dir: Path) -> Path:
-    """
-    Save the generated scraper code to a .py file.
-    The filename is based on the domain, e.g. scraper_www_example_com.py
-    """
-    # Turn "www.example.com" into "www_example_com"
-    domain_safe = urlparse(url).netloc.replace(".", "_")
+    """Save scraper to scraper_<domain>.py inside output_dir."""
+    domain_safe = urlparse(url).netloc.replace(".", "_") or "scraper"
     file_path = output_dir / f"scraper_{domain_safe}.py"
     file_path.write_text(code)
     return file_path
 
 
-async def cmd_generate(args: argparse.Namespace):
-    """
-    Handle the 'generate' command:
-    Fetch page → ask LLM → save scraper code.
-    """
-    llm = LLMClient()
-    generator = ScraperGenerator(llm)
-
-    log.info("Generating scraper for: %s", args.url)
-    scraper = await generator.generate(args.url, model=args.model)
-
-    # Decide where to save
-    output_dir = Path(args.output) if args.output else Path.cwd() / "generated_scrapers"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    saved_path = _save_scraper_to_file(scraper.code, args.url, output_dir)
-
-    # Print a summary
-    print(f"\n{'='*60}")
+def _print_summary(scraper: GeneratedScraper, saved_path: Path) -> None:
+    print(f"\n{'=' * 60}")
     print(f"  Model:  {scraper.model}")
     print(f"  Cost:   ${scraper.cost_usd:.6f}")
     print(f"  Saved:  {saved_path}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
     print(scraper.code)
 
 
-async def cmd_regenerate(args: argparse.Namespace):
-    """
-    Handle the 'regenerate' command:
-    Take error feedback → ask LLM to fix the code → save updated scraper.
-    """
+async def cmd_generate(args: argparse.Namespace) -> None:
     llm = LLMClient()
     generator = ScraperGenerator(llm)
+    try:
+        log.info("Generating scraper for: %s", args.url)
+        scraper = await generator.generate(args.url, model=args.model)
 
-    log.info("Regenerating scraper for: %s  (attempt %d/%d)",
-             args.url, args.iteration, args.max_iter)
-
-    scraper = await generator.regenerate(
-        url=args.url,
-        iteration=args.iteration,
-        max_iterations=args.max_iter,
-        outcome=args.outcome,
-        error=args.error,
-        expected_docs=args.expected_docs,
-        downloaded=args.downloaded,
-        model=args.model,
-    )
-
-    # Save the fixed code
-    output_dir = Path(args.output) if args.output else Path.cwd() / "generated_scrapers"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    saved_path = _save_scraper_to_file(scraper.code, args.url, output_dir)
-
-    # Print a summary
-    print(f"\n{'='*60}")
-    print(f"  Model:  {scraper.model}")
-    print(f"  Cost:   ${scraper.cost_usd:.6f}")
-    print(f"  Saved:  {saved_path}")
-    print(f"{'='*60}\n")
-    print(scraper.code)
+        output_dir = Path(args.output) if args.output else Path.cwd() / "generated_scrapers"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        saved_path = _save_scraper_to_file(scraper.code, args.url, output_dir)
+        _print_summary(scraper, saved_path)
+    finally:
+        await llm.aclose()
 
 
-def main():
-    """Parse command-line arguments and run the appropriate command."""
+async def cmd_regenerate(args: argparse.Namespace) -> None:
+    llm = LLMClient()
+    generator = ScraperGenerator(llm)
+    try:
+        log.info(
+            "Regenerating scraper for: %s  (attempt %d/%d)",
+            args.url, args.iteration, args.max_iter,
+        )
 
+        previous_code = ""
+        if args.previous_code:
+            prev_path = Path(args.previous_code)
+            if prev_path.is_file():
+                previous_code = prev_path.read_text()
+            else:
+                log.warning("--previous-code path not found: %s", prev_path)
+
+        scraper = await generator.regenerate(
+            url=args.url,
+            iteration=args.iteration,
+            max_iterations=args.max_iter,
+            outcome=args.outcome,
+            error=args.error,
+            expected_docs=args.expected_docs,
+            downloaded=args.downloaded,
+            previous_code=previous_code,
+            model=args.model,
+        )
+
+        output_dir = Path(args.output) if args.output else Path.cwd() / "generated_scrapers"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        saved_path = _save_scraper_to_file(scraper.code, args.url, output_dir)
+        _print_summary(scraper, saved_path)
+    finally:
+        await llm.aclose()
+
+
+async def cmd_modify(args: argparse.Namespace) -> None:
+    llm = LLMClient()
+    generator = ScraperGenerator(llm)
+    try:
+        scraper_path = Path(args.scraper_file)
+        if not scraper_path.is_file():
+            raise SystemExit(f"Scraper file not found: {scraper_path}")
+
+        current_code = scraper_path.read_text()
+        log.info(
+            "Modifying scraper %s  (instruction: %r)",
+            scraper_path.name, args.instruction[:80],
+        )
+
+        scraper = await generator.modify(
+            current_code=current_code,
+            instruction=args.instruction,
+            url=args.url or "",
+            model=args.model,
+        )
+
+        # Save in place by default; otherwise save into --output dir
+        # (the original file is backed up to <name>.bak first).
+        if args.output:
+            output_dir = Path(args.output)
+            output_dir.mkdir(parents=True, exist_ok=True)
+            target_url = args.url or f"file://{scraper_path.stem}"
+            saved_path = _save_scraper_to_file(scraper.code, target_url, output_dir)
+        else:
+            backup = scraper_path.with_suffix(scraper_path.suffix + ".bak")
+            backup.write_text(current_code)
+            scraper_path.write_text(scraper.code)
+            saved_path = scraper_path
+            log.info("Backup of original written to %s", backup)
+
+        _print_summary(scraper, saved_path)
+    finally:
+        await llm.aclose()
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Phase-1 LLM Scraper Generator — Standalone",
+        description="Phase-1 LLM Scraper Generator (Unified Edition)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=dedent("""\
             Examples:
 
-              # Generate a scraper for a tender page:
+              # First attempt — generate a scraper for a tender page:
               python generator.py generate "https://example.com/tenders"
 
               # Use a different model:
-              python generator.py generate "https://example.com/tenders" --model "openai/gpt-4o"
+              python generator.py generate "https://example.com/tenders" \\
+                  --model "openai/gpt-4o"
 
-              # Regenerate after a failure (called by the feedback loop):
+              # Regenerate after a failure (called by your feedback loop):
               python generator.py regenerate "https://example.com/tenders" \\
                   --iteration 2 --max-iter 5 \\
                   --outcome "execution_failed" \\
-                  --error "TimeoutError: page did not load"
+                  --error "TimeoutError: page did not load" \\
+                  --previous-code ./generated_scrapers/scraper_example_com.py
+
+              # Modify an existing scraper with a free-text instruction:
+              python generator.py modify ./generated_scrapers/scraper_example_com.py \\
+                  --instruction "Add pagination handling and dedupe filenames"
         """),
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
 
-    # ── "generate" subcommand ─────────────────────────────────────────
+    # ── generate ──────────────────────────────────────────────────────
     p_gen = subcommands.add_parser(
         "generate",
         help="Generate a scraper for a URL (first attempt)",
     )
-    p_gen.add_argument("url",
-                       help="The tender page URL to build a scraper for")
+    p_gen.add_argument("url", help="The tender page URL to build a scraper for")
     p_gen.add_argument("--model", default=None,
                        help=f"LLM model to use (default: {LLM_MODEL})")
     p_gen.add_argument("--output", "-o", default=None,
-                       help="Directory to save the scraper file (default: ./generated_scrapers)")
+                       help="Directory to save the scraper (default: ./generated_scrapers)")
 
-    # ── "regenerate" subcommand ───────────────────────────────────────
+    # ── regenerate ────────────────────────────────────────────────────
     p_regen = subcommands.add_parser(
         "regenerate",
         help="Fix a failed scraper using error feedback",
     )
-    p_regen.add_argument("url",
-                         help="The tender page URL (same as the original)")
+    p_regen.add_argument("url", help="The tender page URL (same as the original)")
     p_regen.add_argument("--model", default=None,
                          help=f"LLM model to use (default: {LLM_MODEL})")
     p_regen.add_argument("--iteration", type=int, required=True,
@@ -781,19 +872,37 @@ def main():
                          help="How many documents we expect to find on the page")
     p_regen.add_argument("--downloaded", type=int, default=0,
                          help="How many documents the last attempt actually got")
+    p_regen.add_argument("--previous-code", default=None,
+                         help="Path to the previous scraper .py (helps the LLM fix it)")
     p_regen.add_argument("--output", "-o", default=None,
-                         help="Directory to save the scraper file (default: ./generated_scrapers)")
+                         help="Directory to save the scraper (default: ./generated_scrapers)")
 
-    # ── Run the command ───────────────────────────────────────────────
+    # ── modify ────────────────────────────────────────────────────────
+    p_mod = subcommands.add_parser(
+        "modify",
+        help="Modify an existing scraper file with a free-text instruction",
+    )
+    p_mod.add_argument("scraper_file",
+                       help="Path to the existing scraper .py file to modify")
+    p_mod.add_argument("--instruction", required=True,
+                       help="What to change (e.g. 'add pagination handling')")
+    p_mod.add_argument("--url", default=None,
+                       help="The original target URL (for context in the prompt)")
+    p_mod.add_argument("--model", default=None,
+                       help=f"LLM model to use (default: {LLM_MODEL})")
+    p_mod.add_argument("--output", "-o", default=None,
+                       help="Directory to save the modified scraper "
+                            "(default: overwrite the input file, with a .bak backup)")
+
     args = parser.parse_args()
 
     commands = {
         "generate":   cmd_generate,
         "regenerate": cmd_regenerate,
+        "modify":     cmd_modify,
     }
     asyncio.run(commands[args.command](args))
 
 
-# ─── Entry point ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     main()

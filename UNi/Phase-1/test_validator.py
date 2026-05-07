@@ -22,7 +22,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from executor import (
+from validator import (
     ValidationResult,
     validate,
     _resolve_call_name,

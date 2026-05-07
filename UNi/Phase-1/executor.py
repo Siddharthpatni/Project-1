@@ -60,10 +60,8 @@ import ast
 import json
 import logging
 import os
-try:
-    import resource
-except ImportError:
-    resource = None  # no resource module in Windows
+import platform
+import signal
 import shutil
 import subprocess
 import sys
@@ -72,6 +70,15 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from textwrap import dedent
+
+# `resource` is Unix-only — we import it conditionally so the script
+# runs on Windows too (just without memory caps).
+try:
+    import resource  # type: ignore[import-not-found]
+except ImportError:
+    resource = None  # type: ignore[assignment]
+
+IS_WINDOWS = platform.system() == "Windows"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -97,6 +104,16 @@ def _load_dotenv():
         Path(__file__).parent / ".env",  # same folder as executor.py
         Path.cwd() / ".env",            # wherever you ran the command from
     ]
+    # Also walk up from the script's directory to find a project-root .env
+    # (e.g. when this file lives in UNi/Phase-1/ but .env is at the repo root)
+    parent = Path(__file__).parent.parent
+    for _ in range(5):  # max 5 levels up to avoid scanning the whole filesystem
+        candidate = parent / ".env"
+        if candidate.is_file() and candidate not in possible_locations:
+            possible_locations.append(candidate)
+        if parent == parent.parent:
+            break
+        parent = parent.parent
     for env_file in possible_locations:
         if env_file.is_file():
             for line in env_file.read_text().splitlines():
@@ -127,155 +144,21 @@ log = logging.getLogger("phase1.executor")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  SECTION 1 :  Validator  (Static Safety Check)
+#  SECTION 1 :  Validator  (re-exported from validator.py)
 # ═══════════════════════════════════════════════════════════════════════════════
-# Before we run any LLM-generated code, we parse it with Python's `ast`
-# module and look for dangerous patterns. This is the first line of
-# defense — the sandbox (Section 2) is the second.
-#
-# We check for:
-#   - Forbidden imports:  subprocess, ctypes, socket, multiprocessing
-#   - Forbidden calls:    eval, exec, os.system, subprocess.run, etc.
-#   - Required function:  the code must define scrape(url, output_dir)
-#
-# If ANY of these checks fail, we refuse to run the code.
+# Per ARCHITECTURE.md the static-safety check lives in its own module
+# (`validator.py`). We re-export the public API here so existing code that
+# does `from executor import validate` keeps working unchanged.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# These imports are NOT allowed in scraper code — they could be used
-# to escape the sandbox or cause damage to the host system.
-FORBIDDEN_IMPORTS = {
-    "subprocess",       # can run arbitrary shell commands
-    "ctypes",           # can call C functions, bypass Python safety
-    "socket",           # can open raw network connections
-    "multiprocessing",  # can spawn uncontrolled child processes
-}
-
-# These function calls are NOT allowed — even if the module is somehow
-# available, calling these specific functions is blocked.
-FORBIDDEN_CALLS = {
-    "eval",                       # executes arbitrary Python expressions
-    "exec",                       # executes arbitrary Python code
-    "compile",                    # compiles code strings (often used with eval/exec)
-    "__import__",                 # dynamic imports — can bypass our import checks
-    "os.system",                  # runs shell commands
-    "os.popen",                   # runs shell commands and reads output
-    "subprocess.run",             # runs external programs
-    "subprocess.Popen",           # runs external programs
-    "subprocess.call",            # runs external programs
-    "subprocess.check_call",      # runs external programs
-    "socket.socket",              # opens raw network sockets
-    "shutil.rmtree",              # can delete entire directory trees
-}
-
-# The scraper MUST define this function — it's the entry point that
-# our runner calls.
-REQUIRED_FUNCTION = "scrape"
-
-
-@dataclass
-class ValidationResult:
-    """
-    The result of validating a scraper's source code.
-
-    ok=True  means the code passed all safety checks.
-    ok=False means dangerous patterns were found — DO NOT run this code.
-
-    errors:   blocking issues (code will NOT be executed)
-    warnings: non-blocking concerns (code can still run, but be careful)
-    """
-    ok: bool
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-
-
-def validate(code: str) -> ValidationResult:
-    """
-    Parse the scraper code and check it for safety.
-
-    This function does three things:
-    1. Tries to parse the code — catches syntax errors early
-    2. Checks that the code defines a `scrape(url, output_dir)` function
-    3. Walks the entire AST looking for forbidden imports and function calls
-
-    Returns a ValidationResult with ok=True if everything looks safe.
-    """
-    result = ValidationResult(ok=True)
-
-    # Step 1: Can Python even parse this code?
-    try:
-        tree = ast.parse(code)
-    except SyntaxError as e:
-        return ValidationResult(ok=False, errors=[f"SyntaxError: {e}"])
-
-    # Step 2: Does it define the required scrape() function?
-    # We walk the entire AST because scrape() might be defined inside
-    # a class or nested scope (though it shouldn't be).
-    has_scrape = any(
-        isinstance(node, ast.FunctionDef) and node.name == REQUIRED_FUNCTION
-        for node in ast.walk(tree)
-    )
-    if not has_scrape:
-        result.errors.append(
-            f"Missing required function `{REQUIRED_FUNCTION}(url, output_dir)`. "
-            f"The scraper must define this function as its entry point."
-        )
-
-    # Step 3: Walk every node in the AST and check for dangerous patterns
-    for node in ast.walk(tree):
-
-        # Check import statements:  import subprocess, import ctypes, etc.
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                # Get the top-level module name (e.g. "subprocess" from "subprocess.something")
-                top_module = alias.name.split(".")[0]
-                if top_module in FORBIDDEN_IMPORTS:
-                    result.errors.append(f"Forbidden import: `{alias.name}`")
-
-        # Check from-imports:  from subprocess import run, etc.
-        elif isinstance(node, ast.ImportFrom):
-            module = (node.module or "").split(".")[0]
-            if module in FORBIDDEN_IMPORTS:
-                result.errors.append(f"Forbidden import: `from {node.module} import ...`")
-
-        # Check function calls:  eval(...), os.system(...), etc.
-        if isinstance(node, ast.Call):
-            call_name = _resolve_call_name(node.func)
-            if call_name in FORBIDDEN_CALLS:
-                result.errors.append(f"Forbidden function call: `{call_name}()`")
-
-    # Final verdict: any errors means it's not safe to run
-    result.ok = len(result.errors) == 0
-    return result
-
-
-def _resolve_call_name(func_node: ast.AST) -> str:
-    """
-    Turn an AST function-call node into a readable name string.
-
-    Examples:
-        eval(...)           → "eval"
-        os.system(...)      → "os.system"
-        subprocess.run(...) → "subprocess.run"
-
-    This lets us match against our FORBIDDEN_CALLS set.
-    """
-    # Simple name:  eval(...)
-    if isinstance(func_node, ast.Name):
-        return func_node.id
-
-    # Attribute access:  os.system(...)  or  subprocess.Popen(...)
-    if isinstance(func_node, ast.Attribute):
-        parts: list[str] = []
-        current: ast.AST = func_node
-        # Walk backward through the chain of attribute accesses
-        while isinstance(current, ast.Attribute):
-            parts.append(current.attr)
-            current = current.value
-        if isinstance(current, ast.Name):
-            parts.append(current.id)
-        return ".".join(reversed(parts))
-
-    return ""
+from validator import (  # noqa: E402  (import after stdlib block, intentional)
+    FORBIDDEN_IMPORTS,
+    FORBIDDEN_CALLS,
+    REQUIRED_FUNCTION,
+    ValidationResult,
+    validate,
+    _resolve_call_name,  # re-exported for backward compat with test_validator.py
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -287,11 +170,17 @@ def _resolve_call_name(func_node: ast.AST) -> str:
 # What does "isolated" mean here?
 #   - The subprocess runs in a temporary directory (not your project folder)
 #   - Environment variables are stripped to a bare minimum
-#   - Memory is capped (default: 512 MB) using resource.setrlimit
+#   - Memory is capped (default: 512 MB) using resource.setrlimit on
+#     Unix, or via Windows Job Objects where available
 #   - Wall-clock time is capped (default: 60 seconds)
-#   - Core dumps are disabled
+#   - Core dumps are disabled (Unix only)
 #   - The process runs in its own process group (so we can kill the
 #     whole tree if it spawns children)
+#
+# Cross-platform notes:
+#   - resource.setrlimit / os.setsid / os.killpg are Unix-only.
+#     On Windows we use CREATE_NEW_PROCESS_GROUP and taskkill.
+#   - The PATH env var is built dynamically per platform.
 #
 # If the scraper crashes, hangs, or runs out of memory, the sandbox
 # catches it cleanly and reports what happened.
@@ -320,7 +209,7 @@ class SandboxResult:
 
 def _build_preexec_fn(memory_mb: int):
     """
-    Create a function that runs BEFORE the subprocess starts.
+    Create a function that runs BEFORE the subprocess starts (Unix only).
 
     This is where we set the resource limits. It runs inside the child
     process, so the limits only affect the scraper — not our main script.
@@ -330,25 +219,54 @@ def _build_preexec_fn(memory_mb: int):
     - RLIMIT_CORE: disable core dumps (we don't need crash dumps)
     - os.setsid():  put the process in a new session group so we can
                     kill it and all its children with one signal
+
+    On Windows this returns None — preexec_fn is not supported there.
+    Windows sandboxing uses CREATE_NEW_PROCESS_GROUP instead.
     """
+    if IS_WINDOWS:
+        return None  # preexec_fn is not available on Windows
+
     def _apply():
         # Cap memory
-        try:
-            bytes_cap = memory_mb * 1024 * 1024
-            resource.setrlimit(resource.RLIMIT_AS, (bytes_cap, bytes_cap))
-        except Exception:
-            pass  # Some systems don't support RLIMIT_AS — that's okay
+        if resource is not None:
+            try:
+                bytes_cap = memory_mb * 1024 * 1024
+                resource.setrlimit(resource.RLIMIT_AS, (bytes_cap, bytes_cap))
+            except Exception:
+                pass  # Some systems don't support RLIMIT_AS — that's okay
 
-        # Disable core dumps
-        try:
-            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        except Exception:
-            pass
+            # Disable core dumps
+            try:
+                resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+            except Exception:
+                pass
 
         # New process group (so we can kill the entire tree later)
         os.setsid()
 
     return _apply
+
+
+def _kill_process_tree(proc: subprocess.Popen):
+    """
+    Kill a subprocess and all its children.
+
+    On Unix:    kill the process group via os.killpg (SIGKILL).
+    On Windows: use taskkill /T /F to terminate the tree.
+    """
+    try:
+        if IS_WINDOWS:
+            # /T = kill child processes,  /F = force,  /PID = target process
+            subprocess.call(
+                ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            os.killpg(proc.pid, signal.SIGKILL)
+    except Exception:
+        # Fallback: just kill the main process
+        proc.kill()
 
 
 def run_in_sandbox(
@@ -372,26 +290,47 @@ def run_in_sandbox(
 
     # Minimal environment — the scraper only gets what it absolutely needs.
     # No API keys, no database URLs, no home directory access.
-    env = {
-        "PATH": "/usr/local/bin:/usr/bin:/bin",
-        "PYTHONPATH": workdir,      # so it can import its own modules
-        "HOME": workdir,            # fake home directory
-        "TMPDIR": workdir,          # temp files go in the sandbox
-        "LC_ALL": "C.UTF-8",       # consistent encoding
-        "LANG": "C.UTF-8",
-    }
+    if IS_WINDOWS:
+        env = {
+            "PATH": os.environ.get("PATH", ""),  # Windows needs its real PATH for python.exe
+            "SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
+            "PYTHONPATH": workdir,
+            "USERPROFILE": workdir,  # Windows "home" equivalent
+            "TEMP": workdir,
+            "TMP": workdir,
+        }
+    else:
+        env = {
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "PYTHONPATH": workdir,      # so it can import its own modules
+            "HOME": workdir,            # fake home directory
+            "TMPDIR": workdir,          # temp files go in the sandbox
+            "LC_ALL": "C.UTF-8",       # consistent encoding
+            "LANG": "C.UTF-8",
+        }
 
     t0 = time.time()
 
     # --- Spawn the subprocess ---
+    # On Windows we use CREATE_NEW_PROCESS_GROUP so we can terminate the
+    # entire tree later via taskkill.  On Unix we rely on preexec_fn to
+    # call os.setsid() for the same purpose.
+    popen_kwargs: dict = {
+        "cwd": workdir,
+        "env": env,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+    }
+    preexec = _build_preexec_fn(memory_mb)
+    if preexec is not None:
+        popen_kwargs["preexec_fn"] = preexec
+    if IS_WINDOWS:
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+
     try:
         proc = subprocess.Popen(
             [sys.executable, script_path],    # same Python interpreter as us
-            cwd=workdir,                      # force working directory
-            env=env,                          # stripped environment
-            stdout=subprocess.PIPE,           # capture stdout
-            stderr=subprocess.PIPE,           # capture stderr
-            preexec_fn=_build_preexec_fn(memory_mb),  # set resource limits
+            **popen_kwargs,
         )
     except Exception as e:
         return SandboxResult(
@@ -413,10 +352,7 @@ def run_in_sandbox(
     except subprocess.TimeoutExpired:
         # The scraper took too long — kill the entire process group
         log.warning("Scraper timed out after %d seconds — killing process", timeout)
-        try:
-            os.killpg(proc.pid, 9)  # SIGKILL the whole process group
-        except Exception:
-            proc.kill()  # fallback: just kill the main process
+        _kill_process_tree(proc)
         stdout_bytes, stderr_bytes = proc.communicate()
         return SandboxResult(
             returncode=-9,
