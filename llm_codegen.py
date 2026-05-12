@@ -120,6 +120,15 @@ Use these hints to understand how each platform works. Adapt based on what you s
 - WARNING: Links to `archivedProcedures.html` or `login.html` are NOT document downloads — ignore those.
 - Do NOT assume documents require login. Check for the ZIP download link first.
 
+### had.de (Hessische Ausschreibungsdatenbank)
+- had.de is a notice board that links to documents on other platforms. It does NOT host documents itself.
+- **Use requests + BeautifulSoup** (no BrowserSession needed — the page is plain HTML, encoded as ISO-8859-1).
+- **Two patterns exist** — check both:
+  1. **NetServer iframe**: First fetch the original had.de URL. Search for `<a>` tags whose `href` contains `ehadunterlagen_noreg` (this is the "Zu den Unterlagen" no-registration link). Do NOT use BeautifulSoup `string=` matching — the link contains an `<img>` child so `string=` won't work. Use `href=` matching instead: `soup.find('a', href=lambda h: h and 'ehadunterlagen_noreg' in h)`. Fetch that URL. On the resulting page, find the `<iframe>` tag — its `src` points to `https://vergabe.had.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=...`. Extract the iframe `src` URL exactly as-is (subdomain is `vergabe.had.de`, NOT `www.had.de`). Replace `function=_Details` with `function=_DownloadTenderDocuments` in that URL. Return the modified URL.
+  2. **External platform redirect**: The page may contain links to external procurement platforms (e.g., subreport.de, vergabe.de, deutsche-evergabe.de, or any other domain). Look for any `<a>` tags with `href` pointing to an external URL (not had.de or absthessen.de). Return the first external procurement link found.
+- **Priority**: Check for "ehadunterlagen_noreg" link first (NetServer iframe). If not found, look for external platform links anywhere in the page.
+- If neither pattern is found, return [].
+
 ### subreport.de and subreport-elvis.de (ELViS platform)
 - Documents are publicly accessible — do NOT assume login is required.
 - **MUST use `BrowserSession`** (not raw `sync_playwright`). BrowserSession sets locale to de-DE and German Accept-Language headers, which is REQUIRED — the site must render in German for the navigation buttons to appear.
@@ -353,8 +362,8 @@ def _call_openrouter(
     api_key: str,
     model: str,
     timeout: int = 90,
-) -> str:
-    """Call OpenRouter chat completions. Returns the assistant message text."""
+) -> tuple[str, dict]:
+    """Call OpenRouter chat completions. Returns (assistant message, usage dict)."""
     payload = json.dumps({
         "model": model,
         "messages": [
@@ -378,7 +387,8 @@ def _call_openrouter(
     )
     with urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read())
-    return data["choices"][0]["message"]["content"]
+    usage = data.get("usage", {})
+    return data["choices"][0]["message"]["content"], usage
 
 
 def _extract_json(text: str) -> dict:
@@ -501,14 +511,15 @@ def generate_and_run(
         m = re.search(r"# platform_guess: (.+)", cached_code)
         platform_guess = m.group(1).strip() if m else "unknown"
         return {"urls": urls, "platform_guess": platform_guess, "cached": True,
-                "error": None, "has_download_all": None}
+                "error": None, "has_download_all": None, "usage": {}}
 
     # 2. Fetch HTML if not provided
     if html is None:
         html = _fetch_html(url)
         if not html:
             return {"urls": [], "platform_guess": "unknown", "cached": False,
-                    "error": "failed_to_fetch_html", "has_download_all": False}
+                    "error": "failed_to_fetch_html", "has_download_all": False,
+                    "usage": {}}
 
     snippet = html[:HTML_SNIPPET_CHARS]
 
@@ -521,9 +532,10 @@ def generate_and_run(
 
     # 3. Call LLM (with one retry on parse failure)
     last_error = None
+    usage = {}
     for attempt in range(2):
         try:
-            raw_response = _call_openrouter(user_prompt, api_key=api_key, model=model)
+            raw_response, usage = _call_openrouter(user_prompt, api_key=api_key, model=model)
             parsed = _extract_json(raw_response)
             code = parsed["function_code"]
             platform_guess = parsed.get("platform_guess", "unknown")
@@ -533,7 +545,8 @@ def generate_and_run(
             if attempt == 0:
                 continue
             return {"urls": [], "platform_guess": "unknown", "cached": False,
-                    "error": f"llm_error:{last_error}", "has_download_all": False}
+                    "error": f"llm_error:{last_error}", "has_download_all": False,
+                    "usage": usage}
 
     # 4. Run the generated code
     urls = _run_function(code, url)
@@ -543,4 +556,4 @@ def generate_and_run(
     _save_cached_function(domain, code, platform_guess)
 
     return {"urls": urls, "platform_guess": platform_guess, "cached": False,
-            "error": None, "has_download_all": has_download_all}
+            "error": None, "has_download_all": has_download_all, "usage": usage}

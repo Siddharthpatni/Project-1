@@ -21,11 +21,13 @@ CLAUDE.md
 
 # LLM-generated scrapers (regenerated on demand)
 llm_cache/
+eval_cache/
 
 # Test CSVs (keep publications_updated.csv as the main dataset)
 one_per_domain.csv
 two_per_domain.csv
 test_*.csv
+publications_100_domains.csv
 
 # Logs
 *.log

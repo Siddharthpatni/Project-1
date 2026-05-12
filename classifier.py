@@ -20,6 +20,8 @@ _URL_PATTERNS: dict[str, list[str]] = {
     "dtvp": [
         r"/Satellite/public/company/project/",
         r"/VMPSatellite/public/company/project/",
+        r"/Satellite/notice/",
+        r"/VMPSatellite/notice/",
     ],
     "ted_eu": [
         r"ted\.europa\.eu",

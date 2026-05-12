@@ -14,7 +14,7 @@ Options:
     --url-column NAME   CSV column name for URLs (default: auto-detect)
     --no-download       Discover URLs only, don't download files
     --output DIR        Output directory (default: ./results)
-    --workers N         Parallel workers (default: 4)
+    --workers N         Parallel workers (default: 8)
     --force-regen       Ignore LLM cache, regenerate scrapers
 
 Output:
@@ -102,6 +102,24 @@ def _is_document_url(url: str, timeout: int = 10) -> bool:
     # Wicket-based download endpoints (evergabe-online.de) — trust them
     if "zipDownloadButton" in url or "downloadAllButton" in url:
         return True
+
+    # Cross-platform redirect URLs — these are entry points to other procurement platforms
+    # returned by aggregators like had.de; they lead to documents even though they're HTML pages
+    cross_platform_patterns = [
+        r"subreport\.de/E\d+",
+        r"subreport-elvis\.de/",
+    ]
+    for pat in cross_platform_patterns:
+        if _re.search(pat, url):
+            return True
+
+    # Reject non-HTTP URLs (javascript:, mailto:, etc.)
+    if not url.startswith("http"):
+        return False
+
+    # Reject URLs with spaces or no valid domain (broken hrefs from scraping)
+    if " " in url or "." not in urlsplit(url).netloc:
+        return False
 
     # URLs ending in known HTML extensions — reject them
     # NOTE: .php/.asp/.aspx are dynamic and may serve files (e.g. download.php), so don't reject those
@@ -268,6 +286,7 @@ def _scrape_url_inner(
                 )
                 result["llm_cached"] = llm_result["cached"]
                 result["has_download_all"] = llm_result.get("has_download_all", False)
+                result["_usage"] = llm_result.get("usage", {})
                 if llm_result["platform_guess"] != "unknown":
                     result["platform"] = llm_result["platform_guess"]
                 if llm_result["error"]:
@@ -283,6 +302,7 @@ def _scrape_url_inner(
                     )
                     result["llm_cached"] = False
                     result["has_download_all"] = llm_result.get("has_download_all", False)
+                    result["_usage"] = llm_result.get("usage", {})
                     if llm_result["platform_guess"] != "unknown":
                         result["platform"] = llm_result["platform_guess"]
                     result["error"] = llm_result["error"]
@@ -499,15 +519,21 @@ def main() -> None:
                         help="Discover URLs only, skip downloading files")
     parser.add_argument("--output", type=Path, default=ROOT / "results",
                         help="Output directory")
-    parser.add_argument("--workers", type=int, default=4,
+    parser.add_argument("--workers", type=int, default=8,
                         help="Parallel worker threads")
     parser.add_argument("--force-regen", action="store_true",
                         help="Ignore LLM cache, regenerate scrapers")
+    parser.add_argument("--cache-dir", type=Path, default=None,
+                        help="Use a custom LLM cache directory (default: llm_cache/)")
     parser.add_argument("--export-seeds", type=Path, default=None,
                         metavar="SEEDS_FILE",
                         help="Append successfully discovered source URLs to a "
                              "seeds.canonical.txt file (e.g. for webArchive)")
     args = parser.parse_args()
+
+    if args.cache_dir:
+        llm_codegen.CACHE_DIR = args.cache_dir
+        print(f"Using custom cache: {args.cache_dir}")
 
     if not args.api_key:
         print("ERROR: --api-key or OPENROUTER_API_KEY env var required for unknown platforms")
