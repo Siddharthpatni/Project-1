@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="de" dir="ltr" class="no-js">
+<head>
+<script type="text/javascript" data-cmp-ab="1" src="https://cdn.consentmanager.net/delivery/autoblocking/c5e02139d1532.js" data-cmp-host="delivery.consentmanager.net" data-cmp-cdn="cdn.consentmanager.net" data-cmp-codesrc="13"></script>
+
+<meta charset="utf-8">
+<!-- 
+	This website is powered by TYPO3 - inspiring people to share!
+	TYPO3 is a free open source Content Management Framework initially created by Kasper Skaarhoj and licensed under GNU/GPL.
+	TYPO3 is copyright 1998-2026 of Kasper Skaarhoj. Extensions are copyright of their respective owners.
+	Information and contribution at https://typo3.org/
+-->
+
+<base href="https://www.deutsches-ausschreibungsblatt.de/">
+<link rel="icon" href="/_assets/4a7adc37494ab1ea528629edb687ea91/Icons/favicon.ico" type="image/vnd.microsoft.icon">
+
+<meta http-equiv="x-ua-compatible" content="IE=edge">
+<meta name="generator" content="TYPO3 CMS">
+<meta name="description" content="Finden Sie aktuelle Ausschreibungen für Dienstleistungen ➤ auch in ihrer Region ✓ Aufträge der öffentlichen Hand ✓ E-Mail-Service inkl. ✓ Jetzt Suche starten!">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index,follow">
+<meta name="twitter:card" content="summary">
+<meta name="apple-mobile-web-app-capable" content="no">
+
+
+<link rel="stylesheet" href="/typo3temp/assets/css/7015c8c4ac5ff815b57530b221005fc6.1763821498.css" media="all">
+<link rel="stylesheet" href="/_assets/55c29e8718173b881f4ee3ab44e26924/Css/styles.1724596595.css" media="all">
+<link rel="stylesheet" href="/_assets/4a7adc37494ab1ea528629edb687ea91/steppedform/style.1772806904.css" media="all">
+<link rel="stylesheet" href="/_assets/4a7adc37494ab1ea528629edb687ea91/steppedform/threestepp.1772806658.css" media="all">
+<link rel="stylesheet" href="dabl/css/style_addons.1742834037.css" media="all">
+<link rel="stylesheet" href="dabl/css/jquery-datepicker.1742834037.css" media="all">
+<link href="/_assets/b276af731577b5618507fbb1a6a3f8da/suchleiste/css/index.1747218889.css" rel="stylesheet" >
+
+
+
+
+
+
+
+<meta name="google-site-verification" content="4UiN5ekSxasNTOoKmX_OAy5FyQdHEnIOdminW5_tDPc" />
+<meta name="google-site-verification" content="5xwg41uuKKu3dZVVRYgFBbSvcXPCZYtvLehGQbxT8c8" />
+  <style type="text/css" media="screen">
+  @media screen and (-ms-high-contrast: active), (-ms-high-contrast: none) {
+  .mm-wrapper_opening .mm-menu_fx-menu-slide {
+    height:100%;
+    background-color:#333333;
+  }
+  .mm-menu a, .mm-menu a:active, .mm-menu a:hover, .mm-menu a:link, .mm-menu a:visited {
+    color:#e1e1e1!important;
+  }
+  .nav-mm-markup .form-inline {
+    display:none;
+  }
+  .mm-navbar__title {
+    color: #858585!important;
+  }
+
+.mm-btn:after {
+  border-color:#e1e1e1!important;
+}
+ .mm-btn:before {
+  border-color:#e1e1e1!important;
+ }
+.powermail_checkbox.form-control, .powermail_radio.form-control {
+  height:10px;
+  width:10px;
+  display:inline-block;
+}
+  }
+
+
+.footerNaviSeo{
+  .col, .col-sm-12{
+    min-width: 0;
+  }
+
+  h5{
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  ul li{
+      margin-bottom:0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow:ellipsis;
+      line-height:1.7;
+      font-weight: 400;
+      font-size: 12px;
+    a{
+      text-decoration:none !important;
+      font-weight: 400;
+      font-size: 12px;
+
+    }
+  }  
+}
+
+
+.keyvisual__container{
+  min-height:350px;
+}
+
+.text-end{
+  text-align:end;
+}
+    </style>
+    
+    <title>Ausschreibungen für Dienstleistungen</title>
+<link rel="canonical" href="/auftraege-ausschreibungen-dienstleistungen"/>
+
+<!-- This site is optimized with the Yoast SEO for TYPO3 plugin - https://yoast.com/typo3-extensions-seo/ -->
+<script type="application/ld+json">[{"@context":"https:\/\/www.schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"item":{"@id":"\/","name":"Das Auftragsportal"}},{"@type":"ListItem","position":2,"item":{"@id":"\/seo-trefferseite\/seo-uebersichtsseiten","name":"SEO-Spezialseiten"}},{"@type":"ListItem","position":3,"item":{"@id":"\/auftraege-ausschreibungen-dienstleistungen","name":"Dienstleistungen"}}]}]</script>
+
+<!-- VhsAssetsDependenciesLoaded app-css-bla,jQuery-n,slick-n,intersection-Observer-n,scrollama-n,bootstrap-js-n,app-js-n,powermailForm-n -->
+<link rel="stylesheet" href="/typo3temp/assets/vhs/vhs-assets-app-css-bla.css" />
+<script type="text/javascript" src="/typo3temp/assets/vhs/vhs-assets-jQuery-n.js"></script></head>
+<body id="p1034">
+
+
+
+
+
+
+
+
+
+
+
+<div class="page-wrapper"><header class="header"><div class="root-mainnav"><script defer>
+    function toggleMenu() {
+      document.querySelector('.menu').classList.toggle('open');
+      document.querySelector('.blurBg').classList.toggle('open');
+      document.querySelector('#nav-icon3').classList.toggle('open');
+      document.querySelector('body').classList.toggle('overflow-hidden-md');
+
+      document.querySelector('.logout_menu').classList.remove('open')
+      document.querySelector('.blurBgLo').classList.remove('open');
+    }
+
+    function toggleLogoutMenu() {
+      document.querySelector('.logout_menu').classList.toggle('open')
+      document.querySelector('.blurBgLo').classList.toggle('open');
+      document.querySelector('.chevron').classList.toggle('open');
+
+
+
+      document.querySelector('.menu').classList.remove('open');
+      document.querySelector('.blurBg').classList.remove('open');
+      document.querySelector('#nav-icon3').classList.remove('open');
+      document.querySelector('body').classList.remove('overflow-hidden-md');
+    }
+
+    /*const onClickOutside = (e) => {
+
+      console.log(e.currentTarget);
+
+      if(document.querySelector('.logout_menu').classList.contains('open')){
+       //document.querySelector('.logout_menu').classList.remove('open')
+      }
+    };
+
+    document.addEventListener("click", onClickOutside);*/
+
+  </script><div class="container"><div class="row"><div class="col-md-3 col-6"><a class="navbar-brand" href="/"><img alt="Deutsches Ausschreibungsblatt - Das Auftragsportal" src="/_assets/4a7adc37494ab1ea528629edb687ea91/Images/Logo/DA_blau.svg" width="370" height="184" /></a></div><div class="col-md-9 col-6 d-flex justify-content-end align-items-center"><nav aria-label="Hauptnavigation"><div><ul class="d-flex gap-2 align-items-center mb-0"><li
+                            class="pic_nav-item d-xxl-inline-block d-none "><a href="/auftrag-finden" 
+                              class="text-decoration-none fw-normal  ">Auftrag finden</a></li><li
+                            class="pic_nav-item d-xxl-inline-block d-none "><a href="/auftrag-vergeben" 
+                              class="text-decoration-none fw-normal  ">Auftrag vergeben</a></li><li
+                            class="pic_nav-item d-xxl-inline-block d-none "><a href="/akademie" 
+                              class="text-decoration-none fw-normal  ">Akademie</a></li><li
+                                class="pic_nav-item d-xxl-inline-block d-none "><a href="/wie-man-ausschreibungen-gewinnt"  style="color: var(--secondary);"
+                                  class="text-decoration-none fw-normal  ">Wie man Ausschreibungen gewinnt</a></li><li class="mb-0 mt-1 "><a aria-label="login" style="z-index: 1014;" href="/login"
+                              class="loginBtn position-relative text-decoration-none fw-normal  "><i
+                                class="fa-light fa-user"></i><span>Anmelden</span></a></li><li class="mb-0 mt-1"><div><div tabindex="0" id="burgerbutton" onclick="toggleMenu()"><div id="nav-icon3"><span></span><span></span><span></span><span></span></div><div id="bb_text">Menü</div></div><div class="menu flex-column"><a href="/auftrag-finden"
+                          class="pic_burger-nav-item text-decoration-none  ">Auftrag finden</a><a class="pic_burger-subnav-item" href="/auftrag-finden/tarife-fuer-unternehmen">Tarife für Unternehmen</a><a class="pic_burger-subnav-item" href="/auftrag-finden/haeufig-gestellte-fragen">Häufig gestellte Fragen / Hilfe</a><a class="pic_burger-subnav-item" href="/auftrag-finden/evergabe-fuer-bieter">eVergabe für Bieter</a><a href="/auftrag-vergeben"
+                          class="pic_burger-nav-item text-decoration-none  ">Auftrag vergeben</a><a href="/akademie"
+                          class="pic_burger-nav-item text-decoration-none  ">Akademie</a><div class="burger-footer d-flex flex-column pb-5 mt-5"><a href="/wie-man-ausschreibungen-gewinnt"
+                          class="pic_burger-nav-item-cta btn btn-default  ">Wie man Ausschreibungen gewinnt</a><a href="/wir-ueber-uns"
+                      class="pic_burger-subnav-item text-decoration-none fw-normal  ">Über
+                      uns</a><a href="/kontakt"
+                      class="pic_burger-subnav-item text-decoration-none fw-normal  ">Kontakt</a><a href="/glossar"
+                      class="pic_burger-subnav-item text-decoration-none fw-normal  ">Glossar</a><a href="/blog"
+                      class="pic_burger-subnav-item text-decoration-none fw-normal  ">Blog</a></div></div><div class="blurBg" onclick="toggleMenu()"></div></div></li></ul></div></nav></div></div></div></div></header><main class="page-body"><!--TYPO3SEARCH_begin--><div class="root-breadcrumb"><div class="container"><div class="row"><div class="col-md-12"><ul class="breadcrumb"><li class="acive sub "><a href="/" class="active sub">Das Auftragsportal</a></li><li class="acive sub current "><span style="font-size: .875rem;padding-left: 8px;">Dienstleistungen</span></li></ul></div></div></div></div><div class="container"><div class="row"><div class="col root-contentbar"><div id="c65584" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h1>Ausschreibungen für Dienstleistungen</h1><p><strong>Entdecken Sie mit dem Deutschen Ausschreibungsblatt aktuelle Ausschreibungen und attraktive Aufträge für Dienstleistungen in Deutschland.&nbsp;</strong></p><p>Ob Gebäudereinigung, IT-Services oder Beratungsprojekte – wir bringen Sie mit den passenden <strong>Ausschreibungen für Ihre Dienstleistung</strong> zusammen. Profitieren Sie von unserer umfangreichen Ausschreibungsdatenbank und verpassen Sie keine Chance, neue Kunden zu gewinnen und Ihr Geschäft zu erweitern. Starten Sie jetzt und finden Sie die passenden Projekte für Ihre Expertise!</p></div></div></div></div></div><div id="c65583" class="frame frame-default frame-type-header frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-global-space-before-small frame-space-after-none"><div class="frame-container"><div class="frame-inner"><header><h2 class="">
+				Passende Ausschreibungen für Ihre Dienstleistung suchen
+			</h2></header></div></div></div><div id="c65582" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><style>
+  .suchbox_outline {
+    position: relative; /* Ermöglicht die Anwendung von z-index */
+    top: 40px; /* Verschiebt das Element um 100px nach unten */
+    z-index: 9998; /* Setzt das Element über andere Elemente */
+}
+    .counter {
+    position: relative; 
+    top: 40px; /* Verschiebt das Element um 100px nach unten */
+    z-index: 9999; /* Setzt das Element über andere Elemente */
+}
+</style></div></div></div><div id="c65581" class="frame frame-default frame-type-list frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><script type="text/javascript">
+sessionStorage.clear()
+  var vueConfig = {
+    profilPage: false,
+    pageType: `searchbar`,
+    profilId: ``,
+    h1:``,
+    h2:``,
+    imgBig: false,
+    imgSmall: false,
+    configFile:'/_assets/b276af731577b5618507fbb1a6a3f8da/config.json',
+    counter: `27.228`
+  }
+</script>
+
+<div id="app" style="min-height:66px"></div>
+
+<script crossorigin="crossorigin" defer="defer" type="module" src="/_assets/b276af731577b5618507fbb1a6a3f8da/suchleiste/js/index.js?v=123"></script>
+</div></div></div><div id="c65580" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><style>
+/* Stil für die Box */
+.cluster .ce-textpic .ce-bodytext {
+  background-color: white; /* Weiße Box */
+  border: 1px solid #d3d3d3; /* Helle graue Outline */
+  border-radius: 3px; /* Abgerundete Ecken */
+  padding: 15px; /* Innenabstand */
+  margin-bottom: 20px; /* Abstand nach unten */
+}
+.cluster .ce-textpic {
+  transition: transform 0.5s ease; /* Transition für Hover und Ent-Hover */
+}
+/* Hover-Effekt für Kacheln */
+.cluster .ce-textpic:hover {
+    transform: scale(1.05); /* Kachel leicht vergrößern */
+}
+
+/* Entfernen von Abständen und Kontrolle der Links */
+.cluster .ce-bodytext p {
+  margin: 0; /* Entfernt Abstände zwischen den Absätzen */
+  padding: 0; /* Entfernt zusätzliche Innenabstände */
+  line-height: 1; /* Standard-Zeilenhöhe für Text innerhalb eines Absatzes */
+}
+
+/* Erhöhter Abstand zwischen den <p> Tags */
+.cluster .ce-bodytext p + p {
+  margin-top: 0.5rem; /* Erhöhter Abstand zwischen den Absätzen */
+}
+
+/* H3 in ce-bodytext innerhalb von cluster */
+.cluster .ce-bodytext h3 {
+  font-size: 1.1rem; /* Schriftgröße */
+  margin-bottom: 10px; /* Abstand nach unten */
+}
+
+/* Links */
+.cluster .ce-bodytext a {
+  font-weight: 400; /* Schriftschnitt */
+  display: block; /* Blockformat für einheitliches Layout */
+  font-size: 0.8rem; /* Schriftgröße */
+  text-decoration: none; /* Kein Unterstrich */
+  color: #446600; /* Textfarbe */
+  line-height: 1; /* Engere Zeilenhöhe für den Link */
+}
+
+/* Hover-Effekt für Links */
+.cluster .ce-bodytext a:hover {
+  text-decoration: underline; /* Unterstreichen bei Hover */
+}
+
+/* Toggle-Button */
+.cluster .ce-bodytext .toggle-btn {
+  font-weight: 400; /* Gleicher Schriftschnitt wie die Links */
+  font-size: 0.8rem; /* Gleiche Schriftgröße */
+  cursor: pointer; /* Zeigt an, dass es klickbar ist */
+  color: #69717e; /* Leicht abgeschwächte Farbe */
+  display: block; /* Gleiche Struktur wie die Links */
+  margin-top: 1.5em; /* Abstand nach oben */
+}
+
+/* Versteckte Elemente */
+.cluster .ce-bodytext .hidden {
+  display: none; /* Elemente verstecken */
+}
+
+</style></div></div></div></div></div></div><section id="c65579" style="background-image: url('/fileadmin/_processed_/8/8/csm_highfive_1937300755_ba1234c71a.jpg') " class="section text-left pt-3 pb-3 text-black section__background bg-primary section__dimmer --dimmer__dark "><div class="section__content"><div class="container"><div class="row"><div class="col"><div id="c65578" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><h2 style="color: white;font-size: 14px; font-weight: 600">Rubriken der Branche Dienstleistungen:</h2></div></div></div><div class="row   "><div class="col-12 col-sm-12 col-md-12 col-lg-4  col-xl-4 cluster"><div id="c65576" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-hard-hat"></i> Architekten- und Ingenieurleistungen</h3><p><a href="/ausschreibungen-bauleitung-bauaufsicht">Bauaufsicht/​Bauleitung</a></p><p><a href="/ausschreibungen-baugrunduntersuchung-bodenuntersuchung">Baugrund-/​Bodenuntersuchungen</a></p><p><a href="/ausschreibungen-baugutachten">Baugutachten/​Materialanalysen/​Werkstoffprüfungen</a></p><p><a href="/ausschreibungen-landschaftsbauplanung">GaLaBau/​Freianlagen (Planung/​Beratung)</a></p><p><a href="/ausschreibungen-planungsleistungen">Hochbau (Planung/​Beratung)</a></p><p><a href="/ausschreibungen-innenarchitektur">Innenarchitektur (Planung/​Beratung)</a></p><p><a href="/ausschreibungen-projektmanagement-bauwesen">Projektmanagement/​Kostenüberwachung (Bau)</a></p><p><a href="/ausschreibungen-staedtebauplanung">Städtebau (Planung/​Beratung)</a></p><p><a href="/ausschreibungen-tga-planung">TGA (Planung/​Beratung)</a></p><p><a href="/ausschreibungen-tragwerksplanung">Tragwerksplanung</a></p><p><a href="/ausschreibungen-planung-verkehrsanlagen-ingenieurbauten">Verkehrsanlagen/​Ingenieurbauten (Planung/​Beratung)</a></p><p><a href="/ausschreibungen-vermessung-kartografie">Vermessung/​Kartografie</a></p></div></div></div></div></div><div id="c65572" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-tshirt"></i> Bekleidung und Textilien</h3><p><a href="/ausschreibungen-textilreinigung-waeschereidienste">Textil-/​Wäschereidienste/​Kleidungsreparatur</a></p></div></div></div></div></div><div id="c65567" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-newspaper"></i> Druck/​Verlag/​Papier</h3><p><a href="/ausschreibungen-kopierdienste">Kopierdienste</a></p><p><a href="/ausschreibungen-druckauftraege">Druckaufträge</a></p><p><a href="/ausschreibungen-verlagsdienste">Verlagsdienste</a></p><p><a href="/ausschreibungen-formulare-vordrucke">Vordrucke/​Formulare</a></p><p><a href="/ausschreibungen-zeitungen-broschueren-magazine">Zeitungen/​Zeitschriften/​Broschüren/​Kundenmagazine</a></p></div></div></div></div></div><div id="c65575" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-bus"></i> Transport-/​Beförderungs-/​Logistikdienste</h3><p><a href="/ausschreibungen-abschleppdienste">Abschleppdienste</a></p><p><a href="/ausschreibungen-fuhrparkmanagement">Fuhrparkmanagement</a></p><p><a href="/ausschreibungen-guetertransportdienste">Gütertransportdienste</a></p><p><a href="/ausschreibungen-logistik-lagerhaltung">Lager-/​Kommissionierungs-/​Verpackungsdienste</a></p><p><a href="/ausschreibungen-personenbefoerderung">Personenbeförderungsdienste</a></p><p><a href="/ausschreibungen-kurierdienste-postdienstleistungen">Post-/​Kurierdienste</a></p><p><a href="/ausschreibungen-reisebuerodienste">Reisebürodienste</a></p><p><a href="/ausschreibungen-reparatur-wartung-fahrzeuge">Reparatur/​Wartung/​Umbau - Kraftfahrzeuge</a></p><p><a href="/ausschreibungen-reparatur-wartung-fahrzeuge">Reparatur/​Wartung/​Umbau - sonstige Fahrzeuge/​Häfen (außer Militär/​Raumfahrt)</a></p><p><a href="/ausschreibungen-schwertransporte">Schwertransporte</a></p><p><a href="/ausschreibungen-umzugsservice">Umzugsservice</a></p></div></div></div></div></div><div id="c65571" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-seedling"></i> Garten- und Landschaftsbau/​Forstwirtschaft</h3><p><a href="/ausschreibungen-baumpflege-baumkontrolle">Baumpflege/​-kontrolle/​Forstbewirtschaftung</a></p><p><a href="/ausschreibungen-felssicherung-hangsicherung-boeschungssicherung">Fels-/​Böschungs-/​Hangsicherung</a></p><p><a href="/ausschreibungen-gruenflaechenpflege-pflanzen">Grünflächenpflege/​Pflanzungen/​Pflanzen</a></p><p><a href="/ausschreibungen-galabau">sonstiger GaLaBau</a></p><p><a href="/ausschreibungen-zaunanlagen">Zaunanlagen</a></p></div></div></div></div></div></div><div class="col-12 col-sm-12 col-md-12 col-lg-4  col-xl-4 cluster"><div id="c65566" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-vacuum"></i> Gebäudemanagement/​Reinigung/​Ver- und Entsorgung</h3><p><a href="/ausschreibungen-entsorgung-recyclingdienste">Abfallentsorgung/​Recyclingdienste (außer Sondermüll)</a></p><p><a href="/ausschreibungen-abwasserentsorgung">Abwasserentsorgung</a></p><p><a href="/ausschreibungen-bauendreinigung">Bauendreinigung</a></p><p><a href="/ausschreibungen-entsorgung-sondermuell">Entsorgung von Sondermüll</a></p><p><a href="/ausschreibungen-fassadenreinigung">Fassadenreinigung</a></p><p><a href="/ausschreibungen-glasreinigung-fensterreinigung">Glas-/​Fensterreinigung</a></p><p><a href="/ausschreibungen-facility-management-haustechnik">Hausmeisterdienste/​Facility-Management</a></p><p><a href="/ausschreibungen-immobilien-verwaltung-vermietung-verkauf">Immobilienverkauf/​-vermietung/​-verwaltung</a></p><p><a href="/ausschreibungen-industriereinigung-maschinenreinigung">Industrie-/​Maschinenreinigung</a></p><p><a href="/ausschreibungen-reparatur-wartung-gebaeudetechnik">Reparatur/​Wartung/​Prüfung - Gebäudetechnik</a></p><p><a href="/ausschreibungen-reparatur-wartung-technische-anlagen">Reparatur/​Wartung/​Prüfung - technische Anlagen</a></p><p><a href="/ausschreibungen-rohrrheinigung-kanalrohruntersuchung">Rohrreinigung/Kanalrohruntersuchung/Geräte</a></p><p><a href="/ausschreibungen-sandreinigung-strandreinigung">Sand-/​Strandreinigung/​-austausch</a></p><p><a href="/ausschreibungen-schaedlingsbekaempfung">Schädlingsbekämpfung</a></p><p><a href="/ausschreibungen-unterhaltsreinigung-grundreinigung">Unterhalts-/​Grundreinigung</a></p><p><a href="/ausschreibungen-verpachtung-bewirtschaftung">Verpachtung/​Betrieb/​Bewirtschaftung</a></p><p><a href="/ausschreibungen-winterdienst-strassenreinigung">Winterdienst/​Straßenreinigung</a></p><p><a href="/ausschreibungen-zaehlerstandablesung">Zählerstandablesung</a></p></div></div></div></div></div><div id="c65574" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-phone-laptop"></i> IT/Kommunikationstechnik</h3><p><a href="/ausschreibungen-archivierung-katalogisierung">Archivierung/​Katalogisierung</a></p><p><a href="/ausschreibungen-aktenvernichtung-datentraegervernichtung">Aktenvernichtung/Datenträgervernichtung</a></p><p><a href="/ausschreibungen-digitalisierung-dokumente">Digitalisierung von Dokumenten</a></p><p><a href="/ausschreibungen-it-hardware-software">IT-Dienstleistungen</a></p></div></div></div></div></div><div id="c65569" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-carrot"></i> Lebensmittel und Landwirtschaft</h3><p><a href="/ausschreibungen-catering-gastronomie">Catering/​Gastro-/​Kantinenservice</a></p><p><a href="/ausschreibungen-landwirtschaftliche-dienstleistungen">Landwirtschaftliche Dienstleistungen</a></p><p><a href="/ausschreibungen-tierhaltung-veterinaerdienste">Tierhaltung/​Veterinärdienste</a></p></div></div></div></div></div><div id="c65570" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-megaphone"></i> Marketing &amp; Events</h3><p><a href="/ausschreibungen-hotellerie-beherbergung">Beherbergungen/​Hoteldienstleistungen</a></p><p><a href="/ausschreibungen-sport-freizeit-dienstleistungen">Freizeit-/​Sport-/​Unterhaltungsdienste</a></p><p><a href="/ausschreibungen-marktforschung-studien-gutachten">Marktforschung, Studien und Gutachten</a></p><p><a href="/ausschreibungen-marketing">Marketing-/Agenturleistungen</a></p><p><a href="/ausschreibungen-organisation-veranstaltungen">Veranstaltungs-/Event-/Ausstellungsorganisation</a></p><p><a href="/ausschreibungen-videoproduktion-fotografie">Videoproduktion/-dienste/Fotografische Dienste</a></p></div></div></div></div></div><div id="c65565" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-first-aid"></i> Medizin/​Gesundheit</h3><p><a href="/ausschreibungen-arbeitsmedizinische-betreuung">Arbeitsmedizinische Betreuung</a></p><p><a href="/ausschreibungen-gesundheit-arbeitsschutz">Gesundheitsdienste/​-beratung/​Arbeitsschutz</a></p><p><a href="/ausschreibungen-leichenschau-obduktion-bestattung">Leichenschau/​Obduktion/​Bestattung/​Überführung</a></p><p><a href="/ausschreibungen-labordienste">Medizinische Analysen/​Forschungs-/​Entwicklungs-/​Labordienste</a></p></div></div></div></div></div></div><div class="col-12 col-sm-12 col-md-12 col-lg-4  col-xl-4 cluster"><div id="c65573" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-user-tie"></i> Personal-/​Finanzwesen/​Beratung</h3><p><a href="/ausschreibungen-zeitarbeit-arbeitnehmerueberlassung-personalvermittlung">Arbeitnehmervermittlung/​-überlassung</a></p><p><a href="/ausschreibungen-bildung">Aus-/​Fortbildung/​Personalqualifizierung</a></p><p><a href="/ausschreibungen-dolmetscherdienste">Dolmetscherdienste</a></p><p><a href="/ausschreibungen-finanzdienstleistungen">Finanzdienste/​Buchhaltung/​Rechnungsstellung</a></p><p><a href="/ausschreibungen-rechtsberatung">Juristische Dienstleistungen</a></p><p><a href="/ausschreibungen-unternehmensberatung">Management-/​Unternehmensberatungsleistungen</a></p><p><a href="/ausschreibungen-schreibdienste">Schreibdienste</a></p><p><a href="/ausschreibungen-versicherungen">Versicherungsdienste</a></p><p><a href="/ausschreibungen-wirtschaftspruefung-steuerberatung">Wirtschaftsprüfung/​Steuerberatung</a></p></div></div></div></div></div><div id="c65568" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-shield-check"></i> Sicherheitsdienste</h3><p><a href="/ausschreibungen-baustellenvideoueberwachung">Baustellenvideoüberwachung</a></p><p><a href="/ausschreibungen-flughafensicherheit">Flughafensicherheitsdienste</a></p><p><a href="/ausschreibungen-personenschutz">Personenschutz</a></p><p><a href="/ausschreibungen-sicherheitsberatung">Sicherheitsberatung/​-strategien/​-konzepte</a></p><p><a href="/ausschreibungen-wachdienste-schliessdienste-empfangsdienste">Wach-/​Schließ-/​Empfangsdienste/​sonstige Sicherheitsdienste</a></p></div></div></div></div></div><div id="c65564" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h3><i class="fal fa-leaf-heart"></i> Umwelt/​Sozialwesen</h3><p><a href="/ausschreibungen-projekttraegerschaften">Projektträgerschaften</a></p><p><a href="/ausschreibungen-sozialwesen-betreuung">Sozialwesen/​Betreuungsleistungen/​Dienste von Organisationen</a></p><p><a href="/ausschreibungen-umweltschutz">Umweltschutz/​-beratung/​-analysen</a></p></div></div></div></div></div></div></div></div></div></div></div></section><div class="container" ><div class="row"><div class="col"><div id="c65562" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-global-space-before-medium frame-space-after-global-space-after-medium"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><h2>Aufträge und Ausschreibungen für Dienstleistungen</h2><p>Die Dienstleistungsbranche ist ein stetig wachsender Wirtschaftssektor in Deutschland. Die öffentliche Hand veröffentlicht regelmäßig <strong>Ausschreibungen für Dienstleistungen</strong>.</p><h3>Auftragspotentiale mit der öffentlichen Hand.</h3><p>Die Dienstleistungsbranche ist ein wesentlicher Faktor für das Wirtschaftswachstum Deutschlands und ein wichtiger Bestandteil jeder Branche. Der Kauf einer Maschine wäre heute&nbsp;ohne den entsprechenden Wartungsvertrag undenkbar.&nbsp;</p><p>Auch die öffentliche Hand benötigt externe Dienstleistungen. Sie schreibt Leistungen in vielen Bereichen aus und kauft diese ein. Somit finden Sie in unserem Auftragsportal aktuelle <strong>Ausschreibungen für Dienstleistungen</strong> wie Gebäudeservice, Entsorgung, Reinigung, Informationstechnologie, Kommunikation, Banken, Finanzen, Versicherungen, Immobilien, Versorgung, Grundstücks- und Wohnungswesen, Verkehr, Winterdienst, Medizin, Gesundheit, soziale Hilfsdienste, Wissenschaft, Bildung, Kultur u.v.m.</p></div></div></div></div></div><div id="c65845" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Alle Boxen mit ce-bodytext initialisieren
+  document.querySelectorAll(".cluster .ce-bodytext").forEach(box => {
+    const links = box.querySelectorAll("a"); // Alle Links in der Box
+    if (links.length > 4) {
+      // Berechne die Anzahl der ausgeblendeten Links
+      const hiddenCount = links.length - 4;
+
+      // Verstecke alle Links ab dem fünften, nur wenn mehr als eine Option ausgeblendet werden muss
+      links.forEach((link, index) => {
+        if (index >= 4) link.classList.add("hidden");
+      });
+
+      // Wenn mehr als eine Option ausgeblendet werden muss, füge den "Mehr"-Button hinzu
+      if (hiddenCount >= 1) {
+        const moreButton = document.createElement("a");
+        moreButton.textContent = `Weitere ${hiddenCount} Dienstleistungen anzeigen`;
+        moreButton.classList.add("toggle-btn");
+        links[3].after(moreButton); // Direkt nach dem vierten Link einfügen
+
+        // "Weniger"-Button als Listenelement hinzufügen
+        const lessButton = document.createElement("a");
+        lessButton.textContent = "Weniger anzeigen";
+        lessButton.classList.add("toggle-btn", "hidden");
+        box.appendChild(lessButton); // Am Ende der Liste einfügen
+
+        // Klick-Event für "Mehr"-Button
+        moreButton.addEventListener("click", () => {
+          links.forEach(link => link.classList.remove("hidden")); // Alle Links anzeigen
+          moreButton.classList.add("hidden"); // "Mehr"-Button verstecken
+          lessButton.classList.remove("hidden"); // "Weniger"-Button anzeigen
+        });
+
+        // Klick-Event für "Weniger"-Button
+        lessButton.addEventListener("click", () => {
+          links.forEach((link, index) => {
+            if (index >= 4) link.classList.add("hidden"); // Ab fünftem Link verstecken
+          });
+          lessButton.classList.add("hidden"); // "Weniger"-Button verstecken
+          moreButton.classList.remove("hidden"); // "Mehr"-Button anzeigen
+          moreButton.textContent = `Weitere ${hiddenCount} Dienstleistungen anzeigen`; // Text auf Anzahl der versteckten Links zurücksetzen
+        });
+      }
+    }
+  });
+});
+
+</script></div></div></div><div id="c65585" class="frame frame-default frame-type-shortcut frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div id="c16439" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><style>
+.sticky-banner {
+   z-index: 1000;
+    transition: all 0.5s ease-in-out;
+  position: fixed;
+  top: 184px;
+  right: 0;
+  background: linear-gradient(to top, rgba(15, 25, 60), rgba(67, 85, 143, 0.9));
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  width: 350px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+.sticky-banner.sticky {
+  position: fixed;
+    transition: all 0.5s ease-in-out;
+  top: 0;
+}
+  .headline-banner {
+    font-size: 28px;
+    font-weight: 300;
+    margin: 0 0 10px 0;
+    display: flex;
+    align-items: center;
+    color: #fff;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    text-align: left;
+  }
+
+  .sticky-banner .price {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 300;
+    color: #fff;
+  }
+
+  .list-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 30px 0 15px 0;
+    color: #fff;
+    text-align: left;
+  }
+
+  #my-list {
+    font-size: 16px;
+    font-weight: 300;
+    padding-left: 0px;
+    margin-left: 0;
+    color: #fff;
+  }
+
+  #my-list li {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 10px;
+    color: #fff;
+  }
+
+  #my-list li .fa-li {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 30px;
+    text-align: center;
+  }
+
+  #my-list li .fa-li i {
+    display: inline-block;
+    width: 100%;
+  }
+  #mein-link {
+        transition: all 0.25s ease-in-out;
+  color: white;
+    padding:3px;
+  text-decoration: underline;
+}
+
+#mein-link:hover {
+  background-color: #446600;
+    transition: all 0.25s ease-in-out;
+}
+@media screen and (max-width: 2030px) {
+  .sticky-banner {
+    width: 265px;
+  }
+}
+
+/* Hide the banner when screen width is less than 1670px */
+@media screen and (max-width: 1850px) {
+  .sticky-banner {
+    display: none;
+  }
+}
+</style><div class="sticky-banner"><h2 class="headline-banner">Alle Ausschreibungen im Komfort-Tarif</h2><p class="price">schon ab 42,00 € mtl.</p><a href="/recherchetarife" class="btn btn-primary" style="width: 100%;">Hier informieren</a><p class="list-title">Ihre Vorteile:</p><ul id="my-list"><li><span class="fa-li"><i class="fal fa-search"></i></span> Zugriff auf alle Ausschreibungen</li><li><span class="fa-li"><i class="fal fa-plus"></i></span> Laufend neue Auftragschancen</li><li><span class="fa-li"><i class="fal fa-envelope"></i></span> E-Mail bei neuen Ausschreibungen</li><li><span class="fa-li"><i class="fal fa-file-pdf"></i></span> PDF-Export der Ausschreibungen</li><li><span class="fa-li"><i class="fal fa-cloud-upload"></i></span> Teilnahme an eVergaben</li><li><span class="fa-li"><i class="fal fa-user-headset"></i></span> Persönlicher Kundensupport</li></ul><p style="color:white; text-align:center">
+  
+Fragen? Wir beraten Sie gerne<br><a href="tel:+49211882738288"  id="mein-link"><i class="fal fa-phone fa-flip-horizontal"></i>&nbsp;0211/88 27 38 - 288</a></p></div><script>
+  // Get the sticky banner element
+  var stickyBanner = document.querySelector('.sticky-banner');
+
+  // Get the initial offset position of the banner
+  var stickyBannerOffset = stickyBanner.offsetTop;
+
+  // Create a function that will be called when the user scrolls
+  function stickyBannerOnScroll() {
+    // Check if the user has scrolled past the initial offset position of the banner
+    if (window.pageYOffset > stickyBannerOffset) {
+      // Add a class to the banner that sets its position to fixed and makes it stick to the top
+      stickyBanner.classList.add('sticky');
+    } else {
+      // Remove the class if the user scrolls back up to the initial position
+      stickyBanner.classList.remove('sticky');
+    }
+  }
+
+  // Add an event listener to the window object that calls the stickyBannerOnScroll function when the user scrolls
+  window.addEventListener('scroll', stickyBannerOnScroll);
+</script></div></div></div></div></div></div></div></div></div><!--TYPO3SEARCH_end--></main><footer><div class="footer-wrapper"><div class="pt-5 bg-blue text-white"><div class="container"></div></div></div><section id="c65867" style="" class="section text-left pt-1 pb-5 text-black  bg-primary  "><div class="section__content"><div class="container"><div class="row"><div class="col"><div class="row contact  "><div class="col-12 col-sm-12 col-md-3    "><div id="c66091" class="frame frame-default frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-global-space-after-small"><div class="frame-container"><div class="frame-inner"><div class="ce-textpic ce-center ce-above"><div class="text-center justify-content-center col-sm-12 "><figure class="image"><img srcset="/fileadmin/Bilder/Logos/deutsches-ausschreibungsblatt_logo_weiss.svg 766w,
+            /fileadmin/Bilder/Logos/deutsches-ausschreibungsblatt_logo_weiss.svg 990w,
+            /fileadmin/Bilder/Logos/deutsches-ausschreibungsblatt_logo_weiss.svg 1200w,
+            /fileadmin/Bilder/Logos/deutsches-ausschreibungsblatt_logo_weiss.svg 1860w" sizes="
+             (max-width: 3000px) 1860px,
+             (max-width: 1200px) 1200px,
+             (max-width: 990px) 990px,
+             (max-width: 766px) 766px" class="u-image-full-width" alt="Logo: Deutsches Ausschreibungsblatt – Das Auftragsportal" loading="lazy" src="/fileadmin/Bilder/Logos/deutsches-ausschreibungsblatt_logo_weiss.svg" width="1200" height="597" /></figure></div></div></div></div></div></div><div class="col-12 col-sm-12 col-md-1    "></div><div class="col-12 col-sm-4 col-md-4   "><div id="c65854" class="frame frame-clean frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-global-space-before-medium frame-space-after-none"><div class="frame-container"><div class="frame-inner"><header><div class=" meta-label">Sie suchen Aufträge?</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><i class="fa-phone-alt fas"></i> 0211 / 88 27 38-288</li><li><a href="#" data-mailto-token="ocknvq,dkgvgtBfgwvuejgu/cwuuejtgkdwpiudncvv0fg" data-mailto-vector="2"><i class="fa-envelope fas"></i>bieter@deutsches-ausschreibungsblatt.de</a></li></ul></div></div></div></div></div></div><div class="col-12 col-sm-4 col-md-4   "><div id="c65855" class="frame frame-clean frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-global-space-before-medium frame-space-after-none"><div class="frame-container"><div class="frame-inner"><header><div class=" meta-label">Sie vergeben Aufträge?</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><i class="fa-phone-alt fas"></i>0211 / 88 27 38-23</li><li><i class="fa-envelope fas"></i><a href="#" data-mailto-token="ocknvq,xgticdgBfgwvuejgu/cwuuejtgkdwpiudncvv0fg" data-mailto-vector="2">vergabe@deutsches-ausschreibungsblatt.de</a></li></ul></div></div></div></div></div></div></div><div class="row   "><div class="col-12 col-sm-4 col-md-4 col-lg-4  col-xl-4 "><div id="c65858" class="frame frame-clean frame-type-menu_pages frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><header><div class=" meta-label">Informationen</div></header><ul class="list-unstyled text-small"><li><a href="/auftrag-finden/haeufig-gestellte-fragen" title="Häufig gestellte Fragen / Hilfe"><span>Häufig gestellte Fragen / Hilfe</span></a></li><li><a href="/glossar" title="Glossar"><span>Glossar</span></a></li><li><a href="/blog" title="Blog"><span>Blog</span></a></li><li><a href="/umfragen" title="Umfragen"><span>Umfragen</span></a></li><li><a href="/experten" title="Experten"><span>Experten</span></a></li><li><a href="/wir-ueber-uns/karriere" title="Karriere"><span>Karriere</span></a></li><li><a href="/cpv-codes" title="CPV-Codes"><span>CPV-Codes</span></a></li></ul></div></div></div></div><div class="col-12 col-sm-4 col-md-4 col-lg-4  col-xl-4 "><div id="c65859" class="frame frame-clean frame-type-textmedia frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-global-space-after-small"><div class="frame-container"><div class="frame-inner"><header><div class=" meta-label">Service für Unternehmen</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><a href="/auftrag-finden/tarife-fuer-unternehmen">Tarife für Unternehmen</a></li><li><a href="/auftraege-ausschreibungen-tiefbau">Ausschreibungen Tiefbau</a></li><li><a href="/auftraege-ausschreibungen-hochbau">Ausschreibungen Hochbau</a></li><li><a href="/auftraege-ausschreibungen-lieferleistungen-handel">Ausschreibungen Lieferleistungen</a></li><li><a href="/auftraege-ausschreibungen-dienstleistungen">Ausschreibungen Dienstleistungen</a></li><li><a href="/eu-ausschreibungen">Europaweite Ausschreibungen</a></li><li><a href="/vergabe24-direkt">Vergabe24 direkt</a></li><li><a href="/zeitung">Zeitung</a></li></ul></div></div></div></div></div></div><div class="col-12 col-sm-4 col-md-4 col-lg-4  col-xl-4 "><div id="c65860" class="frame frame-clean frame-type-menu_pages frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-global-space-after-small"><div class="frame-container"><div class="frame-inner"><header><div class=" meta-label">Service für Ausschreibende</div></header><ul class="list-unstyled text-small"><li><a href="/auftrag-vergeben/veroeffentlichung" title="Veröffentlichung"><span>Veröffentlichung</span></a></li><li><a href="/vergaberegister" title="Vergaberegister"><span>Vergaberegister</span></a></li><li><a href="/auftrag-vergeben/vergabemanagement" title="Vergabemanagement"><span>Vergabemanagement</span></a></li><li><a href="/auftrag-vergeben/evergabe" title="eVergabe"><span>eVergabe</span></a></li></ul></div></div></div></div></div></div></div></div></div></section><div class="container" ><div class="row"><div class="col"></div></div></div><section id="c67529" style="background: #4A556E !important;" class="section text-center pt-4 pb-0 text-white  bg-dark  "><div class="section__content"><div class="container"><div class="row"><div class="col"><div id="c65857" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><nav aria-label="Social Media" id="somelinks" class="YYYY frame frame-default frame-type-menu_pages frame-layout-0 frame-space-before-none frame-space-after-none"><ul class="list-unstyled text-small d-flex justify-content-left gap-5"><li><a href="https://www.youtube.com/channel/UCGBxDA6FnXpp3PjMXtlacrA"
+       target="_blank"
+       class="text-decoration-none"
+       title="YouTube – Deutsches Ausschreibungsblatt"><i class="fa-brands fa-youtube me-1"></i> YouTube
+    </a></li><li><a href="https://www.linkedin.com/company/deutsches-ausschreibungsblatt-gmbh"
+       target="_blank"
+       class="text-decoration-none"
+       title="LinkedIn – Deutsches Ausschreibungsblatt"><i class="fa-brands fa-linkedin me-1"></i> LinkedIn
+    </a></li><li><a href="https://www.instagram.com/ausschreibungen_gewinnen/"
+       target="_blank"
+       class="text-decoration-none"
+       title="Instagram – Deutsches Ausschreibungsblatt"><i class="fa-brands fa-instagram me-1"></i> Instagram
+    </a></li><li><a href="https://www.xing.com/pages/deutschesausschreibungsblattgmbh"
+       target="_blank"
+       class="text-decoration-none"
+       title="XING – Deutsches Ausschreibungsblatt"><i class="fa-brands fa-xing me-1"></i> XING
+    </a></li></ul></nav></div></div></div></div></div></div></div></section><div class="container" ><div class="row"><div class="col"></div></div></div><section id="c65864" style="background: #69717E !important;" class="section text-left pt-5 pb-5 text-white  bg-primary  "><div class="section__content"><div class="container"><div class="row"><div class="col"><div class="row footerNaviSeo  "><div class="col-12 col-sm-12 col-md col-lg  col-xl "><a id="c65869"></a><div class="frame-space-before-global-space-before-small"></div><header><div class=" meta-label">Aufträge nach Lieferleistungen</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><a href="/ausschreibungen-medikamente-arzneimittel">Arzneimittel</a></li><li><a href="/ausschreibungen-baustoffe-baumaterial">Baustoffe und Baumaterial</a></li><li><a href="/ausschreibungen-buerotechnik-hardware">Bürotechnik/Hardware</a></li><li><a href="/ausschreibungen-containergebaeude">Containergebäude</a></li><li><a href="/ausschreibungen-druckauftraege">Druckaufträge</a></li><li><a href="/ausschreibungen-strom-energie">Energieversorgung</a></li><li><a href="/ausschreibungen-fahrzeuge">Fahrzeuge</a></li><li><a href="/ausschreibungen-forstwirtschaftliche-erzeugnisse">Forstwirtschaftliche Erzeugnisse</a></li><li><a href="/ausschreibungen-kommunaltechnik-landtechnik-forsttechnik">Kommunal-/Land-/Forsttechnik</a></li><li><a href="/ausschreibungen-kuechenmoebel-kuechentechnik">Küchenmöbel/Gastrotechnik</a></li><li><a href="/ausschreibungen-labortechnik-messgeraete">Labortechnik</a></li><li><a href="/ausschreibungen-verbrauchsmaterial-medizin-labor">Medizinisches Verbrauchsmaterial</a></li><li><a href="/ausschreibungen-medizintechnik">Medizintechnik/Instrumente</a></li><li><a href="/ausschreibungen-messebau-ladenbau">Messebau und Ladenbau</a></li><li><a href="/ausschreibungen-moebel-schulen-kitas-kultureinrichtungen">Mobiliar für Bildungseinrichtungen</a></li><li><a href="/ausschreibungen-praesentationstechnik-medientechnik">Präsentations- und Medientechnik</a></li></ul></div></div><div class="frame-space-after-global-space-after-small"></div></div><div class="col-12 col-sm-12 col-md col-lg  col-xl "><a id="c65868"></a><div class="frame-space-before-global-space-before-small"></div><header><div class=" meta-label">Aufträge nach Dienstleistungen</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><a href="/ausschreibungen-entsorgung-recyclingdienste">Abfallentsorgung/Recyclingdienste</a></li><li><a href="/ausschreibungen-architektenleistungen-ingenieurleistungen">Architekten-/Ingenieurleistungen</a></li><li><a href="/ausschreibungen-bauendreinigung">Bauendreinigung</a></li><li><a href="/ausschreibungen-baumpflege-baumkontrolle">Baumpflege und -kontrolle</a></li><li><a href="/ausschreibungen-bildung">Bildung</a></li><li><a href="/ausschreibungen-catering-gastronomie">Catering/Gastro-/Kantinenservice</a></li><li><a href="/ausschreibungen-facility-management-haustechnik">Facility-Management</a></li><li><a href="/ausschreibungen-gesundheit-arbeitsschutz">Gesundheitsdienste/Arbeitsschutz</a></li><li><a href="/ausschreibungen-gruenflaechenpflege-pflanzen">Grünflächenpflege/Pflanzen</a></li><li><a href="/ausschreibungen-it-dienstleistungen">IT-Dienstleistungen</a></li><li><a href="/ausschreibungen-marketing">Marketing- und Agenturleistungen</a></li><li><a href="/ausschreibungen-personenbefoerderung">Personenbeförderungsdienste</a></li><li><a href="/ausschreibungen-umweltschutz">Umweltschutz/-beratung/-analysen</a></li><li><a href="/ausschreibungen-unterhaltsreinigung-grundreinigung">Unterhalts-/Grundreinigung</a></li><li><a href="/ausschreibungen-unternehmensberatung">Unternehmensberatung</a></li><li><a href="/ausschreibungen-wachdienste-schliessdienste-empfangsdienste">Wach- und Empfangsdienste</a></li></ul></div></div><div class="frame-space-after-global-space-after-small"></div></div><div class="col-12 col-sm-12 col-md col-lg col-xl "><a id="c65866"></a><div class="frame-space-before-global-space-before-small"></div><header><div class=" meta-label">Aufträge nach Bauleistungen</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><a href="/ausschreibungen-abbrucharbeiten-rueckbau">Abbrucharbeiten</a></li><li><a href="/ausschreibungen-bodenbelagsarbeiten">Bodenbelagsarbeiten</a></li><li><a href="/ausschreibungen-brandschutz">Brandschutz</a></li><li><a href="/ausschreibungen-elektroarbeiten">Elektroarbeiten</a></li><li><a href="/ausschreibungen-galabau">Garten- und Landschaftsbau</a></li><li><a href="/ausschreibungen-heizungsinstallation-heizungsanlagen">Heizungsinstallation/-anlagen</a></li><li><a href="/ausschreibungen-kanalbau">Kanalbau</a></li><li><a href="/ausschreibungen-klimatechnik-kaeltetechnik-lueftungstechnik">Klima-/Kälte-/Lüftungstechnik</a></li><li><a href="/ausschreibungen-malerarbeiten">Maler/Anstreicher/Tapezierer</a></li><li><a href="/ausschreibungen-rohbau">Rohbau</a></li><li><a href="/ausschreibungen-metallbauarbeiten">Schlosser/Metallbau/Stahlbau</a></li><li><a href="/ausschreibungen-photovoltaik-solartechnik">Solartechnik/-anlagen</a></li><li><a href="/ausschreibungen-strassenbau">Straßenbau</a></li><li><a href="/ausschreibungen-tankstellen-e-ladestationen">Tankstellenbau/E-Ladestationen</a></li><li><a href="/ausschreibungen-tischlerarbeiten-zimmererarbeiten">Tischler/Schreiner</a></li><li><a href="/ausschreibungen-trockenbau">Trockenbau</a></li></ul></div></div><div class="frame-space-after-global-space-after-small"></div></div><div class="col-12 col-sm-12 col-md col-lg col-xl "><a id="c65870"></a><div class="frame-space-before-global-space-before-small"></div><header><div class=" meta-label">Aufträge nach Bundesländern</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><a href="/ausschreibungen-baden-wuerttemberg">Baden-Württemberg</a></li><li><a href="/ausschreibungen-bayern">Bayern</a></li><li><a href="/ausschreibungen-berlin">Berlin</a></li><li><a href="/ausschreibungen-brandenburg">Brandenburg</a></li><li><a href="/ausschreibungen-bremen">Bremen</a></li><li><a href="/ausschreibungen-hamburg">Hamburg</a></li><li><a href="/ausschreibungen-hessen">Hessen</a></li><li><a href="/ausschreibungen-mecklenburg-vorpommern">Mecklenburg-Vorpommern</a></li><li><a href="/ausschreibungen-niedersachsen">Niedersachsen</a></li><li><a href="/ausschreibungen-nrw-nordrhein-westfalen">Nordrhein-Westfalen</a></li><li><a href="/ausschreibungen-rheinland-pfalz">Rheinland-Pfalz</a></li><li><a href="/ausschreibungen-saarland">Saarland</a></li><li><a href="/ausschreibungen-sachsen">Sachsen</a></li><li><a href="/ausschreibungen-sachsen-anhalt">Sachsen-Anhalt</a></li><li><a href="/ausschreibungen-schleswig-holstein">Schleswig-Holstein</a></li><li><a href="/ausschreibungen-thueringen">Thüringen</a></li></ul></div></div><div class="frame-space-after-global-space-after-small"></div></div><div class="col-12 col-sm-12 col-md col-lg col-xl "><a id="c65871"></a><div class="frame-space-before-global-space-before-small"></div><header><div class=" meta-label">Aufträge nach Städten</div></header><div class="ce-textpic ce-center ce-above"><div class="ce-bodytext"><ul class="list-unstyled"><li><a href="/ausschreibungen-duesseldorf">Düsseldorf</a></li><li><a href="/ausschreibungen-erfurt">Erfurt</a></li><li><a href="/ausschreibungen-frankfurt-rhein-main">Frankfurt am Main</a></li><li><a href="/ausschreibungen-hannover">Hannover</a></li><li><a href="/ausschreibungen-karlsruhe">Karlsruhe</a></li><li><a href="/ausschreibungen-kiel">Kiel</a></li><li><a href="/ausschreibungen-koeln">Köln</a></li><li><a href="/ausschreibungen-leipzig">Leipzig</a></li><li><a href="/ausschreibungen-magdeburg">Magdeburg</a></li><li><a href="/ausschreibungen-mainz-rheinhessen">Mainz</a></li><li><a href="/ausschreibungen-muenchen-oberbayern">München</a></li><li><a href="/ausschreibungen-nuernberg-mittelfranken">Nürnberg</a></li><li><a href="/ausschreibungen-potsdam">Potsdam</a></li><li><a href="/ausschreibungen-region-rostock">Rostock</a></li><li><a href="/ausschreibungen-regionalverband-saarbruecken">Saarbrücken</a></li><li><a href="/ausschreibungen-stuttgart">Stuttgart</a></li></ul></div></div><div class="frame-space-after-global-space-after-small"></div></div></div></div></div></div></div></section><div class="container" ><div class="row"><div class="col"></div></div></div><section id="c65862" style="background: #ffffff !important;" class="section text-left pt-5 pb-0 text-black  bg-light  "><div class="section__content"><div class="container"><div class="row"><div class="col"><div id="c65861" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><div style="color: #0f1a3d;"><p class="text-center">
+    © Deutsches Ausschreibungsblatt GmbH 2026<br>
+    &nbsp;
+    <a href="/agb" style="color: inherit;">AGB</a> • 
+    <a href="/impressum" style="color: inherit;">Impressum</a> • 
+    <a href="/datenschutz" style="color: inherit;">Datenschutz</a> • 
+    <a href="javascript:__cmp('showScreenAdvanced')" style="color: inherit;">Cookie-Einstellungen</a></p></div></div></div></div></div></div></div></div></section><div class="container" ><div class="row"><div class="col"><div id="c67530" class="frame frame-default frame-type-html frame-layout-0 frame-background-none frame-no-backgroundimage frame-space-before-none frame-space-after-none"><div class="frame-container"><div class="frame-inner"><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Deutsches Ausschreibungsblatt GmbH",
+  "alternateName": [
+    "DA",
+    "Deutsches Ausschreibungsblatt",
+    "Ausschreibungsplattform",
+    "Auftragsportal"
+  ],
+  "slogan": "Das Auftragsportal",
+  "url": "https://www.deutsches-ausschreibungsblatt.de",
+  "logo": "https://www.deutsches-ausschreibungsblatt.de/_assets/4a7adc37494ab1ea528629edb687ea91/Images/Logo/DA_blau.svg",
+
+  "description": "Das Deutsche Ausschreibungsblatt (DA) ist eine der führenden Ausschreibungsplattformen in Deutschland – Das Auftragsportal für öffentliche Ausschreibungen, eVergabe und Vergabemanagement. Unternehmen finden hier zentral über 30.000 laufende Ausschreibungen, redaktionell geprüft, KI-gestützt strukturiert und mit über 260.000 veröffentlichten Bekanntmachungen pro Jahr eine der größten Vergabedatenbanken Deutschlands.",
+
+  "foundingDate": "1954",
+
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "Himmelgeister Str. 103–105",
+    "postalCode": "40225",
+    "addressLocality": "Düsseldorf",
+    "addressCountry": "DE"
+  },
+
+  "contactPoint": [
+    {
+      "@type": "ContactPoint",
+      "contactType": "customer support",
+      "telephone": "+49-211-882738288",
+      "faxNumber": "+49-211-381607",
+      "email": "service@deutsches-ausschreibungsblatt.de",
+      "availableLanguage": ["de"],
+      "url": "https://www.deutsches-ausschreibungsblatt.de/kontakt"
+    }
+  ],
+
+  "employee": [
+    { "@type": "Person", "name": "Colette Höfener", "jobTitle": "Geschäftsführung" },
+    { "@type": "Person", "name": "Jobst Scheidemann", "jobTitle": "Geschäftsführung" },
+    { "@type": "Person", "name": "Uwe Kielas", "jobTitle": "Geschäftsführung" }
+  ],
+
+  "identifier": [
+    {
+      "@type": "PropertyValue",
+      "propertyID": "Handelsregister",
+      "value": "Amtsgericht Düsseldorf HRB 625"
+    },
+    {
+      "@type": "PropertyValue",
+      "propertyID": "USt-IdNr",
+      "value": "DE119433560"
+    }
+  ],
+
+  "sameAs": [
+    "https://www.linkedin.com/company/deutsches-ausschreibungsblatt-gmbh",
+    "https://www.instagram.com/ausschreibungen_gewinnen/",
+    "https://www.xing.com/pages/deutschesausschreibungsblattgmbh",
+    "https://www.youtube.com/@deutschesausschreibungsblatt"
+  ],
+
+  "knowsAbout": [
+    "Ausschreibungen finden",
+    "Ausschreibungsplattform",
+    "Auftragsportal",
+    "öffentliche Aufträge",
+    "eVergabe",
+    "Ausschreibungsrecherche",
+    "Vergabeunterlagen",
+    "Vergaberecht",
+    "UVgO",
+    "VgV",
+    "VOB/A",
+    "Bieterkommunikation",
+    "Vergabemanagement",
+    "Unternehmen suchen Aufträge",
+    "Aufträge gewinnen"
+  ],
+
+  "hasOfferCatalog": {
+    "@type": "OfferCatalog",
+    "name": "Leistungen und Zugangsmodelle des Deutschen Ausschreibungsblatts",
+    "itemListElement": [
+
+      {
+        "@type": "OfferCatalog",
+        "name": "Zugangsmodelle für Unternehmen",
+        "itemListElement": [
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Unregistrierter Zugriff",
+              "description": "Zugang zur Ausschreibungssuche ohne Registrierung. Unternehmen können öffentliche Ausschreibungen recherchieren und sich einen ersten Überblick über laufende Verfahren verschaffen.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-finden/tarife-fuer-unternehmen"
+            }
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Kostenloser Basis-Zugang",
+              "description": "Kostenfreier Basis-Zugang mit Zugang zur eVergabe, Vergabeunterlagen, Merkliste, To-do-Liste, Notizen und Archivfunktionen. Ermöglicht Unternehmen ohne Kosten alle Basisfunktionen zur Teilnahme an der eVergabe und zur Ausschreibungssuche.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-finden/tarife-fuer-unternehmen"
+            },
+            "price": "0",
+            "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock"
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Komfort-Zugang",
+              "description": "Kostenpflichtiger Komfort-Zugang mit Vollzugriff auf Ausschreibungstexte aus ganz Deutschland sowie erweiterten Komfortfunktionen wie Suchprofilen und E-Mail-Benachrichtigungen.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-finden/tarife-fuer-unternehmen"
+            }
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Komfort-Tarif Regio",
+              "description": "Kostenpflichtiger Komfort-Regio-Zugang mit Vollzugriff auf Ausschreibungstexte im Umkreis von 50 km sowie Suchprofilen und E-Mail-Benachrichtigungen.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-finden/tarife-fuer-unternehmen"
+            }
+          }
+
+        ]
+      },
+
+      {
+        "@type": "OfferCatalog",
+        "name": "Funktionen und Lösungen",
+        "itemListElement": [
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Auftrag finden",
+              "description": "Recherchefunktion für öffentliche Ausschreibungen mit Filtern, Suchprofilen, Benachrichtigungen und Merkliste.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-finden"
+            }
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "SoftwareApplication",
+              "name": "eVergabe",
+              "applicationCategory": "BusinessApplication",
+              "operatingSystem": "Web",
+              "description": "Software für öffentliche Auftraggeber zur Durchführung elektronischer Vergabeverfahren inklusive Veröffentlichung, Kommunikation und Angebotsannahme.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-vergeben/evergabe"
+            }
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "SoftwareApplication",
+              "name": "Vergabemanagement",
+              "applicationCategory": "BusinessApplication",
+              "operatingSystem": "Web",
+              "description": "Software für öffentliche Auftraggeber zur rechtssicheren Planung, Durchführung und Dokumentation vollständiger Vergabeverfahren.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-vergeben/vergabemanagement"
+            }
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Veröffentlichung von Ausschreibungen",
+              "description": "Dienstleistung zur Veröffentlichung von Bekanntmachungen mit hoher Reichweite digital und in der Zeitung.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/auftrag-vergeben/veroeffentlichung"
+            }
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "Akademie-Schulungen für Unternehmen",
+              "description": "Weiterbildungen zu Ausschreibungsprozessen und Angebotsstrategien.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/akademie/unternehmen"
+            }
+          },
+
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Course",
+              "name": "Schulungen für ausschreibende Stellen",
+              "description": "Schulungen zu eVergabe und Vergabemanagement.",
+              "url": "https://www.deutsches-ausschreibungsblatt.de/akademie/ausschreibende-stellen-anwender"
+            }
+          }
+
+        ]
+      }
+
+    ]
+  }
+}
+</script></div></div></div><div class="row sitemap"><div class="col-md-4"></div><div class="col-md-4"></div><div class="col-md-4"></div></div></div></div></div></footer></div><script type="text/javascript">
+    window.__PAGE_SETTINGS__ = {
+        
+        
+        
+            useMobileMenuInsteadOfBootstrapMenu: true,
+        
+    }
+</script>
+
+<script src="/_assets/4fc141778f1760e170ef96a641189804/JavaScript/Questions.1773645817.js"></script>
+<script src="/_assets/4a7adc37494ab1ea528629edb687ea91/steppedform/form.1772806343.js"></script>
+<script src="/_assets/4a7adc37494ab1ea528629edb687ea91/steppedform/three.1772805998.js"></script>
+<script src="dabl/js/iframe.1742834037.js"></script>
+<script src="dabl/js/jquery-datepicker.min.1742834037.js"></script>
+<script async="async" src="/_assets/2a58d7833cb34b2a67d37f5b750aa297/JavaScript/default_frontend.1762857857.js"></script>
+<script>
+/*<![CDATA[*/
+/*TS_inlineFooter*/
+!function(a,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.AOS=t():a.AOS=t()}(self,(()=>(()=>{var a={821:(a,t,o)=>{"use strict";o.d(t,{Z:()=>i});var s=o(81),d=o.n(s),n=o(645),e=o.n(n)()(d());e.push([a.id,'body[data-aos-duration="50"] [data-aos],[data-aos][data-aos][data-aos-duration="50"]{transition-duration:50ms}body[data-aos-delay="50"] [data-aos],[data-aos][data-aos][data-aos-delay="50"]{transition-delay:0s}body[data-aos-delay="50"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="50"].aos-animate{transition-delay:50ms}body[data-aos-duration="100"] [data-aos],[data-aos][data-aos][data-aos-duration="100"]{transition-duration:100ms}body[data-aos-delay="100"] [data-aos],[data-aos][data-aos][data-aos-delay="100"]{transition-delay:0s}body[data-aos-delay="100"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="100"].aos-animate{transition-delay:100ms}body[data-aos-duration="150"] [data-aos],[data-aos][data-aos][data-aos-duration="150"]{transition-duration:150ms}body[data-aos-delay="150"] [data-aos],[data-aos][data-aos][data-aos-delay="150"]{transition-delay:0s}body[data-aos-delay="150"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="150"].aos-animate{transition-delay:150ms}body[data-aos-duration="200"] [data-aos],[data-aos][data-aos][data-aos-duration="200"]{transition-duration:200ms}body[data-aos-delay="200"] [data-aos],[data-aos][data-aos][data-aos-delay="200"]{transition-delay:0s}body[data-aos-delay="200"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="200"].aos-animate{transition-delay:200ms}body[data-aos-duration="250"] [data-aos],[data-aos][data-aos][data-aos-duration="250"]{transition-duration:250ms}body[data-aos-delay="250"] [data-aos],[data-aos][data-aos][data-aos-delay="250"]{transition-delay:0s}body[data-aos-delay="250"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="250"].aos-animate{transition-delay:250ms}body[data-aos-duration="300"] [data-aos],[data-aos][data-aos][data-aos-duration="300"]{transition-duration:300ms}body[data-aos-delay="300"] [data-aos],[data-aos][data-aos][data-aos-delay="300"]{transition-delay:0s}body[data-aos-delay="300"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="300"].aos-animate{transition-delay:300ms}body[data-aos-duration="350"] [data-aos],[data-aos][data-aos][data-aos-duration="350"]{transition-duration:350ms}body[data-aos-delay="350"] [data-aos],[data-aos][data-aos][data-aos-delay="350"]{transition-delay:0s}body[data-aos-delay="350"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="350"].aos-animate{transition-delay:350ms}body[data-aos-duration="400"] [data-aos],[data-aos][data-aos][data-aos-duration="400"]{transition-duration:400ms}body[data-aos-delay="400"] [data-aos],[data-aos][data-aos][data-aos-delay="400"]{transition-delay:0s}body[data-aos-delay="400"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="400"].aos-animate{transition-delay:400ms}body[data-aos-duration="450"] [data-aos],[data-aos][data-aos][data-aos-duration="450"]{transition-duration:450ms}body[data-aos-delay="450"] [data-aos],[data-aos][data-aos][data-aos-delay="450"]{transition-delay:0s}body[data-aos-delay="450"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="450"].aos-animate{transition-delay:450ms}body[data-aos-duration="500"] [data-aos],[data-aos][data-aos][data-aos-duration="500"]{transition-duration:500ms}body[data-aos-delay="500"] [data-aos],[data-aos][data-aos][data-aos-delay="500"]{transition-delay:0s}body[data-aos-delay="500"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="500"].aos-animate{transition-delay:500ms}body[data-aos-duration="550"] [data-aos],[data-aos][data-aos][data-aos-duration="550"]{transition-duration:550ms}body[data-aos-delay="550"] [data-aos],[data-aos][data-aos][data-aos-delay="550"]{transition-delay:0s}body[data-aos-delay="550"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="550"].aos-animate{transition-delay:550ms}body[data-aos-duration="600"] [data-aos],[data-aos][data-aos][data-aos-duration="600"]{transition-duration:600ms}body[data-aos-delay="600"] [data-aos],[data-aos][data-aos][data-aos-delay="600"]{transition-delay:0s}body[data-aos-delay="600"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="600"].aos-animate{transition-delay:600ms}body[data-aos-duration="650"] [data-aos],[data-aos][data-aos][data-aos-duration="650"]{transition-duration:650ms}body[data-aos-delay="650"] [data-aos],[data-aos][data-aos][data-aos-delay="650"]{transition-delay:0s}body[data-aos-delay="650"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="650"].aos-animate{transition-delay:650ms}body[data-aos-duration="700"] [data-aos],[data-aos][data-aos][data-aos-duration="700"]{transition-duration:700ms}body[data-aos-delay="700"] [data-aos],[data-aos][data-aos][data-aos-delay="700"]{transition-delay:0s}body[data-aos-delay="700"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="700"].aos-animate{transition-delay:700ms}body[data-aos-duration="750"] [data-aos],[data-aos][data-aos][data-aos-duration="750"]{transition-duration:750ms}body[data-aos-delay="750"] [data-aos],[data-aos][data-aos][data-aos-delay="750"]{transition-delay:0s}body[data-aos-delay="750"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="750"].aos-animate{transition-delay:750ms}body[data-aos-duration="800"] [data-aos],[data-aos][data-aos][data-aos-duration="800"]{transition-duration:800ms}body[data-aos-delay="800"] [data-aos],[data-aos][data-aos][data-aos-delay="800"]{transition-delay:0s}body[data-aos-delay="800"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="800"].aos-animate{transition-delay:800ms}body[data-aos-duration="850"] [data-aos],[data-aos][data-aos][data-aos-duration="850"]{transition-duration:850ms}body[data-aos-delay="850"] [data-aos],[data-aos][data-aos][data-aos-delay="850"]{transition-delay:0s}body[data-aos-delay="850"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="850"].aos-animate{transition-delay:850ms}body[data-aos-duration="900"] [data-aos],[data-aos][data-aos][data-aos-duration="900"]{transition-duration:900ms}body[data-aos-delay="900"] [data-aos],[data-aos][data-aos][data-aos-delay="900"]{transition-delay:0s}body[data-aos-delay="900"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="900"].aos-animate{transition-delay:900ms}body[data-aos-duration="950"] [data-aos],[data-aos][data-aos][data-aos-duration="950"]{transition-duration:950ms}body[data-aos-delay="950"] [data-aos],[data-aos][data-aos][data-aos-delay="950"]{transition-delay:0s}body[data-aos-delay="950"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="950"].aos-animate{transition-delay:950ms}body[data-aos-duration="1000"] [data-aos],[data-aos][data-aos][data-aos-duration="1000"]{transition-duration:1000ms}body[data-aos-delay="1000"] [data-aos],[data-aos][data-aos][data-aos-delay="1000"]{transition-delay:0s}body[data-aos-delay="1000"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1000"].aos-animate{transition-delay:1000ms}body[data-aos-duration="1050"] [data-aos],[data-aos][data-aos][data-aos-duration="1050"]{transition-duration:1050ms}body[data-aos-delay="1050"] [data-aos],[data-aos][data-aos][data-aos-delay="1050"]{transition-delay:0s}body[data-aos-delay="1050"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1050"].aos-animate{transition-delay:1050ms}body[data-aos-duration="1100"] [data-aos],[data-aos][data-aos][data-aos-duration="1100"]{transition-duration:1100ms}body[data-aos-delay="1100"] [data-aos],[data-aos][data-aos][data-aos-delay="1100"]{transition-delay:0s}body[data-aos-delay="1100"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1100"].aos-animate{transition-delay:1100ms}body[data-aos-duration="1150"] [data-aos],[data-aos][data-aos][data-aos-duration="1150"]{transition-duration:1150ms}body[data-aos-delay="1150"] [data-aos],[data-aos][data-aos][data-aos-delay="1150"]{transition-delay:0s}body[data-aos-delay="1150"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1150"].aos-animate{transition-delay:1150ms}body[data-aos-duration="1200"] [data-aos],[data-aos][data-aos][data-aos-duration="1200"]{transition-duration:1200ms}body[data-aos-delay="1200"] [data-aos],[data-aos][data-aos][data-aos-delay="1200"]{transition-delay:0s}body[data-aos-delay="1200"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1200"].aos-animate{transition-delay:1200ms}body[data-aos-duration="1250"] [data-aos],[data-aos][data-aos][data-aos-duration="1250"]{transition-duration:1250ms}body[data-aos-delay="1250"] [data-aos],[data-aos][data-aos][data-aos-delay="1250"]{transition-delay:0s}body[data-aos-delay="1250"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1250"].aos-animate{transition-delay:1250ms}body[data-aos-duration="1300"] [data-aos],[data-aos][data-aos][data-aos-duration="1300"]{transition-duration:1300ms}body[data-aos-delay="1300"] [data-aos],[data-aos][data-aos][data-aos-delay="1300"]{transition-delay:0s}body[data-aos-delay="1300"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1300"].aos-animate{transition-delay:1300ms}body[data-aos-duration="1350"] [data-aos],[data-aos][data-aos][data-aos-duration="1350"]{transition-duration:1350ms}body[data-aos-delay="1350"] [data-aos],[data-aos][data-aos][data-aos-delay="1350"]{transition-delay:0s}body[data-aos-delay="1350"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1350"].aos-animate{transition-delay:1350ms}body[data-aos-duration="1400"] [data-aos],[data-aos][data-aos][data-aos-duration="1400"]{transition-duration:1400ms}body[data-aos-delay="1400"] [data-aos],[data-aos][data-aos][data-aos-delay="1400"]{transition-delay:0s}body[data-aos-delay="1400"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1400"].aos-animate{transition-delay:1400ms}body[data-aos-duration="1450"] [data-aos],[data-aos][data-aos][data-aos-duration="1450"]{transition-duration:1450ms}body[data-aos-delay="1450"] [data-aos],[data-aos][data-aos][data-aos-delay="1450"]{transition-delay:0s}body[data-aos-delay="1450"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1450"].aos-animate{transition-delay:1450ms}body[data-aos-duration="1500"] [data-aos],[data-aos][data-aos][data-aos-duration="1500"]{transition-duration:1500ms}body[data-aos-delay="1500"] [data-aos],[data-aos][data-aos][data-aos-delay="1500"]{transition-delay:0s}body[data-aos-delay="1500"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1500"].aos-animate{transition-delay:1500ms}body[data-aos-duration="1550"] [data-aos],[data-aos][data-aos][data-aos-duration="1550"]{transition-duration:1550ms}body[data-aos-delay="1550"] [data-aos],[data-aos][data-aos][data-aos-delay="1550"]{transition-delay:0s}body[data-aos-delay="1550"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1550"].aos-animate{transition-delay:1550ms}body[data-aos-duration="1600"] [data-aos],[data-aos][data-aos][data-aos-duration="1600"]{transition-duration:1600ms}body[data-aos-delay="1600"] [data-aos],[data-aos][data-aos][data-aos-delay="1600"]{transition-delay:0s}body[data-aos-delay="1600"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1600"].aos-animate{transition-delay:1600ms}body[data-aos-duration="1650"] [data-aos],[data-aos][data-aos][data-aos-duration="1650"]{transition-duration:1650ms}body[data-aos-delay="1650"] [data-aos],[data-aos][data-aos][data-aos-delay="1650"]{transition-delay:0s}body[data-aos-delay="1650"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1650"].aos-animate{transition-delay:1650ms}body[data-aos-duration="1700"] [data-aos],[data-aos][data-aos][data-aos-duration="1700"]{transition-duration:1700ms}body[data-aos-delay="1700"] [data-aos],[data-aos][data-aos][data-aos-delay="1700"]{transition-delay:0s}body[data-aos-delay="1700"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1700"].aos-animate{transition-delay:1700ms}body[data-aos-duration="1750"] [data-aos],[data-aos][data-aos][data-aos-duration="1750"]{transition-duration:1750ms}body[data-aos-delay="1750"] [data-aos],[data-aos][data-aos][data-aos-delay="1750"]{transition-delay:0s}body[data-aos-delay="1750"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1750"].aos-animate{transition-delay:1750ms}body[data-aos-duration="1800"] [data-aos],[data-aos][data-aos][data-aos-duration="1800"]{transition-duration:1800ms}body[data-aos-delay="1800"] [data-aos],[data-aos][data-aos][data-aos-delay="1800"]{transition-delay:0s}body[data-aos-delay="1800"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1800"].aos-animate{transition-delay:1800ms}body[data-aos-duration="1850"] [data-aos],[data-aos][data-aos][data-aos-duration="1850"]{transition-duration:1850ms}body[data-aos-delay="1850"] [data-aos],[data-aos][data-aos][data-aos-delay="1850"]{transition-delay:0s}body[data-aos-delay="1850"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1850"].aos-animate{transition-delay:1850ms}body[data-aos-duration="1900"] [data-aos],[data-aos][data-aos][data-aos-duration="1900"]{transition-duration:1900ms}body[data-aos-delay="1900"] [data-aos],[data-aos][data-aos][data-aos-delay="1900"]{transition-delay:0s}body[data-aos-delay="1900"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1900"].aos-animate{transition-delay:1900ms}body[data-aos-duration="1950"] [data-aos],[data-aos][data-aos][data-aos-duration="1950"]{transition-duration:1950ms}body[data-aos-delay="1950"] [data-aos],[data-aos][data-aos][data-aos-delay="1950"]{transition-delay:0s}body[data-aos-delay="1950"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="1950"].aos-animate{transition-delay:1950ms}body[data-aos-duration="2000"] [data-aos],[data-aos][data-aos][data-aos-duration="2000"]{transition-duration:2000ms}body[data-aos-delay="2000"] [data-aos],[data-aos][data-aos][data-aos-delay="2000"]{transition-delay:0s}body[data-aos-delay="2000"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2000"].aos-animate{transition-delay:2000ms}body[data-aos-duration="2050"] [data-aos],[data-aos][data-aos][data-aos-duration="2050"]{transition-duration:2050ms}body[data-aos-delay="2050"] [data-aos],[data-aos][data-aos][data-aos-delay="2050"]{transition-delay:0s}body[data-aos-delay="2050"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2050"].aos-animate{transition-delay:2050ms}body[data-aos-duration="2100"] [data-aos],[data-aos][data-aos][data-aos-duration="2100"]{transition-duration:2100ms}body[data-aos-delay="2100"] [data-aos],[data-aos][data-aos][data-aos-delay="2100"]{transition-delay:0s}body[data-aos-delay="2100"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2100"].aos-animate{transition-delay:2100ms}body[data-aos-duration="2150"] [data-aos],[data-aos][data-aos][data-aos-duration="2150"]{transition-duration:2150ms}body[data-aos-delay="2150"] [data-aos],[data-aos][data-aos][data-aos-delay="2150"]{transition-delay:0s}body[data-aos-delay="2150"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2150"].aos-animate{transition-delay:2150ms}body[data-aos-duration="2200"] [data-aos],[data-aos][data-aos][data-aos-duration="2200"]{transition-duration:2200ms}body[data-aos-delay="2200"] [data-aos],[data-aos][data-aos][data-aos-delay="2200"]{transition-delay:0s}body[data-aos-delay="2200"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2200"].aos-animate{transition-delay:2200ms}body[data-aos-duration="2250"] [data-aos],[data-aos][data-aos][data-aos-duration="2250"]{transition-duration:2250ms}body[data-aos-delay="2250"] [data-aos],[data-aos][data-aos][data-aos-delay="2250"]{transition-delay:0s}body[data-aos-delay="2250"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2250"].aos-animate{transition-delay:2250ms}body[data-aos-duration="2300"] [data-aos],[data-aos][data-aos][data-aos-duration="2300"]{transition-duration:2300ms}body[data-aos-delay="2300"] [data-aos],[data-aos][data-aos][data-aos-delay="2300"]{transition-delay:0s}body[data-aos-delay="2300"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2300"].aos-animate{transition-delay:2300ms}body[data-aos-duration="2350"] [data-aos],[data-aos][data-aos][data-aos-duration="2350"]{transition-duration:2350ms}body[data-aos-delay="2350"] [data-aos],[data-aos][data-aos][data-aos-delay="2350"]{transition-delay:0s}body[data-aos-delay="2350"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2350"].aos-animate{transition-delay:2350ms}body[data-aos-duration="2400"] [data-aos],[data-aos][data-aos][data-aos-duration="2400"]{transition-duration:2400ms}body[data-aos-delay="2400"] [data-aos],[data-aos][data-aos][data-aos-delay="2400"]{transition-delay:0s}body[data-aos-delay="2400"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2400"].aos-animate{transition-delay:2400ms}body[data-aos-duration="2450"] [data-aos],[data-aos][data-aos][data-aos-duration="2450"]{transition-duration:2450ms}body[data-aos-delay="2450"] [data-aos],[data-aos][data-aos][data-aos-delay="2450"]{transition-delay:0s}body[data-aos-delay="2450"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2450"].aos-animate{transition-delay:2450ms}body[data-aos-duration="2500"] [data-aos],[data-aos][data-aos][data-aos-duration="2500"]{transition-duration:2500ms}body[data-aos-delay="2500"] [data-aos],[data-aos][data-aos][data-aos-delay="2500"]{transition-delay:0s}body[data-aos-delay="2500"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2500"].aos-animate{transition-delay:2500ms}body[data-aos-duration="2550"] [data-aos],[data-aos][data-aos][data-aos-duration="2550"]{transition-duration:2550ms}body[data-aos-delay="2550"] [data-aos],[data-aos][data-aos][data-aos-delay="2550"]{transition-delay:0s}body[data-aos-delay="2550"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2550"].aos-animate{transition-delay:2550ms}body[data-aos-duration="2600"] [data-aos],[data-aos][data-aos][data-aos-duration="2600"]{transition-duration:2600ms}body[data-aos-delay="2600"] [data-aos],[data-aos][data-aos][data-aos-delay="2600"]{transition-delay:0s}body[data-aos-delay="2600"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2600"].aos-animate{transition-delay:2600ms}body[data-aos-duration="2650"] [data-aos],[data-aos][data-aos][data-aos-duration="2650"]{transition-duration:2650ms}body[data-aos-delay="2650"] [data-aos],[data-aos][data-aos][data-aos-delay="2650"]{transition-delay:0s}body[data-aos-delay="2650"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2650"].aos-animate{transition-delay:2650ms}body[data-aos-duration="2700"] [data-aos],[data-aos][data-aos][data-aos-duration="2700"]{transition-duration:2700ms}body[data-aos-delay="2700"] [data-aos],[data-aos][data-aos][data-aos-delay="2700"]{transition-delay:0s}body[data-aos-delay="2700"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2700"].aos-animate{transition-delay:2700ms}body[data-aos-duration="2750"] [data-aos],[data-aos][data-aos][data-aos-duration="2750"]{transition-duration:2750ms}body[data-aos-delay="2750"] [data-aos],[data-aos][data-aos][data-aos-delay="2750"]{transition-delay:0s}body[data-aos-delay="2750"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2750"].aos-animate{transition-delay:2750ms}body[data-aos-duration="2800"] [data-aos],[data-aos][data-aos][data-aos-duration="2800"]{transition-duration:2800ms}body[data-aos-delay="2800"] [data-aos],[data-aos][data-aos][data-aos-delay="2800"]{transition-delay:0s}body[data-aos-delay="2800"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2800"].aos-animate{transition-delay:2800ms}body[data-aos-duration="2850"] [data-aos],[data-aos][data-aos][data-aos-duration="2850"]{transition-duration:2850ms}body[data-aos-delay="2850"] [data-aos],[data-aos][data-aos][data-aos-delay="2850"]{transition-delay:0s}body[data-aos-delay="2850"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2850"].aos-animate{transition-delay:2850ms}body[data-aos-duration="2900"] [data-aos],[data-aos][data-aos][data-aos-duration="2900"]{transition-duration:2900ms}body[data-aos-delay="2900"] [data-aos],[data-aos][data-aos][data-aos-delay="2900"]{transition-delay:0s}body[data-aos-delay="2900"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2900"].aos-animate{transition-delay:2900ms}body[data-aos-duration="2950"] [data-aos],[data-aos][data-aos][data-aos-duration="2950"]{transition-duration:2950ms}body[data-aos-delay="2950"] [data-aos],[data-aos][data-aos][data-aos-delay="2950"]{transition-delay:0s}body[data-aos-delay="2950"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="2950"].aos-animate{transition-delay:2950ms}body[data-aos-duration="3000"] [data-aos],[data-aos][data-aos][data-aos-duration="3000"]{transition-duration:3000ms}body[data-aos-delay="3000"] [data-aos],[data-aos][data-aos][data-aos-delay="3000"]{transition-delay:0s}body[data-aos-delay="3000"] [data-aos].aos-animate,[data-aos][data-aos][data-aos-delay="3000"].aos-animate{transition-delay:3000ms}[data-aos]{pointer-events:none}[data-aos].aos-animate{pointer-events:auto}body[data-aos-easing=linear] [data-aos],[data-aos][data-aos][data-aos-easing=linear]{transition-timing-function:cubic-bezier(0.25, 0.25, 0.75, 0.75)}body[data-aos-easing=ease] [data-aos],[data-aos][data-aos][data-aos-easing=ease]{transition-timing-function:cubic-bezier(0.25, 0.1, 0.25, 1)}body[data-aos-easing=ease-in] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in]{transition-timing-function:cubic-bezier(0.42, 0, 1, 1)}body[data-aos-easing=ease-out] [data-aos],[data-aos][data-aos][data-aos-easing=ease-out]{transition-timing-function:cubic-bezier(0, 0, 0.58, 1)}body[data-aos-easing=ease-in-out] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-out]{transition-timing-function:cubic-bezier(0.42, 0, 0.58, 1)}body[data-aos-easing=ease-in-back] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-back]{transition-timing-function:cubic-bezier(0.6, -0.28, 0.735, 0.045)}body[data-aos-easing=ease-out-back] [data-aos],[data-aos][data-aos][data-aos-easing=ease-out-back]{transition-timing-function:cubic-bezier(0.175, 0.885, 0.32, 1.275)}body[data-aos-easing=ease-in-out-back] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-out-back]{transition-timing-function:cubic-bezier(0.68, -0.55, 0.265, 1.55)}body[data-aos-easing=ease-in-sine] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-sine]{transition-timing-function:cubic-bezier(0.47, 0, 0.745, 0.715)}body[data-aos-easing=ease-out-sine] [data-aos],[data-aos][data-aos][data-aos-easing=ease-out-sine]{transition-timing-function:cubic-bezier(0.39, 0.575, 0.565, 1)}body[data-aos-easing=ease-in-out-sine] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-out-sine]{transition-timing-function:cubic-bezier(0.445, 0.05, 0.55, 0.95)}body[data-aos-easing=ease-in-quad] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-quad]{transition-timing-function:cubic-bezier(0.55, 0.085, 0.68, 0.53)}body[data-aos-easing=ease-out-quad] [data-aos],[data-aos][data-aos][data-aos-easing=ease-out-quad]{transition-timing-function:cubic-bezier(0.25, 0.46, 0.45, 0.94)}body[data-aos-easing=ease-in-out-quad] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-out-quad]{transition-timing-function:cubic-bezier(0.455, 0.03, 0.515, 0.955)}body[data-aos-easing=ease-in-cubic] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-cubic]{transition-timing-function:cubic-bezier(0.55, 0.085, 0.68, 0.53)}body[data-aos-easing=ease-out-cubic] [data-aos],[data-aos][data-aos][data-aos-easing=ease-out-cubic]{transition-timing-function:cubic-bezier(0.25, 0.46, 0.45, 0.94)}body[data-aos-easing=ease-in-out-cubic] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-out-cubic]{transition-timing-function:cubic-bezier(0.455, 0.03, 0.515, 0.955)}body[data-aos-easing=ease-in-quart] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-quart]{transition-timing-function:cubic-bezier(0.55, 0.085, 0.68, 0.53)}body[data-aos-easing=ease-out-quart] [data-aos],[data-aos][data-aos][data-aos-easing=ease-out-quart]{transition-timing-function:cubic-bezier(0.25, 0.46, 0.45, 0.94)}body[data-aos-easing=ease-in-out-quart] [data-aos],[data-aos][data-aos][data-aos-easing=ease-in-out-quart]{transition-timing-function:cubic-bezier(0.455, 0.03, 0.515, 0.955)}@media screen{html:not(.no-js) [data-aos^=fade][data-aos^=fade]{opacity:0;transition-property:opacity,transform}html:not(.no-js) [data-aos^=fade][data-aos^=fade].aos-animate{opacity:1;transform:none}html:not(.no-js) [data-aos=fade-up]{transform:translate3d(0, 100px, 0)}html:not(.no-js) [data-aos=fade-down]{transform:translate3d(0, -100px, 0)}html:not(.no-js) [data-aos=fade-right]{transform:translate3d(-100px, 0, 0)}html:not(.no-js) [data-aos=fade-left]{transform:translate3d(100px, 0, 0)}html:not(.no-js) [data-aos=fade-up-right]{transform:translate3d(-100px, 100px, 0)}html:not(.no-js) [data-aos=fade-up-left]{transform:translate3d(100px, 100px, 0)}html:not(.no-js) [data-aos=fade-down-right]{transform:translate3d(-100px, -100px, 0)}html:not(.no-js) [data-aos=fade-down-left]{transform:translate3d(100px, -100px, 0)}html:not(.no-js) [data-aos^=zoom][data-aos^=zoom]{opacity:0;transition-property:opacity,transform}html:not(.no-js) [data-aos^=zoom][data-aos^=zoom].aos-animate{opacity:1;transform:translate3d(0, 0, 0) scale(1)}html:not(.no-js) [data-aos=zoom-in]{transform:scale(0.6)}html:not(.no-js) [data-aos=zoom-in-up]{transform:translate3d(0, 100px, 0) scale(0.6)}html:not(.no-js) [data-aos=zoom-in-down]{transform:translate3d(0, -100px, 0) scale(0.6)}html:not(.no-js) [data-aos=zoom-in-right]{transform:translate3d(-100px, 0, 0) scale(0.6)}html:not(.no-js) [data-aos=zoom-in-left]{transform:translate3d(100px, 0, 0) scale(0.6)}html:not(.no-js) [data-aos=zoom-out]{transform:scale(1.2)}html:not(.no-js) [data-aos=zoom-out-up]{transform:translate3d(0, 100px, 0) scale(1.2)}html:not(.no-js) [data-aos=zoom-out-down]{transform:translate3d(0, -100px, 0) scale(1.2)}html:not(.no-js) [data-aos=zoom-out-right]{transform:translate3d(-100px, 0, 0) scale(1.2)}html:not(.no-js) [data-aos=zoom-out-left]{transform:translate3d(100px, 0, 0) scale(1.2)}html:not(.no-js) [data-aos^=slide][data-aos^=slide]{transition-property:transform;visibility:hidden}html:not(.no-js) [data-aos^=slide][data-aos^=slide].aos-animate{visibility:visible;transform:translate3d(0, 0, 0)}html:not(.no-js) [data-aos=slide-up]{transform:translate3d(0, 100%, 0)}html:not(.no-js) [data-aos=slide-down]{transform:translate3d(0, -100%, 0)}html:not(.no-js) [data-aos=slide-right]{transform:translate3d(-100%, 0, 0)}html:not(.no-js) [data-aos=slide-left]{transform:translate3d(100%, 0, 0)}html:not(.no-js) [data-aos^=flip][data-aos^=flip]{backface-visibility:hidden;transition-property:transform}html:not(.no-js) [data-aos=flip-left]{transform:perspective(2500px) rotateY(-100deg)}html:not(.no-js) [data-aos=flip-left].aos-animate{transform:perspective(2500px) rotateY(0)}html:not(.no-js) [data-aos=flip-right]{transform:perspective(2500px) rotateY(100deg)}html:not(.no-js) [data-aos=flip-right].aos-animate{transform:perspective(2500px) rotateY(0)}html:not(.no-js) [data-aos=flip-up]{transform:perspective(2500px) rotateX(-100deg)}html:not(.no-js) [data-aos=flip-up].aos-animate{transform:perspective(2500px) rotateX(0)}html:not(.no-js) [data-aos=flip-down]{transform:perspective(2500px) rotateX(100deg)}html:not(.no-js) [data-aos=flip-down].aos-animate{transform:perspective(2500px) rotateX(0)}}',""]);const i=e},645:a=>{"use strict";a.exports=function(a){var t=[];return t.toString=function(){return this.map((function(t){var o="",s=void 0!==t[5];return t[4]&&(o+="@supports (".concat(t[4],") {")),t[2]&&(o+="@media ".concat(t[2]," {")),s&&(o+="@layer".concat(t[5].length>0?" ".concat(t[5]):""," {")),o+=a(t),s&&(o+="}"),t[2]&&(o+="}"),t[4]&&(o+="}"),o})).join("")},t.i=function(a,o,s,d,n){"string"==typeof a&&(a=[[null,a,void 0]]);var e={};if(s)for(var i=0;i<this.length;i++){var r=this[i][0];null!=r&&(e[r]=!0)}for(var l=0;l<a.length;l++){var y=[].concat(a[l]);s&&e[y[0]]||(void 0!==n&&(void 0===y[5]||(y[1]="@layer".concat(y[5].length>0?" ".concat(y[5]):""," {").concat(y[1],"}")),y[5]=n),o&&(y[2]?(y[1]="@media ".concat(y[2]," {").concat(y[1],"}"),y[2]=o):y[2]=o),d&&(y[4]?(y[1]="@supports (".concat(y[4],") {").concat(y[1],"}"),y[4]=d):y[4]="".concat(d)),t.push(y))}},t}},81:a=>{"use strict";a.exports=function(a){return a[1]}},296:(a,t,o)=>{var s=/^\s+|\s+$/g,d=/^[-+]0x[0-9a-f]+$/i,n=/^0b[01]+$/i,e=/^0o[0-7]+$/i,i=parseInt,r="object"==typeof o.g&&o.g&&o.g.Object===Object&&o.g,l="object"==typeof self&&self&&self.Object===Object&&self,y=r||l||Function("return this")(),u=Object.prototype.toString,m=Math.max,c=Math.min,b=function(){return y.Date.now()};function f(a){var t=typeof a;return!!a&&("object"==t||"function"==t)}function p(a){if("number"==typeof a)return a;if(function(a){return"symbol"==typeof a||function(a){return!!a&&"object"==typeof a}(a)&&"[object Symbol]"==u.call(a)}(a))return NaN;if(f(a)){var t="function"==typeof a.valueOf?a.valueOf():a;a=f(t)?t+"":t}if("string"!=typeof a)return 0===a?a:+a;a=a.replace(s,"");var o=n.test(a);return o||e.test(a)?i(a.slice(2),o?2:8):d.test(a)?NaN:+a}a.exports=function(a,t,o){var s,d,n,e,i,r,l=0,y=!1,u=!1,v=!0;if("function"!=typeof a)throw new TypeError("Expected a function");function g(t){var o=s,n=d;return s=d=void 0,l=t,e=a.apply(n,o)}function h(a){var o=a-r;return void 0===r||o>=t||o<0||u&&a-l>=n}function w(){var a=b();if(h(a))return x(a);i=setTimeout(w,function(a){var o=t-(a-r);return u?c(o,n-(a-l)):o}(a))}function x(a){return i=void 0,v&&s?g(a):(s=d=void 0,e)}function j(){var a=b(),o=h(a);if(s=arguments,d=this,r=a,o){if(void 0===i)return function(a){return l=a,i=setTimeout(w,t),y?g(a):e}(r);if(u)return i=setTimeout(w,t),g(r)}return void 0===i&&(i=setTimeout(w,t)),e}return t=p(t)||0,f(o)&&(y=!!o.leading,n=(u="maxWait"in o)?m(p(o.maxWait)||0,t):n,v="trailing"in o?!!o.trailing:v),j.cancel=function(){void 0!==i&&clearTimeout(i),l=0,s=r=d=i=void 0},j.flush=function(){return void 0===i?e:x(b())},j}},96:(a,t,o)=>{var s="Expected a function",d=NaN,n="[object Symbol]",e=/^\s+|\s+$/g,i=/^[-+]0x[0-9a-f]+$/i,r=/^0b[01]+$/i,l=/^0o[0-7]+$/i,y=parseInt,u="object"==typeof o.g&&o.g&&o.g.Object===Object&&o.g,m="object"==typeof self&&self&&self.Object===Object&&self,c=u||m||Function("return this")(),b=Object.prototype.toString,f=Math.max,p=Math.min,v=function(){return c.Date.now()};function g(a){var t=typeof a;return!!a&&("object"==t||"function"==t)}function h(a){if("number"==typeof a)return a;if(function(a){return"symbol"==typeof a||function(a){return!!a&&"object"==typeof a}(a)&&b.call(a)==n}(a))return d;if(g(a)){var t="function"==typeof a.valueOf?a.valueOf():a;a=g(t)?t+"":t}if("string"!=typeof a)return 0===a?a:+a;a=a.replace(e,"");var o=r.test(a);return o||l.test(a)?y(a.slice(2),o?2:8):i.test(a)?d:+a}a.exports=function(a,t,o){var d=!0,n=!0;if("function"!=typeof a)throw new TypeError(s);return g(o)&&(d="leading"in o?!!o.leading:d,n="trailing"in o?!!o.trailing:n),function(a,t,o){var d,n,e,i,r,l,y=0,u=!1,m=!1,c=!0;if("function"!=typeof a)throw new TypeError(s);function b(t){var o=d,s=n;return d=n=void 0,y=t,i=a.apply(s,o)}function w(a){var o=a-l;return void 0===l||o>=t||o<0||m&&a-y>=e}function x(){var a=v();if(w(a))return j(a);r=setTimeout(x,function(a){var o=t-(a-l);return m?p(o,e-(a-y)):o}(a))}function j(a){return r=void 0,c&&d?b(a):(d=n=void 0,i)}function k(){var a=v(),o=w(a);if(d=arguments,n=this,l=a,o){if(void 0===r)return function(a){return y=a,r=setTimeout(x,t),u?b(a):i}(l);if(m)return r=setTimeout(x,t),b(l)}return void 0===r&&(r=setTimeout(x,t)),i}return t=h(t)||0,g(o)&&(u=!!o.leading,e=(m="maxWait"in o)?f(h(o.maxWait)||0,t):e,c="trailing"in o?!!o.trailing:c),k.cancel=function(){void 0!==r&&clearTimeout(r),y=0,d=l=n=r=void 0},k.flush=function(){return void 0===r?i:j(v())},k}(a,t,{leading:d,maxWait:t,trailing:n})}},379:a=>{"use strict";var t=[];function o(a){for(var o=-1,s=0;s<t.length;s++)if(t[s].identifier===a){o=s;break}return o}function s(a,s){for(var n={},e=[],i=0;i<a.length;i++){var r=a[i],l=s.base?r[0]+s.base:r[0],y=n[l]||0,u="".concat(l," ").concat(y);n[l]=y+1;var m=o(u),c={css:r[1],media:r[2],sourceMap:r[3],supports:r[4],layer:r[5]};if(-1!==m)t[m].references++,t[m].updater(c);else{var b=d(c,s);s.byIndex=i,t.splice(i,0,{identifier:u,updater:b,references:1})}e.push(u)}return e}function d(a,t){var o=t.domAPI(t);return o.update(a),function(t){if(t){if(t.css===a.css&&t.media===a.media&&t.sourceMap===a.sourceMap&&t.supports===a.supports&&t.layer===a.layer)return;o.update(a=t)}else o.remove()}}a.exports=function(a,d){var n=s(a=a||[],d=d||{});return function(a){a=a||[];for(var e=0;e<n.length;e++){var i=o(n[e]);t[i].references--}for(var r=s(a,d),l=0;l<n.length;l++){var y=o(n[l]);0===t[y].references&&(t[y].updater(),t.splice(y,1))}n=r}}},569:a=>{"use strict";var t={};a.exports=function(a,o){var s=function(a){if(void 0===t[a]){var o=document.querySelector(a);if(window.HTMLIFrameElement&&o instanceof window.HTMLIFrameElement)try{o=o.contentDocument.head}catch(a){o=null}t[a]=o}return t[a]}(a);if(!s)throw new Error("Couldn't find a style target. This probably means that the value for the 'insert' parameter is invalid.");s.appendChild(o)}},216:a=>{"use strict";a.exports=function(a){var t=document.createElement("style");return a.setAttributes(t,a.attributes),a.insert(t,a.options),t}},565:(a,t,o)=>{"use strict";a.exports=function(a){var t=o.nc;t&&a.setAttribute("nonce",t)}},795:a=>{"use strict";a.exports=function(a){if("undefined"==typeof document)return{update:function(){},remove:function(){}};var t=a.insertStyleElement(a);return{update:function(o){!function(a,t,o){var s="";o.supports&&(s+="@supports (".concat(o.supports,") {")),o.media&&(s+="@media ".concat(o.media," {"));var d=void 0!==o.layer;d&&(s+="@layer".concat(o.layer.length>0?" ".concat(o.layer):""," {")),s+=o.css,d&&(s+="}"),o.media&&(s+="}"),o.supports&&(s+="}");var n=o.sourceMap;n&&"undefined"!=typeof btoa&&(s+="\n/*# sourceMappingURL=data:application/json;base64,".concat(btoa(unescape(encodeURIComponent(JSON.stringify(n))))," */")),t.styleTagTransform(s,a,t.options)}(t,a,o)},remove:function(){!function(a){if(null===a.parentNode)return!1;a.parentNode.removeChild(a)}(t)}}}},589:a=>{"use strict";a.exports=function(a,t){if(t.styleSheet)t.styleSheet.cssText=a;else{for(;t.firstChild;)t.removeChild(t.firstChild);t.appendChild(document.createTextNode(a))}}}},t={};function o(s){var d=t[s];if(void 0!==d)return d.exports;var n=t[s]={id:s,exports:{}};return a[s](n,n.exports,o),n.exports}o.n=a=>{var t=a&&a.__esModule?()=>a.default:()=>a;return o.d(t,{a:t}),t},o.d=(a,t)=>{for(var s in t)o.o(t,s)&&!o.o(a,s)&&Object.defineProperty(a,s,{enumerable:!0,get:t[s]})},o.g=function(){if("object"==typeof globalThis)return globalThis;try{return this||new Function("return this")()}catch(a){if("object"==typeof window)return window}}(),o.o=(a,t)=>Object.prototype.hasOwnProperty.call(a,t),o.nc=void 0;var s={};return(()=>{"use strict";o.d(s,{default:()=>B});var a=o(379),t=o.n(a),d=o(795),n=o.n(d),e=o(569),i=o.n(e),r=o(565),l=o.n(r),y=o(216),u=o.n(y),m=o(589),c=o.n(m),b=o(821),f={};f.styleTagTransform=c(),f.setAttributes=l(),f.insert=i().bind(null,"head"),f.domAPI=n(),f.insertStyleElement=u(),t()(b.Z,f),b.Z&&b.Z.locals&&b.Z.locals;var p=o(96),v=o.n(p),g=o(296),h=o.n(g),w=function(){},x=function a(t){var o,s;for(o=0;o<t.length;o+=1){if((s=t[o]).dataset&&s.dataset.aos)return!0;if(s.children&&a(s.children))return!0}return!1},j=function(a){a&&a.forEach((function(a){var t=Array.prototype.slice.call(a.addedNodes),o=Array.prototype.slice.call(a.removedNodes),s=t.concat(o);if(x(s))return w()}))},k=function(){return window.MutationObserver||window.WebKitMutationObserver||window.MozMutationObserver};function z(a){return z="function"==typeof Symbol&&"symbol"==typeof Symbol.iterator?function(a){return typeof a}:function(a){return a&&"function"==typeof Symbol&&a.constructor===Symbol&&a!==Symbol.prototype?"symbol":typeof a},z(a)}function O(a,t){for(var o=0;o<t.length;o++){var s=t[o];s.enumerable=s.enumerable||!1,s.configurable=!0,"value"in s&&(s.writable=!0),Object.defineProperty(a,(void 0,d=function(a,t){if("object"!==z(a)||null===a)return a;var o=a[Symbol.toPrimitive];if(void 0!==o){var s=o.call(a,"string");if("object"!==z(s))return s;throw new TypeError("@@toPrimitive must return a primitive value.")}return String(a)}(s.key),"symbol"===z(d)?d:String(d)),s)}var d}var E=/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i,N=/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i,q=/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i,S=/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i,C=function(){return navigator.userAgent||navigator.vendor||window.opera||""};const T=new(function(){function a(){!function(a,t){if(!(a instanceof t))throw new TypeError("Cannot call a class as a function")}(this,a)}var t,o;return t=a,(o=[{key:"phone",value:function(){var a=C();return!(!E.test(a)&&!N.test(a.substr(0,4)))}},{key:"mobile",value:function(){var a=C();return!(!q.test(a)&&!S.test(a.substr(0,4)))}},{key:"tablet",value:function(){return this.mobile()&&!this.phone()}},{key:"ie11",value:function(){return"-ms-scroll-limit"in document.documentElement.style&&"-ms-ime-align"in document.documentElement.style}}])&&O(t.prototype,o),Object.defineProperty(t,"prototype",{writable:!1}),a}());var A=function(a,t){var o;return T.ie11()?(o=document.createEvent("CustomEvent")).initCustomEvent(a,!0,!0,{detail:t}):o=new CustomEvent(a,{detail:t}),document.dispatchEvent(o)};const M=function(a){return a.forEach((function(a,t){return function(a,t){var o=a.options,s=a.position,d=a.node,n=(a.data,function(){a.animated&&(function(a,t){t&&t.forEach((function(t){return a.classList.remove(t)}))}(d,o.animatedClassNames),A("aos:out",d),a.options.id&&A("aos:out:".concat(a.options.id),d),a.animated=!1)});o.mirror&&t>=s.out&&!o.once?n():t>=s.in?a.animated||(function(a,t){t&&t.forEach((function(t){return a.classList.add(t)}))}(d,o.animatedClassNames),A("aos:in",d),a.options.id&&A("aos:in:".concat(a.options.id),d),a.animated=!0):a.animated&&!o.once&&n()}(a,window.pageYOffset)}))},L=function(a){for(var t=0,o=0;a&&!isNaN(a.offsetLeft)&&!isNaN(a.offsetTop);)t+=a.offsetLeft-("BODY"!=a.tagName?a.scrollLeft:0),o+=a.offsetTop-("BODY"!=a.tagName?a.scrollTop:0),a=a.offsetParent;return{top:o,left:t}},D=function(a,t,o){var s=a.getAttribute("data-aos-"+t);if(void 0!==s){if("true"===s)return!0;if("false"===s)return!1}return s||o};var H=function(a,t,o){var s=window.innerHeight,d=D(a,"anchor"),n=D(a,"anchor-placement"),e=Number(D(a,"offset",n?0:t)),i=n||o,r=a;d&&document.querySelectorAll(d)&&(r=document.querySelectorAll(d)[0]);var l=L(r).top-s;switch(i){case"top-bottom":break;case"center-bottom":l+=r.offsetHeight/2;break;case"bottom-bottom":l+=r.offsetHeight;break;case"top-center":l+=s/2;break;case"center-center":l+=s/2+r.offsetHeight/2;break;case"bottom-center":l+=s/2+r.offsetHeight;break;case"top-top":l+=s;break;case"bottom-top":l+=s+r.offsetHeight;break;case"center-top":l+=s+r.offsetHeight/2}return l+e},P=function(a,t){window.innerHeight;var o=D(a,"anchor"),s=D(a,"offset",t),d=a;return o&&document.querySelectorAll(o)&&(d=document.querySelectorAll(o)[0]),L(d).top+d.offsetHeight-s};const I=function(){var a=document.querySelectorAll("[data-aos]");return Array.prototype.map.call(a,(function(a){return{node:a}}))};var Y=[],$={offset:120,delay:0,easing:"ease",duration:400,disable:!1,once:!1,mirror:!1,anchorPlacement:"top-bottom",startEvent:"DOMContentLoaded",animatedClassName:"aos-animate",initClassName:"aos-init",useClassNames:!1,disableMutationObserver:!1,throttleDelay:99,debounceDelay:50},W=function(){return document.all&&!window.atob},_=function(){arguments.length>0&&void 0!==arguments[0]&&arguments[0]&&(Y=function(a,t){return a.forEach((function(a,o){var s=D(a.node,"mirror",t.mirror),d=D(a.node,"once",t.once),n=D(a.node,"id"),e=t.useClassNames&&a.node.getAttribute("data-aos"),i=[t.animatedClassName].concat(e?e.split(" "):[]).filter((function(a){return"string"==typeof a}));t.initClassName&&a.node.classList.add(t.initClassName),a.position={in:H(a.node,t.offset,t.anchorPlacement),out:s&&P(a.node,t.offset)},a.options={once:d,mirror:s,animatedClassNames:i,id:n}})),a}(Y,$),M(Y),window.addEventListener("scroll",v()((function(){M(Y,$.once)}),$.throttleDelay),{passive:!0}))},F=function(){if(Y=I(),X($.disable)||W())return Z();_()},Z=function(){Y.forEach((function(a){a.node.removeAttribute("data-aos"),a.node.removeAttribute("data-aos-easing"),a.node.removeAttribute("data-aos-duration"),a.node.removeAttribute("data-aos-delay"),$.initClassName&&a.node.classList.remove($.initClassName),$.animatedClassName&&a.node.classList.remove($.animatedClassName)}))},X=function(a){return!0===a||"mobile"===a&&T.mobile()||"phone"===a&&T.phone()||"tablet"===a&&T.tablet()||"function"==typeof a&&!0===a()};const B={init:function(a){return $=Object.assign($,a),Y=I(),document.all&&window.atob,$.disableMutationObserver||!!k()||(console.info('\n      aos: MutationObserver is not supported on this browser,\n      code mutations observing has been disabled.\n      You may have to call "refreshHard()" by yourself.\n    '),$.disableMutationObserver=!0),$.disableMutationObserver||(t=F,o=window.document,s=new(k())(j),w=t,s.observe(o.documentElement,{childList:!0,subtree:!0,removedNodes:!0})),X($.disable)||W()?Z():(document.querySelector("body").setAttribute("data-aos-easing",$.easing),document.querySelector("body").setAttribute("data-aos-duration",$.duration),document.querySelector("body").setAttribute("data-aos-delay",$.delay),-1===["DOMContentLoaded","load"].indexOf($.startEvent)?document.addEventListener($.startEvent,(function(){_(!0)})):window.addEventListener("load",(function(){_(!0)})),"DOMContentLoaded"===$.startEvent&&["complete","interactive"].indexOf(document.readyState)>-1&&_(!0),window.addEventListener("resize",h()(_,$.debounceDelay,!0)),window.addEventListener("orientationchange",h()(_,$.debounceDelay,!0)),Y);var t,o,s},refresh:_,refreshHard:F}})(),s.default})()));
+
+AOS.init();
+
+/*]]>*/
+</script>
+
+
+
+<script type="text/javascript" src="/typo3temp/assets/vhs/vhs-assets-app-js-n-bootstrap-js-n-intersection-Observer-n-powermailForm-n-scrollama-n-slick-n.js"></script></body>
+</html>

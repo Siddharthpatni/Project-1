@@ -1,0 +1,38 @@
+# Environment / secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+
+# IDE
+.idea/
+
+# Pipeline outputs
+results/
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# LLM-generated scrapers (regenerated on demand)
+llm_cache/
+
+# Test CSVs (keep publications_updated.csv as the main dataset)
+one_per_domain.csv
+two_per_domain.csv
+test_*.csv
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Playwright browser binaries
+ms-playwright/
+downloads/

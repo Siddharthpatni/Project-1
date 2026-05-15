@@ -20,9 +20,11 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent))
+# Point to the main backend system to use the integrated (bug-fixed) logic
+backend_dir = Path(__file__).parent.parent.parent / "backend"
+sys.path.insert(0, str(backend_dir))
 
-from validator import (
+from app.phase1_llm_scraper.validator import (
     ValidationResult,
     validate,
     _resolve_call_name,

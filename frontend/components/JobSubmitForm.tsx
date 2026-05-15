@@ -10,6 +10,8 @@ export default function JobSubmitForm() {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"manual" | "file">("manual");
   const [file, setFile] = useState<File | null>(null);
+  const [forceStrategy, setForceStrategy] = useState<string>("");
+  const [forceModel, setForceModel] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function submit() {
@@ -28,7 +30,10 @@ export default function JobSubmitForm() {
           return;
         }
 
-        const job = await postJSON<{ id: string }>("/jobs", { urls });
+        const body: any = { urls };
+        if (forceStrategy) body.force_strategy = forceStrategy;
+        if (forceModel) body.force_model = forceModel;
+        const job = await postJSON<{ id: string }>("/jobs", body);
         router.push(`/jobs/${job.id}`);
       } else {
         if (!file) {
@@ -38,7 +43,12 @@ export default function JobSubmitForm() {
         }
         const formData = new FormData();
         formData.append("file", file);
-        const job = await postMultipart<{ id: string }>("/jobs/upload", formData);
+        let url = "/jobs/upload";
+        const query = new URLSearchParams();
+        if (forceStrategy) query.append("force_strategy", forceStrategy);
+        if (forceModel) query.append("force_model", forceModel);
+        if (query.toString()) url += `?${query.toString()}`;
+        const job = await postMultipart<{ id: string }>(url, formData);
         router.push(`/jobs/${job.id}`);
       }
     } catch (e: any) {
@@ -104,6 +114,44 @@ export default function JobSubmitForm() {
           </div>
         </div>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-slate-700">Strategy (optional)</label>
+          <select 
+            value={forceStrategy} 
+            onChange={(e) => setForceStrategy(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+          >
+            <option value="">Auto (Cascaded pipeline)</option>
+            <option value="manual_scraper">Phase 0: Manual Scraper</option>
+            <option value="existing_scraper">Phase 3: Existing Scraper</option>
+            <option value="deterministic_template">Phase 3: Deterministic Template</option>
+            <option value="llm_generated_scraper">Phase 1: Generate New LLM Scraper</option>
+            <option value="computer_use_agent">Phase 2: Computer-Use Agent</option>
+          </select>
+          <p className="text-xs text-slate-500">Auto cascade: Manual → Existing → Deterministic → LLM → CUA.</p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-slate-700">LLM Model (optional)</label>
+          <select 
+            value={forceModel} 
+            onChange={(e) => setForceModel(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+          >
+            <option value="">Default (From Environment)</option>
+            <option value="anthropic/claude-sonnet-4.5">Claude 3.5 Sonnet</option>
+            <option value="anthropic/claude-haiku-4.5">Claude 3.5 Haiku</option>
+            <option value="openai/gpt-4o">GPT-4o</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+            <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
+            <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+          </select>
+          <p className="text-xs text-slate-500">Select which LLM to use if the pipeline reaches Phase 1 or Phase 2.</p>
+        </div>
+      </div>
 
       {error && <p className="text-sm text-rose-600 bg-rose-50 p-2 rounded border border-rose-100">{error}</p>}
       

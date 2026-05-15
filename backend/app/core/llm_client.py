@@ -27,6 +27,8 @@ _COSTS = {
     "openai/gpt-4o":               (2.5, 10.0),
     "openai/gpt-4o-mini":          (0.15, 0.6),
     "google/gemini-2.5-pro":       (1.25, 5.0),
+    "google/gemini-2.5-flash":     (0.15, 0.6),
+    "google/gemini-2.5-flash-lite": (0.0, 0.0),  # free tier
 }
 
 
@@ -42,17 +44,24 @@ class LLMResponse:
 class LLMClient:
     """Async OpenRouter-compatible client."""
 
-    def __init__(self):
+    def __init__(self, default_model: str | None = None):
         self.base_url = settings.openrouter_base_url.rstrip("/")
         self.api_key = settings.openrouter_api_key
         self._client = httpx.AsyncClient(timeout=120)
+        self.default_model = default_model or settings.llm_model_primary
 
     async def chat(self, system: str, user: str, model: str | None = None) -> LLMResponse:
-        model = model or settings.llm_model_primary
+        model = model or self.default_model
+        # Cache the system prompt for Anthropic models — saves ~80% on re-use.
+        system_content: str | list
+        if model and model.startswith("anthropic/"):
+            system_content = [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+        else:
+            system_content = system
         payload = {
             "model": model,
             "messages": [
-                {"role": "system", "content": system},
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": user},
             ],
         }
@@ -65,7 +74,7 @@ class LLMClient:
         image_b64: str,
         model: str | None = None,
     ) -> LLMResponse:
-        model = model or settings.llm_model_vision
+        model = model or self.default_model
         payload = {
             "model": model,
             "messages": [

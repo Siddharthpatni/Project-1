@@ -72,6 +72,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
+      - ./data:/app/data
 
   worker:
     build: ./backend
@@ -85,6 +86,7 @@ services:
     command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
     volumes:
       - ./backend:/app
+      - ./data:/app/data
 
   beat:
     build: ./backend
@@ -102,6 +104,7 @@ services:
     build: ./frontend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      INTERNAL_API_URL: http://api:8000
     ports:
       - "3000:3000"
     depends_on:

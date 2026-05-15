@@ -1,0 +1,1361 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="de" xml:lang="de">
+<head><script type="text/javascript" src="../../wicket/resource/org.apache.wicket.resource.JQueryResourceReference/jquery/jquery-2.2.4-ver-F9EE266EF993962AD59E804AD9DEBE66.js"></script>
+<script type="text/javascript" src="../../wicket/resource/org.apache.wicket.ajax.AbstractDefaultAjaxBehavior/res/js/wicket-ajax-jquery-ver-3A8C326A8436172FC95523D517EBC88B.js"></script>
+<script type="text/javascript" id="wicket-ajax-base-url">
+/*<![CDATA[*/
+Wicket.Ajax.baseUrl="CXS0YYJYT7MV3DUT/de/documents";
+/*]]>*/
+</script>
+<script type="text/javascript" src="../../../../../assets/js/project_room_header.js"></script>
+
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<meta http-equiv="Expires" content="Fri, 05 Mar 1999 06:00:00 GMT" />
+<meta http-equiv="Last-Modified" content="Tue, 05 May 2026 10:22:32 +0200" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta http-equiv="Cache-Control" content="max-age=0" />
+<meta http-equiv="Cache-Control" content="must-revalidate" />
+<meta http-equiv="Cache-Control" content="proxy-revalidate" />
+<meta http-equiv="Cache-Control" content="post-check=0, pre-check=0, FALSE" />
+<meta name="language" content="de" />
+<meta name="revisit-after" content="1 days" />
+<meta name="robots" content="index,follow" />
+<meta name="audience" content="alle" />
+<meta name="date" content="2010-02-02" />
+<meta name="copyright" content="cosinex GmbH, Gesundheitscampus-S&#252;d 31, 44801 Bochum, www.cosinex.de" />
+<meta name="keywords" content="Ausschreibung, Vergabe, Bekanntmachung, Auktion, Auftrag, Beschaffung, Vergaberecht, Vergabemarktplatz, E-Government, Vergabeplattform" />
+<meta name="description" content="Auf dem Vergabesatellit Land NRW k&ouml;nnen Sie als Unternehmen nach Bekanntmachungen zu Ausschreibungen und Auktionen suchen. Als registriertes Unternehmen k&ouml;nnen Sie au&szlig;erdem die Vergabeunterlagen herunterladen, an der Kommunikation mit der Vergabestelle teilnehmen und digitale Angebote abgeben." />
+<link rel="stylesheet" type="text/css" href="../../../../../styles/style.css" media="all" />
+<link rel="stylesheet" type="text/css" href="../../../../../styles/10_nrw_custom.css" media="all" />
+<link rel="stylesheet" type="text/css" href="../../../../../styles/common_input_validation.css" media="all" />
+<style type="text/css">
+#testSystemBox{background: #FF8800;} .testSystemText{color:#000000;}</style>
+<script type="text/javascript" src="../../../../../assets/js/functions.js"></script>
+<script type="text/javascript" id="ping" charset="UTF-8" src="../../../../../assets/js/ping.js"></script>
+<script type="text/javascript" src="../../../../../assets/js/openbox.js"></script>
+<script type="text/javascript" src="../../../../../js/calendar.js"></script>
+<script type="text/javascript" src="../../../../../js/jQuery/jquery.min.js"></script>
+<script type="text/javascript" src="../../../../../js/jQuery/jquery.layout.js"></script>
+<script type="text/javascript" src="../../../../../js/jQuery/jquery.plugins.js"></script>
+<script type="text/javascript" src="../../../../../js/jQuery/jquery.init.js"></script>
+<script type="text/javascript" src="../../../../../js/jQuery/jquery.features.js"></script>
+<script type="text/javascript" src="../../../../../js/jQuery/jquery.filter_input.js"></script>
+<script type="text/javascript" src="../../../../../js/jQuery/jquery.features.filter.js"></script>
+<script type="text/javascript" src="../../../../../assets/js/cx_formular.js"></script>
+<title>CXS0YYJYT7MV3DUT | Rohrleitungsbau, Gebäudeautomation- Erneuerung der 24 Systemzentralen der zentralen Klimaanlage | www.evergabe.nrw.de</title><meta name="title" content="CXS0YYJYT7MV3DUT | Rohrleitungsbau, Gebäudeautomation- Erneuerung der 24 Systemzentralen der zentralen Klimaanlage | www.evergabe.nrw.de" />
+<link rel="shortcut icon" href="/VMPSatellite/images/custom/nrw/favicon.ico" type="image/x-icon">
+<meta name="robots" content="nofollow" />
+<script type="text/javascript" >
+/*<![CDATA[*/
+Wicket.Event.add(window, "domready", function(event) { 
+Wicket.Ajax.ajax({"u":"./documents;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001?0-1.0-contentComponent-participationInfo-loginLink","c":"id1","e":"click"});;
+window.addEventListener("load", function () {showSystemMessageOnScroll.init("Systemmeldungen anzeigen", "Systemmeldungen ausblenden")});;
+SearchWaitingDialogElements('waitClick', new Array('a', 'input', 'select'), 'waitingTextAttrib', 'Bitte warten...', false);;
+function applySearchWaitingDialogElements(attrs, jqXHR, textStatus) {SearchWaitingDialogElements('waitClick', new Array('a', 'input', 'select'), 'waitingTextAttrib', 'Bitte warten...', false);}jQuery(document).ready(function() {try{Wicket.Event.subscribe('/dom/node/added', applySearchWaitingDialogElements);}catch(err){}});;
+Wicket.Event.publish(Wicket.Event.Topic.AJAX_HANDLERS_BOUND);
+;});
+/*]]>*/
+</script>
+</head>
+
+<body>
+	<!--  START EINBAU LOGIC FUER TESTSYSTEMBOX -->
+	
+		<div>
+			<div id="testSystemBox">
+				<span class="testSystemText">Wartungsarbeiten am Montag, 27.04.2026 von ca.14:00 bis 16:00 Uhr</span>
+			</div>
+			
+			<div id="testSystemBoxSpace"> </div>
+		</div>
+		
+		
+	
+	
+
+	<!--  ENDE EINBAU LOGIC FUER TESTSYSTEMBOX -->
+	<div id="mainBox" class="fluid">
+		<!--  HEADER  -->
+		<div id="header" class="header">
+  <div id="topHeader">
+    
+  <div class="topHeaderLeft">
+    <a title="Zur Webseite vergabe.NRW" tabindex="1" target="_blank"
+       href="http://www.vergabe.nrw.de/">
+      <span class="screenReaderText">vergabe.NRW</span>
+    </a>
+  </div>
+
+  <div class="topHeaderRight">
+    <a title="Das Landesportal" tabindex="2" target="_blank" href="http://www.nrw.de/">
+      <span class="screenReaderText">Die Landesregierung Nordrhein-Westfalen</span>
+    </a>
+  </div>
+
+  </div>
+</div>
+
+		<!--  MAINNAV  -->
+		<div id="mainNav">
+			<!-- mainNav Start -->
+			<div class="sticky-logo"></div> 
+			<div>
+		<div>
+			<div class="sticky-logo"></div>
+			<ul style="float: right;" class="miscellaneousNav">
+        <li id="backToCenter"><a href="https://www.evergabe.nrw.de/VMPCenter/" title="Zur Vergabeplattform">
+          Zur Vergabeplattform
+        </a></li>
+				<li><a href="javascript:void(0);" data-print-page="" title="Seite drucken">Seite drucken</a>
+				</li>
+			</ul>
+		</div>
+
+		<div class="contentFileSystemMessage" id="contentFileSystemMessage">
+			<a tabindex="0"
+			   title=""
+			   id="contentFileSystemMessageButton"
+			   aria-haspopup="true"
+			   aria-controls="expand_systemmessage"
+			   aria-expanded="false"
+			   href="javascript: void(0);"
+			   class="contentFileSystemMessage__button">
+					<span class="contentFileSystemMessage__statusbox">
+						<span class="contentFileSystemMessage__statusbox-noticebox"
+							  data-system-status="error">
+						</span>
+
+						<span class="contentFileSystemMessage__statusbox-noticebox"
+							  data-system-status="warning">
+						</span>
+
+						<span class="contentFileSystemMessage__statusbox-noticebox"
+							  data-system-status="info" >
+						</span>
+
+						<span class="contentFileSystemMessage__statusbox-noticebox"
+							  data-system-status="success">
+						</span>
+					</span>
+				<span class="linkClosed" aria-hidden="true"
+					  id="contentFileSystemMessageToggleIcon"></span>
+			</a>
+			<div class="contentFileSystemMessage__content" id="expand_systemmessage"></div>
+		</div>
+		<!-- der Initialisierungscode ist nun in MainNavPanel#renderHead zu finden -->
+
+		
+		
+			
+		
+		
+		
+		
+		
+		
+	</div>
+			<!-- mainNav End -->
+		</div>
+
+		<!--  SUBNAV  -->
+		<div id="subNav">
+			<!-- subNav Start -->
+			
+		<ul>
+			<li>
+		<a href="./overview;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001">Übersicht</a>
+		
+		
+		
+		
+		
+
+	</li><li>
+		<a href="./processdata/eforms;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001">Verfahrensangaben</a>
+		
+		
+		
+		
+		
+
+	</li><li>
+		<a id="subActive" href="./documents;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001">Vergabeunterlagen</a>
+		
+		
+		
+		
+		
+
+	</li><li>
+		<a href="./eforms/corrections;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001">Berichtigungen</a>
+		
+		
+		
+		
+		
+
+	</li><li>
+		<a href="./communication/anonym;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001">Kommunikation</a>
+		
+		
+		
+		
+		
+
+	</li><li class="disabled">
+		Angebote
+		
+		
+		
+		
+		
+
+	</li>
+		</ul>
+		<div id="participateToolTippText" class="tooltip"
+			data-extra-tool-tip="">
+			<table>
+				<thead>
+					<tr>
+						<th>Hinweis</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>Um Zugriff auf dieses Modul zu erhalten müssen Sie am Vergabeverfahren teilnehmen.
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	
+			<!-- subNav End -->
+		</div>
+
+		<!--  CONTENT  -->
+		<div id="content">
+
+			<span>
+  <div id="projectRoomTitleBox">
+    <a href="#projectRoomContent" rel="toggle" class="toggleLinkShow"></a>
+    <div id="projectRoomTitleText">
+      <span></span>
+      <span title="Rohrleitungsbau, Gebäudeautomation- Erneuerung der 24 Systemzentralen der zentralen Klimaanlage">Rohrleitungsbau, Gebäudeautomation- Erneuerung der 24 Systemzentralen der zentrale...</span>
+    </div>
+    <div class="projectRoomTitleData" id="projectRoomContent">
+      <table>
+        <tbody>
+        <tr>
+          <td class="tdLabel">
+            <abbr title="Vergabeordnung">
+              VO:
+            </abbr>
+          </td>
+          <td>
+            VOB
+          </td>
+          <td class="tdSpace"></td>
+          <td class="tdLabel">
+            <span>Vergabeart:</span>
+          </td>
+          <td>
+            <span style="margin-right: 4px;" class="flagIcon flagEu">&nbsp;</span>
+            <span>Offenes Verfahren</span>
+          </td>
+          <td class="tdSpace"></td>
+          <td class="tdLabel">
+            <span>Status:</span>
+          </td>
+          <td>
+            <span>Veröffentlicht</span>
+          </td>
+        </tr>
+        <div>
+</div>
+        <div>
+  </div>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <span>
+</span>
+
+  
+
+
+  
+
+  
+
+  
+
+  
+
+  <script type="text/javascript">
+/*<![CDATA[*/
+
+    jQuery(document).ready(function () {
+      // registers the li elements that have a waitClick class
+      SearchWaitingDialogElements('waitClick', new Array('li'), "waitingText", "", true);
+    })
+  
+/*]]>*/
+</script>
+</span>
+			<span>
+		
+	</span>
+			<span id="feedbackPanel">
+  
+  	<script type="text/javascript">
+/*<![CDATA[*/
+
+		jQuery(document).ready(function() {
+			$(".cx-validation-field").addClass("bold");
+			$(".cx-validation-subsection").addClass("bold");
+			$(".cx-validation-section").addClass("bold");
+		});
+	
+/*]]>*/
+</script>
+</span>
+			<div id="id2">
+		<h2>Vergabeunterlagen</h2>
+
+		
+		<span>
+        <div class="participateContainer">
+            <div class="ribbon-wrapper">
+                <div class="ribbon">teilnehmen</div>
+            </div>
+            <h2>Teilnahme am Verfahren</h2>
+
+            <p class="showInfoIcon" style="margin-right:35px;">
+                <span class="screenReaderText">Info</span>
+                <b>Ohne Bestätigung</b> der Teilnahme an diesem Verfahren erfolgt <b>keine E-Mail Benachrichtigung</b> über neue Nachrichten der Vergabestelle (z.B. Aktualisierung der Vergabeunterlagen).
+            </p>
+            <p>Bestätigen Sie die Teilnahme am Verfahren um folgende Vorteile nutzen zu können:</p>
+            <ol class="defaultList" style="margin:-10px 0 0 18px;">
+                <li>
+                        <span class="text">
+                            Sie werden über neue Nachrichten der Vergabestelle automatisch per E-Mail informiert (z.B. Änderungen an den Vergabeunterlagen).
+                        </span>
+                </li>
+                <li>
+                        <span class="text">
+                            Sie können direkt über den Kommunikationsbereich der Vergabestelle eigene Nachrichten zukommen lassen.
+                        </span>
+                </li>
+                <li>
+                        <span class="text">
+                            Sie können elektr. Angebote / Teilnahmeanträge abgeben, sofern diese Möglichkeit von der Vergabestelle zugelassen wurde.
+                        </span>
+                </li>
+            </ol>
+            <div class="buttonContainer no-border">
+                <a class="participateLink disabled" title="Jetzt teilnehmen">Jetzt teilnehmen</a>
+                <a id="id1" href="javascript:;" class="participateLink login" title="Anmelden">Anmelden</a>
+            </div>
+        </div>
+    </span>
+	
+
+		<div id="id3" style="display:none" data-wicket-placeholder=""></div>
+		
+		<div class="projectRoomHeads">Anschreiben</div>
+		<span id="id4">
+    
+    <div>
+</div>
+    <table class="margin-bottom-20">
+        <thead>
+        <tr>
+            <th scope="col">
+                Dateiname
+            </th>
+            <th class="table-head-column-width-150" scope="col">
+                Hinzugefügt am
+            </th>
+            <th class="table-head-column-width-100" scope="col">
+                Typ
+            </th>
+            <th class="table-head-column-width-120" scope="col">
+                Größe
+            </th>
+            <th class="table-head-action-column-default" scope="col">
+                Aktion
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <span>
+        <tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 211 EU - Aufforderung zur Abgabe eines Angebots EU 07-2019.pdf">VVB 211 EU - Aufforderung zur Abgabe eines Angebots EU 07-2019.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">22,4 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/address/VVB+211+EU+-+Aufforderung+zur+Abgabe+eines+Angebots+EU+07-2019.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr>
+    </span>
+        </tbody>
+        <div>
+</div>
+    </table>
+    <div>
+</div>
+
+
+
+    
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</span>
+		
+		<div class="projectRoomHeads">Leistungsbeschreibungen</div>
+		<span id="id5">
+    
+    <div>
+</div>
+    <table class="margin-bottom-20">
+        <thead>
+        <tr>
+            <th scope="col">
+                Dateiname
+            </th>
+            <th class="table-head-column-width-150" scope="col">
+                Hinzugefügt am
+            </th>
+            <th class="table-head-column-width-100" scope="col">
+                Typ
+            </th>
+            <th class="table-head-column-width-120" scope="col">
+                Größe
+            </th>
+            <th class="table-head-action-column-default" scope="col">
+                Aktion
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <span>
+        <tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="01_Zuwegungsplan Etage -3.pdf">01_Zuwegungsplan Etage -3.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">2 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/01_Zuwegungsplan+Etage+-3.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="02_Grundriss REKU_Etage-4.pdf">02_Grundriss REKU_Etage-4.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">3,8 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/02_Grundriss+REKU_Etage-4.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="03_Grundriss Etage -4 Süd.pdf">03_Grundriss Etage -4 Süd.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">2,3 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/03_Grundriss+Etage+-4+S%25C3%25BCd.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="04_Zuwegungsplan außerhalb des Gebäudes.pdf">04_Zuwegungsplan außerhalb des Gebäudes.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">12,2 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/04_Zuwegungsplan+au%25C3%259Ferhalb+des+Geb%25C3%25A4udes.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="05_2024-12-20_GB GT_Fremdfirmenrichtlinie.pdf">05_2024-12-20_GB GT_Fremdfirmenrichtlinie.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">2,6 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/05_2024-12-20_GB+GT_Fremdfirmenrichtlinie.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="06_luac_250131_Baustellen- und Baulogistikordnung_hup.pdf">06_luac_250131_Baustellen- und Baulogistikordnung_hup.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">15,8 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/06_luac_250131_Baustellen-+und+Baulogistikordnung_hup.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="26-02-27_REKU-Sued_Beschreibung für Bekanntmachung.docx">26-02-27_REKU-Sued_Beschreibung für Bekanntmachung.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">16,3 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/26-02-27_REKU-Sued_Beschreibung+f%25C3%25BCr+Bekanntmachung.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="26-03-11_Baumaßnahme REKU 3. Leitung Süd_Angebotsaufforderung.X83">26-03-11_Baumaßnahme REKU 3. Leitung Süd_Angebotsaufforderung.X83</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default gaebX83Icon" title="Typ: X83"></span>
+    </td>
+            <td class="text-center">433,4 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/26-03-11_Bauma%25C3%259Fnahme+REKU+3.+Leitung+S%25C3%25BCd_Angebotsaufforderung.X83;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span><span onclick="OpenBox.show(&#039;preview&#039;, &#039;26-03-11_Baumaßnahme REKU 3. Leitung Süd_Angebotsaufforderung.X83&#039;, &#039;&lt;iframe id=&quot;previewIframe&quot; name=&quot;previewIframe&quot; src=&quot;./documents/preview/serviceDescription/26-03-11_Bauma%25C3%259Fnahme+REKU+3.+Leitung+S%25C3%25BCd_Angebotsaufforderung.X83;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001?projectId=223469&quot; width=&quot;800px&quot; class=&quot;openBoxIframe&quot; height=&quot;720px&quot; marginwidth=&quot;0&quot; marginheight=&quot;0&quot; frameborder=&quot;0&quot; style=&quot;height: 896px;&quot;&gt;&lt;/iframe&gt;&#039;);OpenBox.layout(&#039;preview&#039;);OpenBox.resize(&#039;preview&#039;, 800);return false;" class="fileManagementContainer geabViewerIcon" title="Datei anzeigen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="26-03-11_Baumaßnahme REKU 3. Leitung Süd_LV.X81">26-03-11_Baumaßnahme REKU 3. Leitung Süd_LV.X81</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default gaebX81Icon" title="Typ: X81"></span>
+    </td>
+            <td class="text-center">433,5 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/26-03-11_Bauma%25C3%259Fnahme+REKU+3.+Leitung+S%25C3%25BCd_LV.X81;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span><span onclick="OpenBox.show(&#039;preview&#039;, &#039;26-03-11_Baumaßnahme REKU 3. Leitung Süd_LV.X81&#039;, &#039;&lt;iframe id=&quot;previewIframe&quot; name=&quot;previewIframe&quot; src=&quot;./documents/preview/serviceDescription/26-03-11_Bauma%25C3%259Fnahme+REKU+3.+Leitung+S%25C3%25BCd_LV.X81;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001?projectId=223469&quot; width=&quot;800px&quot; class=&quot;openBoxIframe&quot; height=&quot;720px&quot; marginwidth=&quot;0&quot; marginheight=&quot;0&quot; frameborder=&quot;0&quot; style=&quot;height: 896px;&quot;&gt;&lt;/iframe&gt;&#039;);OpenBox.layout(&#039;preview&#039;);OpenBox.resize(&#039;preview&#039;, 800);return false;" class="fileManagementContainer geabViewerIcon" title="Datei anzeigen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="26-03-11_Baumaßnahme REKU 3. Leitung Süd_LV_unbepreist.pdf">26-03-11_Baumaßnahme REKU 3. Leitung Süd_LV_unbepreist.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">1,4 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/serviceDescription/26-03-11_Bauma%25C3%259Fnahme+REKU+3.+Leitung+S%25C3%25BCd_LV_unbepreist.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr>
+    </span>
+        </tbody>
+        <div>
+</div>
+    </table>
+    <div>
+</div>
+
+
+
+    
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</span>
+		
+		<div class="projectRoomHeads">Vom Unternehmen auszufüllende Dokumente</div>
+		<span id="id6">
+    
+    <div>
+</div>
+    <table class="margin-bottom-20">
+        <thead>
+        <tr>
+            <th scope="col">
+                Dateiname
+            </th>
+            <th class="table-head-column-width-150" scope="col">
+                Hinzugefügt am
+            </th>
+            <th class="table-head-column-width-100" scope="col">
+                Typ
+            </th>
+            <th class="table-head-column-width-120" scope="col">
+                Größe
+            </th>
+            <th class="table-head-action-column-default" scope="col">
+                Aktion
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <span>
+        <tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="521 EU 02-2024 - Eigenerklaerung Ausschlussgruende.docx">521 EU 02-2024 - Eigenerklaerung Ausschlussgruende.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">31,7 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/521+EU+02-2024+-+Eigenerklaerung+Ausschlussgruende.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="522 EU 06-2022 - Eigenerklaerung Mindestlohngesetz EU.docx">522 EU 06-2022 - Eigenerklaerung Mindestlohngesetz EU.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">22,8 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/522+EU+06-2022+-+Eigenerklaerung+Mindestlohngesetz+EU.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="523 EU 02-2024 - Eigenerklaerung Sanktionspaket 5 EU.docx">523 EU 02-2024 - Eigenerklaerung Sanktionspaket 5 EU.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">30,8 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/523+EU+02-2024+-+Eigenerklaerung+Sanktionspaket+5+EU.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="CSX 59 - Eigenerklaerung Informationen zum Bieter.docx">CSX 59 - Eigenerklaerung Informationen zum Bieter.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">36,9 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/CSX+59+-+Eigenerklaerung+Informationen+zum+Bieter.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="Eigenerklärung Lieferkettensorgfaltspflichtengesetz.pdf">Eigenerklärung Lieferkettensorgfaltspflichtengesetz.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">54,5 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/Eigenerkl%25C3%25A4rung+Lieferkettensorgfaltspflichtengesetz.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 124 - Eigenerklaerung zur Eignung 07-2019 - Fassung 2022.docx">VVB 124 - Eigenerklaerung zur Eignung 07-2019 - Fassung 2022.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">59,8 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/VVB+124+-+Eigenerklaerung+zur+Eignung+07-2019+-+Fassung+2022.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 213 - Angebotsschreiben - Einheitliche Fassung 07-2019.rtf">VVB 213 - Angebotsschreiben - Einheitliche Fassung 07-2019.rtf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default rtfIcon" title="Typ: rtf"></span>
+    </td>
+            <td class="text-center">119,6 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/VVB+213+-+Angebotsschreiben+-+Einheitliche+Fassung+07-2019.rtf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 234 - Erklaerung Bieter-_Arbeitsgemeinschaft 12-2017.docx">VVB 234 - Erklaerung Bieter-_Arbeitsgemeinschaft 12-2017.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">53,5 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/VVB+234+-+Erklaerung+Bieter-_Arbeitsgemeinschaft+12-2017.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 235 - Verzeichnis der Leistungen_Kapazitaeten anderer Unternehmen 12-2017.docx">VVB 235 - Verzeichnis der Leistungen_Kapazitaeten anderer Unternehmen 12-2017.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">54,4 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/filledByCompany/VVB+235+-+Verzeichnis+der+Leistungen_Kapazitaeten+anderer+Unternehmen+12-2017.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr>
+    </span>
+        </tbody>
+        <div>
+</div>
+    </table>
+    <div>
+</div>
+
+
+
+    
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</span>
+		
+		<div class="projectRoomHeads">Vertragsbedingungen</div>
+		<span id="id7">
+    
+    <div>
+</div>
+    <table class="margin-bottom-20">
+        <thead>
+        <tr>
+            <th scope="col">
+                Dateiname
+            </th>
+            <th class="table-head-column-width-150" scope="col">
+                Hinzugefügt am
+            </th>
+            <th class="table-head-column-width-100" scope="col">
+                Typ
+            </th>
+            <th class="table-head-column-width-120" scope="col">
+                Größe
+            </th>
+            <th class="table-head-action-column-default" scope="col">
+                Aktion
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <span>
+        <tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="513 EU 10-2018 - Besondere Vertragsbedingungen TVgG NRW.pdf">513 EU 10-2018 - Besondere Vertragsbedingungen TVgG NRW.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">20,3 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/contractCondition/513+EU+10-2018+-+Besondere+Vertragsbedingungen+TVgG+NRW.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="Allgemeine Vertragsbedingungen für die Ausführung von Bauleistungen_VOB Teil B 2016.pdf">Allgemeine Vertragsbedingungen für die Ausführung von Bauleistungen_VOB Teil B 2016.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">97,4 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/contractCondition/Allgemeine+Vertragsbedingungen+f%25C3%25BCr+die+Ausf%25C3%25BChrung+von+Bauleistungen_VOB+Teil+B+2016.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VHB 214 - Besondere Vertragsbedingungen_UKA-Vers. 01-2022 (3).rtf">VHB 214 - Besondere Vertragsbedingungen_UKA-Vers. 01-2022 (3).rtf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default rtfIcon" title="Typ: rtf"></span>
+    </td>
+            <td class="text-center">195,9 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/contractCondition/VHB+214+-+Besondere+Vertragsbedingungen_UKA-Vers.+01-2022+%25283%2529.rtf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="Zus. techn. Vertragsbedingungen UKA Anlagen 1-5.zip">Zus. techn. Vertragsbedingungen UKA Anlagen 1-5.zip</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default zipIcon" title="Typ: zip"></span>
+    </td>
+            <td class="text-center">54,1 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/contractCondition/Zus.+techn.+Vertragsbedingungen+UKA+Anlagen+1-5.zip;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr>
+    </span>
+        </tbody>
+        <div>
+</div>
+    </table>
+    <div>
+</div>
+
+
+
+    
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</span>
+		
+		<div class="projectRoomHeads">Sonstiges</div>
+		<span id="id8">
+    
+    <div>
+</div>
+    <table class="margin-bottom-20">
+        <thead>
+        <tr>
+            <th scope="col">
+                Dateiname
+            </th>
+            <th class="table-head-column-width-150" scope="col">
+                Hinzugefügt am
+            </th>
+            <th class="table-head-column-width-100" scope="col">
+                Typ
+            </th>
+            <th class="table-head-column-width-120" scope="col">
+                Größe
+            </th>
+            <th class="table-head-action-column-default" scope="col">
+                Aktion
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <span>
+        <tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="236-Verpflichtungserklärung anderer Unternehmen.pdf">236-Verpflichtungserklärung anderer Unternehmen.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">19,3 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/236-Verpflichtungserkl%25C3%25A4rung+anderer+Unternehmen.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="312a_322a_informationen_dsgvo.pdf">312a_322a_informationen_dsgvo.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">69,9 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/312a_322a_informationen_dsgvo.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="322 EU Hinweise Einreichung Teilnahmeanträge_Angebote.docx">322 EU Hinweise Einreichung Teilnahmeanträge_Angebote.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">34,7 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/322+EU+Hinweise+Einreichung+Teilnahmeantr%25C3%25A4ge_Angebote.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="BMWK - Rundschreiben zur Anwendung der Russland-Sanktionen_rev.pdf">BMWK - Rundschreiben zur Anwendung der Russland-Sanktionen_rev.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">2,4 MB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/BMWK+-+Rundschreiben+zur+Anwendung+der+Russland-Sanktionen_rev.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="CSX 42 - Angebotswertungsmethoden und -kriterien.pdf">CSX 42 - Angebotswertungsmethoden und -kriterien.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">39,7 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/CSX+42+-+Angebotswertungsmethoden+und+-kriterien.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="CSX 43 - Zusammenstellung einzureichender Unterlagen.pdf">CSX 43 - Zusammenstellung einzureichender Unterlagen.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">7,9 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/CSX+43+-+Zusammenstellung+einzureichender+Unterlagen.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="Verwendung elektronischer Mittel_Information nach VgV bzw. VOBA.pdf">Verwendung elektronischer Mittel_Information nach VgV bzw. VOBA.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">104,1 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/Verwendung+elektronischer+Mittel_Information+nach+VgV+bzw.+VOBA.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 212EU - Teilnahmebedingungen 07-2019.docx">VVB 212EU - Teilnahmebedingungen 07-2019.docx</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default docxIcon" title="Typ: docx"></span>
+    </td>
+            <td class="text-center">65,1 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/VVB+212EU+-+Teilnahmebedingungen+07-2019.docx;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 223 - Aufgliederung der Einheitspreise.rtf">VVB 223 - Aufgliederung der Einheitspreise.rtf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default rtfIcon" title="Typ: rtf"></span>
+    </td>
+            <td class="text-center">39,4 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/VVB+223+-+Aufgliederung+der+Einheitspreise.rtf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 421 Vertragserfüllungsbürgschaft.pdf">VVB 421 Vertragserfüllungsbürgschaft.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">44,8 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/VVB+421+Vertragserf%25C3%25BCllungsb%25C3%25BCrgschaft.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr><tr>
+            <td class="truncate-data-cell-nowrap">
+                <span>
+        <span data-title-with-breaks="" class="truncate-span-ie8-ie9" title="VVB 422 Mängelansprüchebürgschaft.pdf">VVB 422 Mängelansprüchebürgschaft.pdf</span>
+    </span>
+            </td>
+            <td class="text-center">28.04.2026</td>
+            <td class="text-center">
+    <span class="fileTypeContainer icon-correction cursor-default pdfIcon" title="Typ: pdf"></span>
+    </td>
+            <td class="text-center">44,9 KB</td>
+            <td class="text-center">
+        <span onclick="var win = this.ownerDocument.defaultView || this.ownerDocument.parentWindow; if (win == window) { window.location.href=&#039;./documents/misc/VVB+422+M%25C3%25A4ngelanspr%25C3%25BCcheb%25C3%25BCrgschaft.pdf;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001&#039;; } ;return false" class="actionDownloadIcon" title="Die Datei herunterladen"></span>
+    </td>
+        </tr>
+    </span>
+        </tbody>
+        <div>
+</div>
+    </table>
+    <div>
+</div>
+
+
+
+    
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</span>
+		
+		<span>
+			<div class="csx-project-form">
+				<div class="buttonContainer text-right">
+					<a class="btn" href="./documents/archive/Vergabeunterlagen_CXS0YYJYT7MV3DUT.zip;jsessionid=hmDzXDlAlPeVnJvT7Q5kdRf2y7oyOYq5Q87JtApc.sat001" title="Alle Dokumente als ZIP-Datei herunterladen">
+						Alle Dokumente als ZIP-Datei herunterladen
+					</a>
+				</div>
+			</div>
+		</span>
+	
+		<div id="preview">
+		</div>
+
+		
+	</div>
+		</div>
+
+		<!--  FOOTER  -->
+		<div id="footer">
+		
+		<div>
+			<p>
+				<span class="toolLink-mandatorNumberHint mandatorNumber">
+		
+	</span>
+				VMP 11.2.1 <span>
+			| &copy; 2026 
+				<a href="http://www.cosinex.de" title="Startseite cosinex GmbH" target="_blank">cosinex GmbH</a> / <a href="http://www.d-nrw.de" title="Startseite d-NRW" target="_blank">d-NRW</a>
+		</span> |
+				Systemzeit: 05.05.2026 10:22 Uhr |  
+				<a href="https://vergabe.nrw.de/impressum-kontakt" target="_blank">Impressum</a>
+				<span>
+		
+	</span>
+				<span>
+		
+	</span>
+			</p>
+			<div class="tooltip" id="mandatorNumberHint">
+			<table style="margin-bottom:0;">
+				<thead>
+					<tr>
+						<th>Mandantennummer</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>
+							Die systemweite interne Identifikationsnummer dieses Mandanten.
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+			<!-- TOP BUTTON  -->
+			<a title="Zum Seitenanfang" class="to-top-button" href="#" style="display: block;">
+			    <span class="arrow-up"></span>
+			</a>
+		</div>
+		<span id="LOGIN">
+		
+	</span>
+		
+		
+
+		
+		
+	</div>
+
+		<!--  DEBUG  -->
+		<div id="debug" class="footer">
+		
+	</div>
+		
+		<div id="WaitingBox:bgHidden" class="bgHidden"
+			style="position: absolute; top: -1000; left: -1000; display: none;"></div>
+		
+		<div id="WaitingBox:openBox" class="waitingDialogBox">
+			<div id="WaitingBox:openBoxcontent" class="containerLoadingAnim">
+				<div class="loading-anim-box">
+					<span class="spinnerContainer"> <span class="spinner"></span>
+					</span> <span class="work-in-progress-text" id="waitingDialogText">Bitte warten...</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<script type="text/javascript">
+/*<![CDATA[*/
+
+		waiting_show = true;
+
+		function checkWaitingDialog(show) {
+			waiting_show = show;
+			return show;
+		}
+
+		function closeWaitingDialog(show) {
+			if (!show) {
+				CloseWaitingBox();
+			}
+		}
+		function closeWaitingDialog_retrunInput(show) {
+			if (!show) {
+				CloseWaitingBox();
+			}
+			return show;
+		}
+
+		function isWaitingDialogOpened() {
+			var visibility = $(".bgHidden").css("display");
+			return "none" != visibility;
+		}
+	
+/*]]>*/
+</script>
+	<script type="text/javascript">
+/*<![CDATA[*/
+
+		function applyStylesAndEnhancements(attrs, jqXHR, textStatus) {
+			
+			// init template enhancements
+			var containerExpression = jqXHR;
+			$(containerExpression).find("textarea[data-template]").each(
+				function(textarea)
+				{
+					Template.initTextarea($(this));
+				}
+			);
+			
+			// init form enhancements
+			setTimeout(function(){CXFormular.init();},1000);
+
+			// init tooltip function for hints
+			initToolTip();
+
+			// init sorting table headers
+			if (typeof initTableSorting === "function")
+			{
+				initTableSorting();
+			}
+		}
+		jQuery(document).ready(function() {
+			try{
+				Wicket.Event.subscribe('/dom/node/added', applyStylesAndEnhancements);
+			}catch(err){
+				
+			}
+		});
+	
+/*]]>*/
+</script>
+	<script type="text/javascript">
+/*<![CDATA[*/
+
+		jQuery(document).ready(function() {
+			if (typeof Template !== 'undefined')
+			{
+				$('textarea[data-template]').each(
+					function(textarea)
+					{
+						Template.initTextarea($(this));
+					}
+				);
+			
+			}
+		});
+	
+/*]]>*/
+</script>
+<script type="text/javascript">
+/*<![CDATA[*/
+
+	jQuery( document ).ready(function() {
+		function toggleFunction(component, event){
+			if($(component).attr("expandable") == "expanded"){
+				$(event).preventDefault();
+				$(component).next("ul").hide();
+				$(component).attr("expandable","collapsed");
+			}else{
+				//$(component).next("ul").show();
+				$(component).attr("expandable","expanded");
+			}
+		}
+		function init(component){
+			var activeSubElements = $(component).siblings().find("a[id='subActive']");
+			console.log(activeSubElements);
+			if(activeSubElements.length>0){
+				$(component).next("ul").show();
+			}else {
+				$(component).next("ul").hide();
+				if ($(component).attr("expandable") == "expanded") {
+
+					$(component).next("ul").show();
+				} else if ($(component).attr("expandable") == "collapsed") {
+					$(component).next("ul").hide();
+				}
+			}
+		}
+		$("a[expandable]").each(function(index){
+			init($(this));
+			$(this).on("click", function(event){
+
+				toggleFunction($(this), event);
+			});
+		});
+	});
+
+/*]]>*/
+</script>
+</body>
+</html>

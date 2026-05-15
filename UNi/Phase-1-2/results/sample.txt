@@ -1,0 +1,2 @@
+This is a local sample file used to verify the executor download behavior.
+It is read via a file:// URL by the test scraper.

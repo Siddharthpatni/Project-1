@@ -164,16 +164,38 @@ def scrape(url: str, output_dir: str) -> list[str]:
                 # Fallback to direct requests if click fails
                 try:
                     r = requests.get(doc_url, headers=BROWSER_HEADERS, timeout=10)
-                    if r.status_code == 200 and len(r.content) > 100:
-                        h = hashlib.md5(r.content[:4096]).hexdigest()
-                        if h not in content_hashes:
-                            content_hashes.add(h)
-                            name = f"doc_{i}_{h[:6]}.pdf" # Default to PDF if unknown
-                            save_path = os.path.join(output_dir, name)
-                            with open(save_path, "wb") as f:
-                                f.write(r.content)
-                            downloaded_paths.append(save_path)
-                except:
+                    if r.status_code != 200 or len(r.content) < 100:
+                        continue
+
+                    content_type = r.headers.get("content-type", "").lower()
+                    # Skip HTML responses — those are web pages, not documents
+                    if "html" in content_type:
+                        continue
+                    if b"<html" in r.content[:500].lower():
+                        continue
+
+                    h = hashlib.md5(r.content[:4096]).hexdigest()
+                    if h in content_hashes:
+                        continue
+                    content_hashes.add(h)
+
+                    # Determine extension from content-type or magic bytes
+                    if "zip" in content_type or r.content.startswith(b"PK"):
+                        ext = ".zip"
+                    elif "xml" in content_type:
+                        ext = ".xml"
+                    elif r.content.startswith(b"%PDF"):
+                        ext = ".pdf"
+                    else:
+                        url_ext = Path(urlparse(doc_url).path).suffix.lower()
+                        ext = url_ext if url_ext in DOCUMENT_EXTENSIONS else ".bin"
+
+                    name = f"doc_{i}_{h[:6]}{ext}"
+                    save_path = os.path.join(output_dir, name)
+                    with open(save_path, "wb") as f:
+                        f.write(r.content)
+                    downloaded_paths.append(save_path)
+                except Exception:
                     continue
 
         browser.close()

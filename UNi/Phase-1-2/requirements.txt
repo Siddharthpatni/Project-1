@@ -1,0 +1,18 @@
+# ─── Core (required) ─────────────────────────────────────────────────────────
+# generator.py + executor.py + validator.py only need httpx; rest is stdlib.
+httpx==0.28.1
+
+# llm_client.py (v1 budget-guarded client) uses requests + python-dotenv.
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# ─── Renders pages for generator.py prompt-building + multi_llm_evaluator ────
+# After install, run: playwright install chromium
+playwright==1.49.1
+
+# ─── Tests ───────────────────────────────────────────────────────────────────
+pytest==8.3.4
+
+# ─── Docker sandbox ──────────────────────────────────────────────────────────
+# docker_sandbox.py shells out to the `docker` CLI — no Python package needed.
+# Install Docker itself: https://docs.docker.com/engine/install/
