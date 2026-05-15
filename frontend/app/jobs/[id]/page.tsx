@@ -147,9 +147,13 @@ export default function JobDetailPage() {
                         const ext = doc.filename.split('.').pop()?.toLowerCase() ?? "";
                         const isDoc = ["pdf", "zip", "docx", "xlsx", "doc", "xls", "ppt", "pptx", "rar", "7z"].includes(ext);
                         return isDoc ? (
-                          <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" title="Verified Document" />
+                          <span title="Verified Document" className="flex items-center">
+                            <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          </span>
                         ) : (
-                          <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" title="Unknown Type" />
+                          <span title="Unknown Type" className="flex items-center">
+                            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                          </span>
                         );
                       })()}
                     </div>
