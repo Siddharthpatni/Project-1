@@ -151,18 +151,52 @@ def execute(code: str, url: str) -> ExecutionResult:
             )
 
     # workdir is cleaned up at the end of the `with` — but downloads live
-    # in `output_dir`, so they survive. Confirm they're on disk.
+    # in `output_dir`, so they survive. Confirm they're on disk AND that
+    # they are real documents (not HTML error pages / login redirects).
+    from app.phase1_llm_scraper.document_validator import is_real_document_file
+
     surviving: list[str] = []
+    rejected: list[tuple[str, str]] = []
+
+    def _consider(path: str) -> None:
+        if not os.path.isfile(path) or path in surviving:
+            return
+        ok, reason = is_real_document_file(path)
+        if ok:
+            surviving.append(path)
+        else:
+            rejected.append((path, reason))
+            log.warning(
+                "phase1.executor.rejected_non_document",
+                path=path, reason=reason,
+            )
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
     for f in payload.get("files", []):
-        if os.path.isfile(f):
-            surviving.append(f)
+        _consider(str(f))
     # Also pick up anything in output_dir that the scraper saved without
     # including in its return value (defensive — generated code is sloppy).
     if os.path.isdir(output_dir):
         for entry in sorted(os.listdir(output_dir)):
-            full = str(output_dir / entry)
-            if os.path.isfile(full) and full not in surviving:
-                surviving.append(full)
+            _consider(str(output_dir / entry))
+
+    if not surviving:
+        return ExecutionResult(
+            success=False,
+            downloaded_files=[],
+            output_dir=str(output_dir),
+            stdout=sb.stdout,
+            stderr=sb.stderr,
+            runtime_seconds=payload.get("elapsed", sb.elapsed),
+            error=(
+                f"scraper produced no valid documents "
+                f"(rejected {len(rejected)} non-document file(s): "
+                f"{[r for _, r in rejected[:5]]})"
+            ),
+        )
 
     return ExecutionResult(
         success=True,
