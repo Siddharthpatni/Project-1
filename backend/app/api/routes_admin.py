@@ -42,6 +42,16 @@ def stats(db: Session = Depends(get_db)):
         for s in Strategy
     }
 
+    by_strategy_success = {
+        s.value: (
+            db.query(func.count(JobItem.id))
+            .filter(JobItem.strategy == s.value)
+            .filter(JobItem.status == JobStatus.SUCCESS.value)
+            .scalar() or 0
+        )
+        for s in Strategy
+    }
+
     return {
         "jobs": total_jobs,
         "items": total_items,
@@ -51,6 +61,7 @@ def stats(db: Session = Depends(get_db)):
         "evaluation_runs": eval_runs,
         "agent_runs": agent_runs,
         "strategy_distribution": by_strategy,
+        "strategy_success_distribution": by_strategy_success,
     }
 
 

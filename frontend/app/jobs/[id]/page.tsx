@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { useParams } from "next/navigation";
 import { api, fetcher } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
-import { Download, FileText, AlertCircle } from "lucide-react";
+import { Download, FileText, AlertCircle, CheckCircle2, BadgeCheck } from "lucide-react";
 
 const STRATEGY_STYLES: Record<string, string> = {
   manual_scraper:         "bg-blue-100 text-blue-700",
@@ -63,6 +63,61 @@ export default function JobDetailPage() {
         </div>
       </header>
 
+      {/* ── Strategies ── */}
+      <div className="card overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h2 className="font-semibold">Strategien</h2>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {job.items?.map((item: any) => {
+            const strategyKeys = Object.keys(STRATEGY_STYLES);
+            const targetIdx = item.strategy === "none" ? 5 : strategyKeys.indexOf(item.strategy);
+            const isJobFailed = item.status === "failed";
+            
+            return (
+              <div key={item.id} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="text-xs font-mono text-slate-600 truncate max-w-[60ch] mt-1" title={item.url}>
+                    {item.url.length > 60 ? item.url.slice(0, 60) + "..." : item.url}
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {strategyKeys.map((s, idx) => {
+                        const isTried = isJobFailed || idx <= targetIdx;
+                        if (!isTried) return null;
+                        const isSuccess = s === item.strategy;
+                        const isFailed = !isSuccess;
+                        const cls = STRATEGY_STYLES[s];
+                        return (
+                          <div key={s} className="flex items-center gap-2">
+                            {idx > 0 && <span className="text-slate-300">→</span>}
+                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cls} ${isFailed ? "opacity-50" : "opacity-100"}`}>
+                              {isSuccess && <CheckCircle2 className="w-3 h-3" />}
+                              {isFailed && <div className="w-1.5 h-1.5 rounded-full bg-red-500" />}
+                              {s.replace(/_/g, " ")}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {item.strategy !== "none" && (
+                      <div className="text-xs text-slate-500 mt-1">
+                        └ {item.document_count} docs, {item.runtime_seconds?.toFixed(1)}s
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {item.error_message && (
+                  <div className="mt-3 text-xs font-mono text-rose-600 bg-rose-50 p-2 rounded truncate max-w-full">
+                    {item.error_message.slice(0, 200)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Downloaded Documents — shown first, prominently ── */}
       <div className="card overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -86,7 +141,18 @@ export default function JobDetailPage() {
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="text-xl flex-shrink-0">{fileIcon(doc.filename)}</span>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{doc.filename}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-slate-800 truncate">{doc.filename}</p>
+                      {(() => {
+                        const ext = doc.filename.split('.').pop()?.toLowerCase() ?? "";
+                        const isDoc = ["pdf", "zip", "docx", "xlsx", "doc", "xls", "ppt", "pptx", "rar", "7z"].includes(ext);
+                        return isDoc ? (
+                          <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" title="Verified Document" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" title="Unknown Type" />
+                        );
+                      })()}
+                    </div>
                     <p className="text-xs text-slate-400">{formatBytes(doc.size_bytes)} · v{doc.version}</p>
                   </div>
                 </div>

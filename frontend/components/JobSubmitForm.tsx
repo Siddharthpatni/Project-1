@@ -82,13 +82,21 @@ export default function JobSubmitForm() {
       </div>
 
       {mode === "manual" ? (
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={6}
-          placeholder={`Paste one URL per line\nhttps://www.evergabe-online.de/tenderdetails.html?...\nhttps://www.dtvp.de/Satellite/notice/...`}
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
-        />
+        <div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={6}
+            placeholder={`Paste one URL per line\nhttps://www.evergabe-online.de/tenderdetails.html?...\nhttps://www.dtvp.de/Satellite/notice/...`}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+          />
+          <button 
+            onClick={() => setText("https://www.dtvp.de/Satellite/public/company/project/CXP9YJJYG29/de/documents\nhttps://www.evergabe-online.de/tenderdetails.html?id=858550\nhttps://www.subreport.de/E69184189")}
+            className="text-xs text-brand-700 hover:underline mt-2"
+          >
+            Beispiel-URLs laden
+          </button>
+        </div>
       ) : (
         <div 
           onClick={() => fileInputRef.current?.click()}
@@ -123,14 +131,14 @@ export default function JobSubmitForm() {
             onChange={(e) => setForceStrategy(e.target.value)}
             className="px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
           >
-            <option value="">Auto (Cascaded pipeline)</option>
-            <option value="manual_scraper">Phase 0: Manual Scraper</option>
-            <option value="existing_scraper">Phase 3: Existing Scraper</option>
-            <option value="deterministic_template">Phase 3: Deterministic Template</option>
-            <option value="llm_generated_scraper">Phase 1: Generate New LLM Scraper</option>
+            <option value="">Auto (Kaskadierte Pipeline)</option>
+            <option value="manual_scraper">Phase 0: Manueller Scraper</option>
+            <option value="existing_scraper">Phase 3: Bestehender Scraper</option>
+            <option value="deterministic_template">Phase 3: Deterministische Vorlage</option>
+            <option value="llm_generated_scraper">Phase 1: LLM-Generierung</option>
             <option value="computer_use_agent">Phase 2: Computer-Use Agent</option>
           </select>
-          <p className="text-xs text-slate-500">Auto cascade: Manual → Existing → Deterministic → LLM → CUA.</p>
+          <p className="text-xs text-slate-500">Auto-Kaskade: Manuell → Bestehend → Deterministisch → LLM → CUA.</p>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -163,7 +171,7 @@ export default function JobSubmitForm() {
           }
         </span>
         <button onClick={submit} disabled={busy} className="btn-primary px-6 disabled:opacity-50">
-          {busy ? "Submitting…" : "Start scraping"}
+          {busy ? "Submitting…" : "Scraping starten"}
         </button>
       </div>
     </div>
