@@ -183,7 +183,7 @@ def is_real_document_file(path: str) -> tuple[bool, str]:
     if header[:6] == b"7z\xbc\xaf\x27\x1c":
         return True, "7z"
 
-    if header[:7] == b"Rar!\x1a\x07":
+    if header[:6] == b"Rar!\x1a\x07":
         return True, "rar"
 
     # --- 6. extension-based acceptance for text-ish files ---
