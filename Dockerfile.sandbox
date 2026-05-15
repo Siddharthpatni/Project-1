@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────────────────────────────────────
+#  Phase-1 Sandbox Image
+# ──────────────────────────────────────────────────────────────────────────────
+#  Minimal image with Python 3.12 + Playwright + Chromium.
+#  Used by docker_sandbox.py to run LLM-generated scraper code in an isolated
+#  container with no host filesystem access, restricted network, time limit,
+#  and memory cap.
+#
+#  Build once:
+#    docker build -t phase1-sandbox -f Dockerfile.sandbox .
+# ──────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.12-slim
+
+# Install system deps needed by Playwright Chromium
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+    libgbm1 libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 \
+    fonts-liberation wget ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages the scrapers may use
+RUN pip install --no-cache-dir \
+    playwright==1.49.1 \
+    requests==2.32.3 \
+    httpx==0.28.1 \
+    beautifulsoup4==4.12.3
+
+# Set Playwright browsers path to a shared location readable by all users
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Install Playwright Chromium browser
+RUN playwright install chromium && \
+    chmod -R 777 /ms-playwright
+
+# Create a non-root user for running scrapers
+RUN useradd --create-home --shell /bin/bash sandbox
+USER sandbox
+WORKDIR /home/sandbox
+
+# Default entrypoint — overridden per run
+ENTRYPOINT ["python"]

@@ -1,0 +1,66 @@
+{
+  "_comment": "8-model comparison fleet used by run_multi_model.py. All routed through OpenRouter using one OPENROUTER_API_KEY. Token prices are approximate USD per 1M tokens (input, output).",
+  "models": [
+    {
+      "alias": "Gemini 2.5 Flash Lite",
+      "model_id": "google/gemini-2.5-flash-lite",
+      "in_per_mtok": 0.10,
+      "out_per_mtok": 0.40,
+      "enabled": true
+    },
+    {
+      "alias": "Gemini 2.5 Flash",
+      "model_id": "google/gemini-2.5-flash",
+      "in_per_mtok": 0.30,
+      "out_per_mtok": 2.50,
+      "enabled": true
+    },
+    {
+      "alias": "GPT-4.1 Mini",
+      "model_id": "openai/gpt-4.1-mini",
+      "in_per_mtok": 0.40,
+      "out_per_mtok": 1.60,
+      "enabled": true
+    },
+    {
+      "alias": "GPT-4o Mini",
+      "model_id": "openai/gpt-4o-mini",
+      "in_per_mtok": 0.15,
+      "out_per_mtok": 0.60,
+      "enabled": true
+    },
+    {
+      "alias": "Claude Haiku",
+      "model_id": "anthropic/claude-haiku-4.5",
+      "in_per_mtok": 1.00,
+      "out_per_mtok": 5.00,
+      "enabled": true
+    },
+    {
+      "alias": "Groq Llama 3.3 70B",
+      "model_id": "meta-llama/llama-3.3-70b-instruct",
+      "in_per_mtok": 0.59,
+      "out_per_mtok": 0.79,
+      "enabled": true
+    },
+    {
+      "alias": "DeepSeek V3",
+      "model_id": "deepseek/deepseek-chat",
+      "in_per_mtok": 1.74,
+      "out_per_mtok": 3.48,
+      "enabled": true
+    },
+    {
+      "alias": "Mistral Large",
+      "model_id": "mistralai/mistral-large",
+      "in_per_mtok": 2.00,
+      "out_per_mtok": 6.00,
+      "enabled": true
+    }
+  ],
+  "run": {
+    "max_iterations": 3,
+    "per_url_timeout_s": 90,
+    "generate_timeout_s": 240
+  }
+}
