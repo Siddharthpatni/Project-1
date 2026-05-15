@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 import requests
 
 from app.config import settings
+from app.phase1_llm_scraper.document_validator import is_real_document_file
 from app.phase3_integration import platform_classifier
 from app.utils.logger import get_logger
 
@@ -94,6 +95,13 @@ def _download(url: str, dest: Path, timeout: int = 30) -> str | None:
                         f.write(chunk)
             if path.stat().st_size == 0:
                 log.warning("deterministic.empty_file", url=url)
+                path.unlink(missing_ok=True)
+                return None
+            # Validate that the downloaded content is a real document,
+            # not an HTML error page or login redirect.
+            ok, reason = is_real_document_file(str(path))
+            if not ok:
+                log.warning("deterministic.not_a_document", url=url, reason=reason)
                 path.unlink(missing_ok=True)
                 return None
             return str(path)
