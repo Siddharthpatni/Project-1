@@ -215,7 +215,7 @@ async def _run_strategy(
     result: PipelineResult,
 ) -> StrategyOutcome:
     if strategy is Strategy.MANUAL:
-        return await _try_manual(url, scratch, result)
+        return await _try_manual(db, url, domain, scratch, result)
     if strategy is Strategy.EXISTING:
         return await _try_existing(db, url, domain, scratch, result)
     if strategy is Strategy.DETERMINISTIC:
@@ -227,7 +227,9 @@ async def _run_strategy(
     return StrategyOutcome(strategy=strategy, success=False, downloaded=0, error="no runner")
 
 
-async def _try_manual(url: str, scratch: Path, result: PipelineResult) -> StrategyOutcome:
+async def _try_manual(
+    db: Session, url: str, domain: str, scratch: Path, result: PipelineResult,
+) -> StrategyOutcome:
     """Phase 0 / V1 reference scraper. Best for known portals."""
     tmp_id = uuid.uuid4().hex[:8]
     tmp_dir = Path(tempfile.gettempdir()) / f"vergabepilot-manual-{tmp_id}"
@@ -239,6 +241,9 @@ async def _try_manual(url: str, scratch: Path, result: PipelineResult) -> Strate
         moved = _move_into(scratch, [str(f) for f in files])
         if moved:
             result.downloaded.extend(moved)
+            # Register the manual scraper in the scraper registry so it
+            # appears in the frontend and is not lost across sessions.
+            _register_manual_scraper(db, domain)
             return StrategyOutcome(Strategy.MANUAL, True, len(moved))
         return StrategyOutcome(Strategy.MANUAL, False, 0, "no files found")
     except Exception as e:  # noqa: BLE001
@@ -246,6 +251,40 @@ async def _try_manual(url: str, scratch: Path, result: PipelineResult) -> Strate
         return StrategyOutcome(Strategy.MANUAL, False, 0, str(e))
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _register_manual_scraper(db: Session, domain: str) -> None:
+    """Register/update a manual scraper entry in the template registry.
+
+    The actual code lives in `phase0_manual.v1_reference` — we store
+    a reference comment + the source module text so the frontend can
+    display it and the user sees which domains have a working manual
+    scraper.
+    """
+    import inspect
+    from app.phase0_manual import v1_reference
+
+    existing = scraper_registry.get_for_domain(db, domain)
+    if existing and existing.source == "manual":
+        # Already registered — just bump the success counter.
+        scraper_registry.record_outcome(db, existing, success=True, runtime=0.0)
+        return
+    if existing:
+        # An LLM-generated scraper already exists for this domain.
+        # Don't overwrite it — the manual scraper is a fallback.
+        return
+
+    try:
+        code = inspect.getsource(v1_reference)
+    except Exception:  # noqa: BLE001
+        code = "# Manual scraper — see backend/app/phase0_manual/v1_reference.py"
+
+    tpl = scraper_registry.upsert_from_generation(
+        db, domain, code, platform=None, route_used=False,
+    )
+    # Override source to 'manual' (upsert_from_generation sets it to 'llm').
+    tpl.source = "manual"
+    db.commit()
 
 
 async def _try_existing(
