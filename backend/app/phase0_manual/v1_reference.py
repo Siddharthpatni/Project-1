@@ -28,6 +28,8 @@ DOC_TEXT_KEYWORDS = [
     "unterlag", "leistungsverzeichnis", "leistungsbeschreibung",
     "ausschreibung", "vergabeunterlag", "angebotsunterlag",
     "gaeb", "download", "dokument", "alle dokumente",
+    "bekanntmachung", "eigenerklärung", "fragen", "antworten",
+    "questions", "answers", "catalog", "katalog"
 ]
 
 DOC_SKIP_TEXT = ["agb", "datenschutz", "impressum", "login", "registrierung"]
@@ -92,6 +94,9 @@ def score_link(href, text, domain):
     score = 0
     ext = Path(urlparse(href).path).suffix.lower()
     if ext in DOCUMENT_EXTENSIONS: score += 1
+    
+    if any(e in low_text for e in DOCUMENT_EXTENSIONS): score += 1
+        
     if any(k in low_text for k in DOC_TEXT_KEYWORDS): score += 2
     
     return score
