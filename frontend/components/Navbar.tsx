@@ -7,6 +7,7 @@ import clsx from "clsx";
 const links = [
   { href: "/",            label: "Dashboard" },
   { href: "/jobs",        label: "Jobs" },
+  { href: "/library",     label: "Library" },
   { href: "/scrapers",    label: "Scrapers" },
   { href: "/evaluation",  label: "Phase 1 Eval" },
   { href: "/agents",      label: "Phase 2 CUA" },
@@ -16,7 +17,7 @@ const links = [
 export default function Navbar() {
   const path = usePathname();
   return (
-    <nav className="bg-white border-b border-slate-200">
+    <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center gap-6">
         <Link href="/" className="font-semibold tracking-tight text-brand-700">
           Vergabepilot<span className="text-slate-400">.AI</span>

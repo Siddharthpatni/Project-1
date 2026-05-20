@@ -224,9 +224,9 @@ export default function EvaluationPage() {
         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
           <h2 className="font-semibold text-slate-800">Aggregate Leaderboard</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600 border-b border-slate-100">
+          <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-600 border-b border-slate-100 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="px-5 py-3 font-medium">Model</th>
               <th className="px-5 py-3 font-medium text-center">Runs</th>

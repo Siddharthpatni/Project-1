@@ -201,9 +201,9 @@ export default function ScrapersPage() {
           <FileText className="w-5 h-5 text-slate-500" />
           <h2 className="font-semibold text-slate-800">Generated Registry</h2>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50/80 text-left text-slate-600 border-b border-slate-100">
+            <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-600 border-b border-slate-100 sticky top-0 z-10 shadow-sm">
               <tr>
                 <th className="px-5 py-3 font-medium">Domain</th>
                 <th className="px-5 py-3 font-medium">Source</th>

@@ -44,9 +44,9 @@ export default function JobsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Jobs</h1>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto overflow-y-auto max-h-[600px]">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600">
+          <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-600 sticky top-0 z-10 shadow-sm">
             <tr>
               <th className="px-4 py-3 font-medium">Job</th>
               <th className="px-4 py-3 font-medium">Created</th>
