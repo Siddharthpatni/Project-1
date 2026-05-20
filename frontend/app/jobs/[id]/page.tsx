@@ -1,10 +1,11 @@
 "use client";
 
 import useSWR from "swr";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { api, fetcher } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
-import { Download, FileText, AlertCircle, CheckCircle2, BadgeCheck } from "lucide-react";
+import { Download, FileText, AlertCircle, CheckCircle2, BadgeCheck, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 const STRATEGY_STYLES: Record<string, string> = {
   manual_scraper:         "bg-blue-100 text-blue-700",
@@ -40,6 +41,9 @@ function formatBytes(bytes: number) {
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [isZipping, setIsZipping] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { data: job } = useSWR(id ? api(`/jobs/${id}`) : null, fetcher, { 
     refreshInterval: (data) => (!data || data.status === "pending" || data.status === "running") ? 2000 : 0 
   });
@@ -51,10 +55,66 @@ export default function JobDetailPage() {
 
   const totalDocs = documents?.length ?? 0;
 
+  const handleDownloadZip = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isZipping) return;
+    setIsZipping(true);
+    try {
+      const response = await fetch(api(`/jobs/${id}/download-all`));
+      if (!response.ok) throw new Error("Failed to generate ZIP");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `job-${id?.slice(0, 8)}-documents.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to download ZIP. It might still be processing or there was an error.");
+    } finally {
+      setIsZipping(false);
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(api(`/jobs/${id}`), { method: 'DELETE' });
+      if (!response.ok) throw new Error("Failed to delete job");
+      router.push('/jobs');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete job.");
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold font-mono">{job.id}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold font-mono">{job.id}</h1>
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(job.id);
+              alert("Copied Job ID!");
+            }}
+            className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition"
+          >
+            Copy ID
+          </button>
+          <button 
+            onClick={handleDeleteJob}
+            disabled={isDeleting}
+            className="text-xs px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-md transition ml-auto disabled:opacity-50"
+          >
+            {isDeleting ? "Deleting..." : "Delete Job"}
+          </button>
+        </div>
         <div className="mt-2 flex items-center gap-3 text-sm text-slate-600">
           <StatusBadge status={job.status} />
           <span>{job.completed}/{job.total_urls} URLs</span>
@@ -151,14 +211,23 @@ export default function JobDetailPage() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-500">{totalDocs} file{totalDocs !== 1 ? "s" : ""}</span>
             {totalDocs > 0 && (
-              <a
-                href={api(`/jobs/${id}/download-all`)}
-                download={`job-${id?.slice(0, 8)}-documents.zip`}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors"
+              <button
+                onClick={handleDownloadZip}
+                disabled={isZipping}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Download className="w-3.5 h-3.5" />
-                Download All as ZIP
-              </a>
+                {isZipping ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Zipping...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    Download All as ZIP
+                  </>
+                )}
+              </button>
             )}
           </div>
         </div>
