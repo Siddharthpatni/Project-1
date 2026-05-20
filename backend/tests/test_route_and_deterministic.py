@@ -46,7 +46,7 @@ def test_deterministic_downloads_dtvp_zip(tmp_path):
     fake_response = MagicMock()
     fake_response.status_code = 200
     fake_response.headers = {"Content-Type": "application/zip"}
-    fake_response.iter_content = lambda chunk_size: [b"PK\x03\x04"]
+    fake_response.iter_content = lambda chunk_size: [b"PK\x03\x04" + b"x" * 250]
     fake_response.__enter__ = lambda self: self
     fake_response.__exit__ = lambda self, *a: False
 
