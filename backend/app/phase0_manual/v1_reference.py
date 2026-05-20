@@ -120,6 +120,24 @@ def scrape(url: str, output_dir: str) -> list[str]:
             page.goto(final_url, wait_until="domcontentloaded", timeout=30000)
             page.wait_for_timeout(2000)
             dismiss_cookies(page)
+            
+            # 1.5 Expand any tree grids (e.g. RIB / iTWO Tender)
+            # We click 'plus' icons repeatedly until no new ones appear/expand.
+            for _ in range(10):
+                # Many tree grids use images containing 'plus' for collapsed nodes
+                pluses = page.query_selector_all("img[src*='plus.gif']")
+                clicked_any = False
+                for p in pluses:
+                    try:
+                        if p.is_visible():
+                            p.click(force=True)
+                            clicked_any = True
+                    except:
+                        pass
+                if not clicked_any:
+                    break
+                page.wait_for_timeout(1500)
+                
         except Exception as e:
             browser.close()
             return []
@@ -147,7 +165,7 @@ def scrape(url: str, output_dir: str) -> list[str]:
         # 3. Download Strategy
         content_hashes = set()
         for i, (doc_url, score, element) in enumerate(candidates):
-            if i >= 10: break # Safety cap
+            if i >= 100: break # Safety cap increased for large tenders
             
             try:
                 # Use Playwright's download handler
