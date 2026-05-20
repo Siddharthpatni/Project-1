@@ -40,8 +40,12 @@ function formatBytes(bytes: number) {
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: job } = useSWR(id ? api(`/jobs/${id}`) : null, fetcher, { refreshInterval: 3000 });
-  const { data: documents } = useSWR(id ? api(`/jobs/${id}/documents`) : null, fetcher, { refreshInterval: 3000 });
+  const { data: job } = useSWR(id ? api(`/jobs/${id}`) : null, fetcher, { 
+    refreshInterval: (data) => (!data || data.status === "pending" || data.status === "running") ? 2000 : 0 
+  });
+  const { data: documents } = useSWR(id ? api(`/jobs/${id}/documents`) : null, fetcher, { 
+    refreshInterval: (data) => (job?.status === "pending" || job?.status === "running") ? 2000 : 0 
+  });
 
   if (!job) return <p className="text-slate-500">Loading…</p>;
 
@@ -62,6 +66,25 @@ export default function JobDetailPage() {
           <span>{new Date(job.created_at).toLocaleString()}</span>
         </div>
       </header>
+
+      {/* Progress Bar */}
+      {(job.status === "pending" || job.status === "running") && (
+        <div className="card p-4 flex flex-col gap-2 border-brand-100 bg-brand-50/50">
+          <div className="flex justify-between text-xs font-medium text-brand-700">
+            <span>Scraping Progress</span>
+            <span>{Math.round((job.completed / Math.max(1, job.total_urls)) * 100)}% ({job.completed}/{job.total_urls})</span>
+          </div>
+          <div className="w-full bg-brand-100/50 rounded-full h-2.5 overflow-hidden">
+            <div 
+              className="bg-brand-500 h-2.5 rounded-full transition-all duration-500 ease-out relative" 
+              style={{ width: `${Math.max(5, (job.completed / Math.max(1, job.total_urls)) * 100)}%` }}
+            >
+              <div className="absolute top-0 left-0 bottom-0 right-0 animate-pulse bg-white/30"></div>
+            </div>
+          </div>
+          <p className="text-[10px] text-brand-600/70 text-right mt-1 animate-pulse">Running agents...</p>
+        </div>
+      )}
 
       {/* ── Strategies ── */}
       <div className="card overflow-hidden">
@@ -125,7 +148,19 @@ export default function JobDetailPage() {
             <Download className="w-4 h-4 text-brand-600" />
             Downloaded Documents
           </h2>
-          <span className="text-xs text-slate-500">{totalDocs} file{totalDocs !== 1 ? "s" : ""}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500">{totalDocs} file{totalDocs !== 1 ? "s" : ""}</span>
+            {totalDocs > 0 && (
+              <a
+                href={api(`/jobs/${id}/download-all`)}
+                download={`job-${id?.slice(0, 8)}-documents.zip`}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download All as ZIP
+              </a>
+            )}
+          </div>
         </div>
 
         {(!documents || totalDocs === 0) ? (
