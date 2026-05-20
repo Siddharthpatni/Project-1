@@ -96,21 +96,23 @@ export default function JobDetailPage() {
   return (
     <div className="space-y-6">
       <header>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold font-mono">{job.id}</h1>
-          <button 
-            onClick={() => {
-              navigator.clipboard.writeText(job.id);
-              alert("Copied Job ID!");
-            }}
-            className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition"
-          >
-            Copy ID
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold font-mono">{job.id}</h1>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(job.id);
+                alert("Copied Job ID!");
+              }}
+              className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition"
+            >
+              Copy ID
+            </button>
+          </div>
           <button 
             onClick={handleDeleteJob}
             disabled={isDeleting}
-            className="text-xs px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-md transition ml-auto disabled:opacity-50"
+            className="text-xs px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-medium rounded-md transition disabled:opacity-50"
           >
             {isDeleting ? "Deleting..." : "Delete Job"}
           </button>
