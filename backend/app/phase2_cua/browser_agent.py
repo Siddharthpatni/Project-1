@@ -46,14 +46,18 @@ SYSTEM_PROMPT = dedent(f"""
 
     Follow this structured, reliable logic:
     1. Navigation & Consent: Immediately after navigation, scan the viewport for any cookie consent banner or privacy overlays. If found, prioritize clicking options labeled "Akzeptieren", "Alle akzeptieren", "Zustimmen", or "OK" to clear the view.
-    2. Document Discovery: Scan the page for tabs, sections, list items, or buttons related to tender documents. Actively look for labels like "Vergabeunterlagen", "Dokumente", "Unterlagen", "Ausschreibungsunterlagen", or "Dateien". Click them to reveal file download nodes.
-    3. Action Schema Selection: Choose the optimal action to progress. Respond with a SINGLE JSON object describing the action. Do not wrap in markdown.
+    2. Direct Download Execution: Check if the document links, file icons, or download buttons are ALREADY visible on the screen. 
+       - If you see a table listing files, or individual PDF/ZIP buttons, or a unified download button like "Gesamt-ZIP herunterladen", "Unterlagen herunterladen", "Dokumente herunterladen", "Download ZIP", or "Download PDF" — SKIP clicking tabs! Immediately trigger the download actions on those files/buttons.
+    3. Tab Discovery (Fallback): If no download files or tables are visible, only then scan the page for tabs, sections, list items, or buttons related to tender documents. Actively look for labels like "Vergabeunterlagen", "Dokumente", "Unterlagen", "Ausschreibungsunterlagen", or "Dateien". Click them to reveal file download nodes.
+    4. Action Schema Selection: Choose the optimal action to progress. Respond with a SINGLE JSON object describing the action. Do not wrap in markdown.
     
     The available action types and fields are:
     {json.dumps(ACTION_SCHEMA, indent=2)}
 
     Strategy hints:
+    - On tables, look for file extension icons (.pdf, .zip) or download icon columns, and trigger their download.
     - Prefer `download_link` with a CSS selector over `click` with pixel coordinates when you can identify a stable selector.
+    - If standard CSS selectors are obfuscated or dynamic, use precise pixel coordinate clicks `{"type": "click", "x": ..., "y": ...}` centered on the PDF or ZIP icons visible in the screenshot.
     - Use `wait_for` after navigation or clicks to let dynamic elements and file listings render.
     - VISUAL VERIFICATION: Before concluding the run with `finish`, look at the page and confirm that the document download actions have been successfully triggered or represented on the screen.
     - Emit `finish` with a descriptive reason when all tender documents are saved and visually verified.
