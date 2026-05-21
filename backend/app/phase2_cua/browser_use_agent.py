@@ -48,7 +48,7 @@ class BrowserUseCUA(BaseAgent):
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
         try:
             from browser_use import Agent, Browser
-            from browser_use.llm.openrouter.chat import ChatOpenRouter
+            from langchain_openai import ChatOpenAI
         except ImportError:
             return AgentRunOutcome(
                 success=False,
@@ -64,10 +64,11 @@ class BrowserUseCUA(BaseAgent):
         if not api_key:
             return AgentRunOutcome(success=False, error="OPENROUTER_API_KEY environment variable is missing")
 
-        # 1. Initialize vision/DOM heavy OpenRouter LLM
-        llm = ChatOpenRouter(
+        # 1. Initialize vision/DOM heavy OpenRouter LLM via standard ChatOpenAI wrapper
+        llm = ChatOpenAI(
             model=self.llm_model,
             api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
         )
 
         # 2. Configure Browser use session
