@@ -31,8 +31,10 @@ def build_agent_task(url: str) -> str:
         Instructions:
         1. Navigate to the Target URL.
         2. Immediately look for a cookie consent banner. If present, click "Akzeptieren", "Alle akzeptieren", or "Zustimmen".
-        3. Look for a section, tab, or button related to documents. Common German labels include "Vergabeunterlagen", "Dokumente", or "Unterlagen". Click it to reveal the files.
-        4. Identify links or buttons to download PDF or ZIP files. 
+        3. Direct Download Execution: Check if the document links, file icons, or download buttons are ALREADY visible on the page (e.g., in a table or list).
+           - German public procurement notice tables often feature direct download icons (like PDF, ZIP, or download arrow columns).
+           - If you see any such download icons, buttons, or direct links — SKIP clicking tabs (like "Vergabeunterlagen", "Ausschreibungsunterlagen", "Unterlagen")! Immediately trigger the download actions on those files/buttons.
+        4. Tab Discovery (Fallback): If no download files or tables are visible, scan the page for tabs, sections, list items, or buttons related to tender documents. Common German labels include "Vergabeunterlagen", "Dokumente", or "Unterlagen". Click them to reveal the file listing.
         5. Click the download buttons/links to initiate the downloads.
         6. VISUAL VERIFICATION: Before finishing, look at the screen and confirm that the documents you intended to download are indeed represented as having been clicked or initiated. If there is a "Downloads" status or a change in the button state, verify it visually.
         7. Once you have successfully initiated the downloads and visually verified the action, conclude the task successfully.
