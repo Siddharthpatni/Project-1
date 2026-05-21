@@ -12,10 +12,10 @@ This is the reference implementation for Phase 2. Other agents (e.g. one
 wired to the Anthropic / OpenAI computer-use APIs) can be added as
 sibling files and registered in orchestrator.AGENT_REGISTRY.
 """
+from __future__ import annotations
+
 import asyncio
 import random
-
-from __future__ import annotations
 
 import json
 import time
