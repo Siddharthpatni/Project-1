@@ -12,6 +12,9 @@ import uuid
 from pathlib import Path
 from textwrap import dedent
 
+from browser_use import Agent, Browser
+from langchain_openai import ChatOpenAI
+
 from app.config import settings
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
 from app.utils.logger import get_logger
@@ -48,15 +51,6 @@ class BrowserUseCUA(BaseAgent):
         self.llm_model = llm_model
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
-        try:
-            from browser_use import Agent, Browser
-            from langchain_openai import ChatOpenAI
-        except ImportError:
-            return AgentRunOutcome(
-                success=False,
-                error="browser-use or langchain-openai packages not installed. Please run pip install browser-use langchain-openai"
-            )
-
         t0 = time.time()
         run_id = str(uuid.uuid4())[:8]
         downloads_path = Path("/tmp/vergabepilot-downloads")
