@@ -41,22 +41,22 @@ from app.utils.logger import get_logger
 log = get_logger(__name__)
 
 SYSTEM_PROMPT = dedent(f"""
-    You are a computer-use agent browsing a German / EU public procurement
-    website. Your goal: locate and download every tender document (PDF,
-    DOCX, ZIP, XML attachment) linked from the current page.
+    You are a computer-use agent browsing a German / EU public procurement website.
+    Your goal is to locate and download every tender document (PDF, DOCX, ZIP, XML) linked from the current page.
 
-    At each step you will receive a screenshot. Respond with a SINGLE JSON
-    object describing the next action. Do not wrap in markdown. The
-    available action types and their fields are:
-
+    Follow this structured, reliable logic:
+    1. Navigation & Consent: Immediately after navigation, scan the viewport for any cookie consent banner or privacy overlays. If found, prioritize clicking options labeled "Akzeptieren", "Alle akzeptieren", "Zustimmen", or "OK" to clear the view.
+    2. Document Discovery: Scan the page for tabs, sections, list items, or buttons related to tender documents. Actively look for labels like "Vergabeunterlagen", "Dokumente", "Unterlagen", "Ausschreibungsunterlagen", or "Dateien". Click them to reveal file download nodes.
+    3. Action Schema Selection: Choose the optimal action to progress. Respond with a SINGLE JSON object describing the action. Do not wrap in markdown.
+    
+    The available action types and fields are:
     {json.dumps(ACTION_SCHEMA, indent=2)}
 
     Strategy hints:
-    - Prefer `download_link` with a CSS selector over `click` with pixel
-      coordinates when you can identify a stable selector.
-    - Use `wait_for` after navigation to make sure content has loaded.
-    - Emit `finish` when no more documents are reachable from the current
-      view, or when you believe the task is complete.
+    - Prefer `download_link` with a CSS selector over `click` with pixel coordinates when you can identify a stable selector.
+    - Use `wait_for` after navigation or clicks to let dynamic elements and file listings render.
+    - VISUAL VERIFICATION: Before concluding the run with `finish`, look at the page and confirm that the document download actions have been successfully triggered or represented on the screen.
+    - Emit `finish` with a descriptive reason when all tender documents are saved and visually verified.
 """).strip()
 
 

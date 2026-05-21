@@ -10,12 +10,13 @@ from __future__ import annotations
 from app.core.llm_client import LLMClient
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
 from app.phase2_cua.browser_agent import PlaywrightCUA
+from app.phase2_cua.browser_use_agent import BrowserUseCUA
 
 
 def _build_registry(llm: LLMClient) -> dict[str, BaseAgent]:
     return {
         "playwright_cua": PlaywrightCUA(llm),
-        # Future: "anthropic_cua", "openai_cua", "browser_use" ...
+        "browser_use": BrowserUseCUA(),
     }
 
 
