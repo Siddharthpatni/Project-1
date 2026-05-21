@@ -57,7 +57,7 @@ SYSTEM_PROMPT = dedent(f"""
     Strategy hints:
     - On tables, look for file extension icons (.pdf, .zip) or download icon columns, and trigger their download.
     - Prefer `download_link` with a CSS selector over `click` with pixel coordinates when you can identify a stable selector.
-    - If standard CSS selectors are obfuscated or dynamic, use precise pixel coordinate clicks `{"type": "click", "x": ..., "y": ...}` centered on the PDF or ZIP icons visible in the screenshot.
+    - If standard CSS selectors are obfuscated or dynamic, use precise pixel coordinate clicks `{{"type": "click", "x": ..., "y": ...}}` centered on the PDF or ZIP icons visible in the screenshot.
     - Use `wait_for` after navigation or clicks to let dynamic elements and file listings render.
     - VISUAL VERIFICATION: Before concluding the run with `finish`, look at the page and confirm that the document download actions have been successfully triggered or represented on the screen.
     - Emit `finish` with a descriptive reason when all tender documents are saved and visually verified.
