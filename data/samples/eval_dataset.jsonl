@@ -1,5 +1,4 @@
-{"url": "https://www.evergabe-online.de/tenderdetails.html?id=example1", "expected_doc_count": 4, "expected_extensions": ["pdf", "docx"], "notes": "standard 4-attachment tender"}
-{"url": "https://www.dtvp.de/Satellite/notice/CXP4Y89M9", "expected_doc_count": 2, "expected_extensions": ["pdf"], "notes": "two PDFs, simple page"}
-{"url": "https://www.sachsen-vergabe.de/NetServer/Public/example", "expected_doc_count": 6, "expected_extensions": ["pdf", "zip"], "notes": "ZIP archive plus PDFs"}
-{"url": "https://vergabeportal-bw.de/Satellite/notice/CXY7Z23A1", "expected_doc_count": 3, "expected_extensions": ["pdf", "docx"], "notes": "needs JavaScript to reveal links"}
-{"url": "https://www.evergabe.de/auftraege/example-tender", "expected_doc_count": 5, "expected_extensions": ["pdf"], "notes": "five PDFs across two tabs"}
+{"url": "https://www.dtvp.de/Satellite/notice/CXS0YMKYTPW8XPBS", "expected_doc_count": 1, "expected_extensions": ["zip"], "notes": "Innenputzarbeiten Elmshorn - DTVP"}
+{"url": "https://www.vergabe.metropoleruhr.de/VMPSatellite/notice/CXPSYD4DGQ5", "expected_doc_count": 1, "expected_extensions": ["zip"], "notes": "VMP Metropoleruhr - ZIP"}
+{"url": "https://www.dtvp.de/Satellite/notice/CXP4Y92MNG1", "expected_doc_count": 1, "expected_extensions": ["zip"], "notes": "DTVP - ZIP"}
+{"url": "https://vergabemarktplatz.brandenburg.de/VMPSatellite/notice/CXP9YKXHKB8", "expected_doc_count": 1, "expected_extensions": ["zip"], "notes": "Brandenburg VMP - ZIP"}

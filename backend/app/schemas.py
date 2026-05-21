@@ -62,6 +62,8 @@ class JobSummary(BaseModel):
     total_urls: int
     completed: int
     cost_usd: float
+    domains: list[str] = []
+    first_url: str | None = None
 
 
 # -------- Documents --------
@@ -146,6 +148,17 @@ class LearnRouteResponse(BaseModel):
     documents_found: int
     cost_usd: float = 0.0
     status: str
+
+
+# -------- Local Files --------
+
+class LocalFileRead(BaseModel):
+    filename: str
+    size_bytes: int
+    domain: str
+    job_id: str
+    item_id: str
+    download_url: str
 
 
 # -------- Evaluation (phase 1) --------

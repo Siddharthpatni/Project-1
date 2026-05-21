@@ -4,9 +4,10 @@ import useSWR from "swr";
 import { useState } from "react";
 import { api, fetcher, postJSON } from "@/lib/api";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Loader2, Play, CheckCircle2, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Play, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 
-const DEFAULT_DATASET = "/app/data/samples/eval_dataset.jsonl";
+const DEFAULT_DATASET = "/app/data/samples/publications_updated.csv";
 
 const AVAILABLE_MODELS = [
   { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
@@ -21,6 +22,9 @@ const AVAILABLE_MODELS = [
 export default function EvaluationPage() {
   const { data: summary, mutate: mutateSummary } = useSWR(api("/evaluation/summary"), fetcher, { refreshInterval: 10_000 });
   const { data: runs,    mutate: mutateRuns }    = useSWR(api("/evaluation/runs?limit=50"), fetcher, { refreshInterval: 5_000 });
+
+  const finalSummary = summary || [];
+  const finalRuns = runs || [];
 
   // Run-trigger state
   const [datasetPath,    setDatasetPath]    = useState(DEFAULT_DATASET);
@@ -58,7 +62,13 @@ export default function EvaluationPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* ── Navigation / Back Button ── */}
+      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back to Dashboard
+      </Link>
+
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -97,7 +107,7 @@ export default function EvaluationPage() {
               disabled={running}
             />
             <p className="text-xs text-slate-400">
-              Default dataset mounted at <code>/app/data/samples/eval_dataset.jsonl</code>.
+              Default dataset mounted at <code>/app/data/samples/publications_updated.csv</code>.
             </p>
           </div>
 
@@ -171,12 +181,12 @@ export default function EvaluationPage() {
         {/* ── Summary Chart ── */}
         <div className="card p-6 flex flex-col min-h-[350px]">
           <h2 className="font-semibold mb-4">Success rate by model</h2>
-          {(!summary || summary.length === 0) ? (
+          {(!finalSummary || finalSummary.length === 0) ? (
             <p className="text-sm text-slate-400 text-center py-10">No data yet — run a benchmark above.</p>
           ) : (
             <div className="flex-1 min-h-[250px] mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={summary} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                <BarChart data={finalSummary} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="model" stroke="#64748b" fontSize={10} angle={-15} textAnchor="end" />
                   <YAxis stroke="#64748b" fontSize={11} domain={[0, 1]} tickFormatter={v => `${Math.round(v * 100)}%`} />
@@ -208,10 +218,10 @@ export default function EvaluationPage() {
               </tr>
             </thead>
             <tbody>
-              {(!summary || summary.length === 0) && (
+              {(!finalSummary || finalSummary.length === 0) && (
                 <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-500">No evaluation runs yet.</td></tr>
               )}
-              {summary?.map((s: any) => (
+              {finalSummary?.map((s: any) => (
                 <tr key={s.model} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td className="px-5 py-4 font-mono text-xs">
                     <span className="bg-slate-100 px-2 py-1 rounded text-slate-700 font-semibold">{s.model}</span>
@@ -236,11 +246,11 @@ export default function EvaluationPage() {
         <div className="card p-6 flex flex-col h-[500px]">
           <h2 className="font-semibold mb-3">Recent Runs</h2>
           <div className="flex-1 overflow-y-auto pr-2">
-            {(!runs || runs.length === 0) ? (
+            {(!finalRuns || finalRuns.length === 0) ? (
               <div className="h-full flex items-center justify-center text-sm text-slate-400">No runs yet.</div>
             ) : (
               <ul className="text-xs space-y-1.5 font-mono">
-                {runs.map((r: any) => (
+                {finalRuns.map((r: any) => (
                   <li key={r.id} className="p-3 rounded-lg border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-colors flex flex-col gap-1.5">
                     <div className="flex items-center justify-between">
                       <span className={`flex items-center gap-1.5 font-semibold ${r.success ? "text-emerald-700" : "text-rose-700"}`}>
@@ -251,7 +261,7 @@ export default function EvaluationPage() {
                     </div>
                     <div className="text-slate-600 truncate" title={r.url}>{r.url}</div>
                     <div className="flex gap-3 text-[10px] text-slate-500 mt-1">
-                      <span>{r.downloaded_docs}/{r.expected_docs} docs</span>
+                      <span>{r.downloaded_docs ?? 0}/{r.expected_docs ?? 0} docs</span>
                       <span>{r.iterations} iters</span>
                       <span>${r.cost_usd?.toFixed(4)}</span>
                     </div>

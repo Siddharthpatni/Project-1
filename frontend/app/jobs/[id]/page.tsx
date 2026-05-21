@@ -4,7 +4,8 @@ import useSWR from "swr";
 import { useParams, useRouter } from "next/navigation";
 import { api, fetcher } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
-import { Download, FileText, AlertCircle, CheckCircle2, BadgeCheck, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Download, FileText, AlertCircle, CheckCircle2, BadgeCheck, Loader2, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 
 const STRATEGY_STYLES: Record<string, string> = {
@@ -95,6 +96,20 @@ export default function JobDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* ── Navigation / Back Button ── */}
+      <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
+        <Link href="/" className="hover:text-indigo-600 transition-colors">
+          Dashboard
+        </Link>
+        <span className="text-slate-350">/</span>
+        <Link href="/jobs" className="flex items-center gap-1 hover:text-indigo-600 transition-colors">
+          <ArrowLeft className="w-3 h-3" />
+          All Jobs
+        </Link>
+        <span className="text-slate-355 text-slate-300">/</span>
+        <span className="text-slate-400 font-normal truncate max-w-[20ch]">Job {job.id.slice(0, 8)}</span>
+      </div>
+
       <header className="border-b border-slate-100 pb-5">
         <div className="flex flex-wrap items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3">

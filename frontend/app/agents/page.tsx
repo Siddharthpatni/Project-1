@@ -3,12 +3,16 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
-import { Bot, Play, CheckCircle2, XCircle, Search, Cpu, Activity, Clock, DollarSign } from "lucide-react";
+import Link from "next/link";
+import { Bot, Play, CheckCircle2, XCircle, Search, Cpu, Activity, Clock, DollarSign, ArrowLeft } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
 
 export default function AgentsPage() {
   const { data: summary } = useSWR(api("/agents/summary"), fetcher, { refreshInterval: 6000 });
   const { data: runs, mutate } = useSWR(api("/agents/runs"), fetcher, { refreshInterval: 6000 });
+
+  const finalSummary = summary || [];
+  const finalRuns = runs || [];
 
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -26,7 +30,13 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* ── Navigation / Back Button ── */}
+      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back to Dashboard
+      </Link>
+
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -95,10 +105,10 @@ export default function AgentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(!summary || summary.length === 0) ? (
+                {(!finalSummary || finalSummary.length === 0) ? (
                   <tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400">No agent runs recorded yet.</td></tr>
                 ) : (
-                  summary.map((s: any) => (
+                  finalSummary.map((s: any) => (
                     <tr key={s.agent} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 font-mono">
@@ -130,14 +140,14 @@ export default function AgentsPage() {
             </h2>
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {(!runs || runs.length === 0) ? (
+            {(!finalRuns || finalRuns.length === 0) ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
                 <Bot className="w-8 h-8 opacity-20" />
                 <p className="text-sm">No activity log.</p>
               </div>
             ) : (
               <ul className="space-y-1">
-                {runs.map((r: any) => (
+                {finalRuns.map((r: any) => (
                   <li key={r.id} className="p-3 rounded-lg hover:bg-slate-50 transition-colors flex flex-col gap-2 border border-transparent hover:border-slate-100">
                     <div className="flex items-center justify-between">
                       <div className={`flex items-center gap-1.5 text-xs font-semibold ${r.success ? "text-emerald-700" : "text-rose-700"}`}>

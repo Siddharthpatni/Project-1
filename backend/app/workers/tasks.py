@@ -66,7 +66,8 @@ def process_job_task(
     # Re-fetch counts after all items processed
     db.refresh(job)
     n_success = sum(1 for i in job.items if i.status == JobStatus.SUCCESS.value)
-    if n_success == job.total_urls:
+    total_urls = job.total_urls  # capture before commit expires the object
+    if n_success == total_urls:
         job.status = JobStatus.SUCCESS.value
     elif n_success == 0:
         job.status = JobStatus.FAILED.value
@@ -75,7 +76,7 @@ def process_job_task(
     job.completed = n_success
     db.commit()
     db.close()
-    return {"job_id": job_id, "success": n_success, "total": job.total_urls}
+    return {"job_id": job_id, "success": n_success, "total": total_urls}
 
 
 async def _process_job_async(db, job, force_model: str | None, force_strategy):

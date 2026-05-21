@@ -1,27 +1,33 @@
 """
 Job submission and retrieval.
 
-POST /api/jobs                  → create a job (async Celery task kicked off)
-GET  /api/jobs                  → list recent jobs
-GET  /api/jobs/{id}             → full job detail with items
-GET  /api/jobs/{id}/documents   → flat list of downloaded documents
-DELETE /api/jobs/{id}           → cancel / delete
+POST /api/jobs                         → create a job (async Celery task kicked off)
+GET  /api/jobs                         → list recent jobs
+GET  /api/jobs/{id}                    → full job detail with items
+GET  /api/jobs/{id}/documents          → flat list of downloaded documents
+GET  /api/jobs/{id}/download-all       → download all docs as ZIP
+GET  /api/jobs/local-files             → list locally stored files
+DELETE /api/jobs/{id}                  → cancel / delete
 """
+import io
+import zipfile
+from pathlib import Path
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import pandas as pd
-import io
 
+from app.config import settings
 from app.database import get_db
-from app.models import Document, Job, JobItem, JobStatus
+from app.models import Job, JobItem, JobStatus
 from app.schemas import (
     DocumentRead,
     JobCreateRequest,
     JobItemRead,
     JobRead,
     JobSummary,
+    LocalFileRead,
 )
 from app.workers.tasks import process_job_task
 
@@ -137,8 +143,62 @@ async def upload_job(
 
 @router.get("", response_model=list[JobSummary])
 def list_jobs(limit: int = 50, db: Session = Depends(get_db)):
-    jobs = db.query(Job).order_by(Job.created_at.desc()).limit(limit).all()
-    return jobs
+    jobs = (
+        db.query(Job)
+        .options(joinedload(Job.items))
+        .order_by(Job.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    result = []
+    for job in jobs:
+        domains = list(dict.fromkeys(i.domain for i in job.items if i.domain))
+        first_url = job.items[0].url if job.items else None
+        result.append(JobSummary(
+            id=job.id,
+            created_at=job.created_at,
+            status=job.status,
+            total_urls=job.total_urls,
+            completed=job.completed,
+            cost_usd=job.cost_usd,
+            domains=domains,
+            first_url=first_url,
+        ))
+    return result
+
+
+@router.get("/local-files", response_model=list[LocalFileRead])
+def list_local_files(db: Session = Depends(get_db)):
+    """List all files persisted in local fallback storage, organized by domain."""
+    fallback_dir = Path(settings.downloads_dir) / "_s3_fallback" / "jobs"
+    result = []
+    if not fallback_dir.exists():
+        return result
+
+    for job_dir in sorted(fallback_dir.iterdir()):
+        if not job_dir.is_dir():
+            continue
+        job_id = job_dir.name
+        job = db.query(Job).filter(Job.id == job_id).first()
+        for item_dir in sorted(job_dir.iterdir()):
+            if not item_dir.is_dir():
+                continue
+            item_id = item_dir.name
+            domain = ""
+            if job:
+                item = next((i for i in job.items if i.id == item_id), None)
+                domain = item.domain if item else ""
+            for f in sorted(item_dir.iterdir()):
+                if f.is_file():
+                    result.append(LocalFileRead(
+                        filename=f.name,
+                        size_bytes=f.stat().st_size,
+                        domain=domain,
+                        job_id=job_id,
+                        item_id=item_id,
+                        download_url=f"/jobs/{job_id}/documents-by-path/{item_id}/{f.name}",
+                    ))
+    return result
 
 
 @router.get("/{job_id}", response_model=JobRead)
@@ -151,13 +211,10 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
 
 @router.get("/{job_id}/documents", response_model=list[DocumentRead])
 def get_job_documents(job_id: str, db: Session = Depends(get_db)):
-    from app.core.storage import ObjectStorage
-    
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(404, "job not found")
-        
-    storage = ObjectStorage()
+
     result = []
     for item in job.items:
         for doc in item.documents:
@@ -206,6 +263,61 @@ def download_document(job_id: str, doc_id: str, db: Session = Depends(get_db)):
             "Content-Disposition": f'attachment; filename="{target_doc.filename}"'
         }
     )
+
+@router.get("/{job_id}/download-all")
+def download_all_documents(job_id: str, db: Session = Depends(get_db)):
+    """Download all documents for a job as a single ZIP file."""
+    from app.core.storage import ObjectStorage
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "job not found")
+
+    storage = ObjectStorage()
+    buf = io.BytesIO()
+    seen: dict[str, int] = {}
+
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for item in job.items:
+            domain = item.domain or "unknown"
+            for doc in item.documents:
+                try:
+                    data = storage.get(doc.s3_key)
+                except Exception:
+                    continue
+                # Namespace by domain to avoid collisions across items
+                arcname = f"{domain}/{doc.filename}"
+                if arcname in seen:
+                    seen[arcname] += 1
+                    base, ext = doc.filename.rsplit(".", 1) if "." in doc.filename else (doc.filename, "")
+                    arcname = f"{domain}/{base}__{seen[arcname]}.{ext}" if ext else f"{domain}/{base}__{seen[arcname]}"
+                else:
+                    seen[arcname] = 0
+                zf.writestr(arcname, data)
+
+    buf.seek(0)
+    safe_id = job_id[:8]
+    return Response(
+        content=buf.read(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="job-{safe_id}-documents.zip"'},
+    )
+
+
+@router.get("/{job_id}/documents-by-path/{item_id}/{filename}")
+def download_local_file(job_id: str, item_id: str, filename: str):
+    """Serve a file directly from local fallback storage."""
+    import mimetypes
+    path = Path(settings.downloads_dir) / "_s3_fallback" / "jobs" / job_id / item_id / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404, "file not found in local storage")
+    mime, _ = mimetypes.guess_type(filename)
+    return Response(
+        content=path.read_bytes(),
+        media_type=mime or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
 
 @router.delete("/{job_id}", status_code=204)
 def delete_job(job_id: str, db: Session = Depends(get_db)):

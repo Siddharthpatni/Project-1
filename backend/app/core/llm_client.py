@@ -105,14 +105,29 @@ class LLMClient:
             "X-Title": "Vergabepilot.AI",
             "Content-Type": "application/json",
         }
-        try:
-            r = await self._client.post(url, json=payload, headers=headers)
-            r.raise_for_status()
-        except httpx.HTTPError as e:
-            log.error("llm.call_failed", error=str(e))
-            raise
 
-        data = r.json()
+        import asyncio
+        max_retries = 3
+        last_error = None
+        data = None
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=120) as client:
+                    r = await client.post(url, json=payload, headers=headers)
+                    r.raise_for_status()
+                    data = r.json()
+                    break
+            except (httpx.HTTPError, httpx.RemoteProtocolError, Exception) as e:
+                last_error = e
+                log.warning("llm.call_retry", attempt=attempt, error=str(e))
+                if attempt < max_retries:
+                    await asyncio.sleep(attempt * 1.5)
+                continue
+        else:
+            log.error("llm.call_failed", error=str(last_error))
+            raise last_error
+
         content = data["choices"][0]["message"]["content"]
         if isinstance(content, list):
             # vision models sometimes return list of parts

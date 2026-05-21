@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.core.llm_client import LLMClient, LLMResponse
+from app.core.security import detect_prompt_injection, sanitize_web_content
 from app.phase1_llm_scraper.prompts import (
     SYSTEM_PROMPT,
     build_feedback_prompt,
@@ -134,7 +135,12 @@ class ScraperGenerator:
     # --- internals ----------------------------------------------------
 
     async def _fetch_snippet(self, url: str) -> str:
-        """Grab a lightweight HTML snippet. Best-effort; failures are fine."""
+        """Grab a lightweight HTML snippet. Best-effort; failures are fine.
+
+        The returned HTML is scanned for prompt injection patterns and
+        wrapped in ``<untrusted_web_content>`` tags so the LLM treats it
+        as data, not instructions.
+        """
         try:
             async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
                 r = await client.get(
@@ -144,10 +150,21 @@ class ScraperGenerator:
                         "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
                     },
                 )
-                return r.text
+                raw = r.text
         except Exception as e:  # noqa: BLE001
             log.warning("phase1.snippet_fetch_failed", url=url, error=str(e))
             return "<!-- could not fetch page -->"
+
+        # Scan for prompt injection in fetched HTML
+        injection_hits = detect_prompt_injection(raw)
+        if injection_hits:
+            log.warning(
+                "phase1.prompt_injection_detected",
+                url=url,
+                patterns=injection_hits[:5],
+            )
+
+        return sanitize_web_content(raw, max_length=20_000)
 
     def _parse(self, resp: LLMResponse) -> GeneratedScraper:
         match = _CODE_FENCE.search(resp.text)

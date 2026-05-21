@@ -3,7 +3,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { api, fetcher } from "@/lib/api";
-import { Download, FileText, Code2, Globe, FolderArchive, AlertCircle } from "lucide-react";
+import { Download, FileText, Code2, Globe, FolderArchive, AlertCircle, ArrowLeft } from "lucide-react";
 
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -40,7 +40,13 @@ export default function LibraryPage() {
   const domainKeys = Object.keys(filesByDomain).sort();
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* ── Navigation / Back Button ── */}
+      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back to Dashboard
+      </Link>
+
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-900">

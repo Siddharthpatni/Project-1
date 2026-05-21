@@ -84,6 +84,23 @@ def delete_scraper(scraper_id: str, db: Session = Depends(get_db)):
     db.commit()
 
 
+@router.get("/{scraper_id}/download")
+def download_scraper_code(scraper_id: str, db: Session = Depends(get_db)):
+    """Download a scraper's Python code as a .py file."""
+    from fastapi import Response as FastAPIResponse
+    tpl = db.query(ScraperTemplate).filter(ScraperTemplate.id == scraper_id).first()
+    if not tpl:
+        raise HTTPException(404, "scraper not found")
+    safe_domain = tpl.domain.replace(".", "_").replace("/", "_")
+    filename = f"scraper_{safe_domain}.py"
+    header = f"# Scraper for: {tpl.domain}\n# Platform: {tpl.platform or 'unknown'}\n# Source: {tpl.source}\n\n"
+    return FastAPIResponse(
+        content=(header + tpl.code).encode(),
+        media_type="text/plain",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ---------------------------------------------------------------------------
 # Route-learning + generation
 # ---------------------------------------------------------------------------

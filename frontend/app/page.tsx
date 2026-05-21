@@ -1,111 +1,271 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { fetcher, api } from "@/lib/api";
 import JobSubmitForm from "@/components/JobSubmitForm";
 import StatCard from "@/components/StatCard";
-import { Activity, CheckCircle2, Cpu, DollarSign } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
+import { 
+  Activity, 
+  CheckCircle2, 
+  Cpu, 
+  DollarSign, 
+  TrendingUp, 
+  Layers, 
+  HelpCircle,
+  ExternalLink,
+  ChevronRight,
+  ShieldAlert,
+  ArrowRight
+} from "lucide-react";
+import { 
+  BarChart, 
+  Bar, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  ResponsiveContainer, 
+  Tooltip 
+} from "recharts";
+
+const STRATEGIES_CONFIG = [
+  { key: "existing_scraper", label: "Existing Scraper", color: "#6366f1", desc: "Fast cached scrapers" },
+  { key: "deterministic_template", label: "Deterministic DTVP", color: "#10b981", desc: "Constructed zip downloads" },
+  { key: "llm_generated_scraper", label: "LLM Generated Scraper", color: "#8b5cf6", desc: "Autonomous synthesis" },
+  { key: "computer_use_agent", label: "CUA Fallback", color: "#f59e0b", desc: "Visual browser automation" },
+  { key: "manual_scraper", label: "Manual Scraper", color: "#3b82f6", desc: "Pre-written legacy scripts" },
+  { key: "none", label: "Failure / None", color: "#f43f5e", desc: "No strategy succeeded" }
+];
 
 export default function HomePage() {
-  const { data: stats } = useSWR(api("/admin/stats"), fetcher, { refreshInterval: 5000 });
+  const { data: stats, mutate } = useSWR(api("/admin/stats"), fetcher, { refreshInterval: 5000 });
+  // Transform strategy stats directly from backend with zero simulated/mock overrides
+  const chartData = STRATEGIES_CONFIG.map(strat => {
+    const total = stats?.strategy_distribution?.[strat.key] ?? 0;
+    const succeeded = stats?.strategy_success_distribution?.[strat.key] ?? 0;
+    const rate = total > 0 ? Math.round((succeeded / total) * 100) : 0;
+    
+    return {
+      strategy: strat.label,
+      key: strat.key,
+      rate,
+      total,
+      succeeded,
+      color: strat.color,
+      desc: strat.desc
+    };
+  });
 
   return (
     <div className="space-y-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            Vergabepilot<span className="text-brand-600">.AI</span>
+      {/* ── Sleek Gradient Banner ── */}
+      <header className="relative rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-8 text-white overflow-hidden shadow-lg border border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.15),transparent_50%)]" />
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/20 text-xs font-semibold text-indigo-300 mb-4 tracking-wide uppercase">
+            ⚡ Agentic Cascade System
+          </div>
+          <h1 className="text-4xl font-extrabold tracking-tight">
+            Vergabepilot<span className="text-indigo-400">.AI</span>
           </h1>
-          <p className="text-slate-600 mt-2 text-sm max-w-2xl">
-            Input procurement URLs and let the cascaded pipeline (Existing Scraper → LLM-generated → CUA Fallback) handle the rest.
+          <p className="text-slate-300 mt-3 text-sm leading-relaxed">
+            Automated public procurement scraper and pipeline supervisor. Enter any notice URL and our cascaded system handles route discovery, agent execution, and validation.
           </p>
         </div>
       </header>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Activity className="w-5 h-5" />} label="Jobs"      value={stats?.jobs ?? "—"} />
-        <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Item success rate"
-                  value={stats ? `${Math.round((stats.item_success_rate ?? 0) * 100)}%` : "—"} />
-        <StatCard icon={<Cpu className="w-5 h-5" />}      label="Scraper templates" value={stats?.scraper_templates ?? "—"} />
-        <StatCard icon={<DollarSign className="w-5 h-5" />} label="LLM spend (USD)" value={stats ? `$${(stats.total_cost_usd ?? 0).toFixed(2)}` : "—"} />
+      {/* ── KPI Grid ── */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <StatCard 
+          icon={<Activity className="w-5 h-5" />} 
+          label="Total Jobs Submitted"      
+          value={stats?.jobs ?? 0} 
+        />
+        <StatCard 
+          icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />} 
+          label="Item Success Rate"
+          value={stats ? `${Math.round((stats.item_success_rate ?? 0) * 100)}%` : "0%"} 
+        />
+        <StatCard 
+          icon={<Cpu className="w-5 h-5 text-indigo-500" />}      
+          label="Active Registry Scrapers" 
+          value={stats?.scraper_templates ?? 0} 
+        />
+        <StatCard 
+          icon={<DollarSign className="w-5 h-5 text-amber-500" />} 
+          label="Total LLM Cost (USD)" 
+          value={stats ? `$${(stats.total_cost_usd ?? 0).toFixed(2)}` : "$0.00"} 
+        />
       </section>
 
-      {stats && stats.strategy_distribution && Object.keys(stats.strategy_distribution).length > 0 && (
-        <section className="card p-6 border-2 border-slate-100">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-5 h-5 text-brand-600" />
-            <h2 className="text-lg font-semibold text-slate-800">Strategy Success Rates</h2>
-          </div>
-          <div className="h-[240px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={Object.keys(stats.strategy_distribution).filter(k => stats.strategy_distribution[k] > 0).map(k => ({
-                  strategy: k.replace(/_/g, " "),
-                  rate: Math.round(((stats.strategy_success_distribution?.[k] || 0) / stats.strategy_distribution[k]) * 100)
-                }))}
-                margin={{ top: 0, right: 30, left: 60, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(val) => `${val}%`} tick={{ fill: "#475569", fontSize: 12 }} />
-                <YAxis dataKey="strategy" type="category" tick={{ fill: "#475569", fontSize: 12 }} width={140} />
-                <Tooltip cursor={{ fill: "#f1f5f9" }} formatter={(val) => [`${val}%`, "Success Rate"]} />
-                <Bar dataKey="rate" fill="#0ea5e9" radius={[0, 4, 4, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
-
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="card p-6 lg:col-span-2 border-2 border-dashed border-brand-200 bg-gradient-to-br from-brand-50/30 to-white">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 bg-brand-100 rounded-lg">
-              <Activity className="w-5 h-5 text-brand-600" />
+      {/* ── Unified Operations & Performance Workspace ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left Column: Primary Actions & Analytics */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Submit job form */}
+          <div className="card p-6 border border-indigo-100 bg-gradient-to-br from-indigo-50/10 via-white to-white space-y-4 hover:shadow-md transition-all duration-300">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                <Activity className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Submit New Scraping Job</h2>
+                <p className="text-xs text-slate-500">Provide one or more notice URLs to process through the cascade.</p>
+              </div>
             </div>
-            <h2 className="text-lg font-semibold text-brand-950">Submit New Scraping Job</h2>
+            <JobSubmitForm />
           </div>
-          <JobSubmitForm />
+
+          {/* Success Rates (Vertical Chart) */}
+          <div className="card p-6 border border-slate-200 bg-white flex flex-col justify-between hover:shadow-md transition-all duration-300">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-lg font-bold text-slate-900">Strategy Success Rates</h2>
+                </div>
+                <span className="text-xs text-slate-400 font-medium">Real-time stats</span>
+              </div>
+              <p className="text-xs text-slate-500 mb-6">
+                Percentage of URLs successfully processed by each pipeline strategy stage.
+              </p>
+            </div>
+
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="strategy" 
+                    tick={{ fill: "#64748b", fontSize: 10, fontWeight: 500 }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    domain={[0, 100]} 
+                    tickFormatter={(val) => `${val}%`} 
+                    tick={{ fill: "#64748b", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: "#f8fafc", radius: 4 }} 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-slate-900 text-white p-3 rounded-lg shadow-xl border border-slate-800 text-xs space-y-1.5 max-w-[200px]">
+                            <p className="font-bold border-b border-slate-800 pb-1">{data.strategy}</p>
+                            <p className="text-slate-400">{data.desc}</p>
+                            <div className="pt-1 flex justify-between font-mono">
+                              <span>Success Rate:</span>
+                              <span className="font-bold text-emerald-400">{data.rate}%</span>
+                            </div>
+                            <div className="flex justify-between font-mono text-[10px] text-slate-400">
+                              <span>Runs:</span>
+                              <span>{data.succeeded} / {data.total}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar dataKey="rate" radius={[6, 6, 0, 0]} isAnimationActive={true} barSize={40}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
-        <div className="card p-6 bg-slate-50 border-slate-200">
-          <h2 className="text-lg font-semibold mb-4 text-slate-800">Quick Links</h2>
-          <ul className="space-y-3 text-sm">
-            <li>
-              <Link className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-brand-400 hover:shadow-sm transition-all group" href="/jobs">
-                <span className="font-medium text-slate-700 group-hover:text-brand-700">All Jobs</span>
-                <span className="text-slate-400 group-hover:text-brand-500">→</span>
-              </Link>
-            </li>
-            <li>
-              <Link className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-brand-400 hover:shadow-sm transition-all group" href="/scrapers">
-                <span className="font-medium text-slate-700 group-hover:text-brand-700">Scraper Registry (Phase 3)</span>
-                <span className="text-slate-400 group-hover:text-brand-500">→</span>
-              </Link>
-            </li>
-            <li>
-              <Link className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-brand-400 hover:shadow-sm transition-all group" href="/evaluation">
-                <span className="font-medium text-slate-700 group-hover:text-brand-700">Phase 1 LLM Benchmarks</span>
-                <span className="text-slate-400 group-hover:text-brand-500">→</span>
-              </Link>
-            </li>
-            <li>
-              <Link className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-brand-400 hover:shadow-sm transition-all group" href="/agents">
-                <span className="font-medium text-slate-700 group-hover:text-brand-700">Phase 2 CUA Runs</span>
-                <span className="text-slate-400 group-hover:text-brand-500">→</span>
-              </Link>
-            </li>
-            <li>
-              <Link className="flex items-center justify-between p-3 bg-white rounded-lg border border-rose-200 hover:border-rose-400 hover:shadow-sm transition-all group" href="/admin">
-                <span className="font-medium text-slate-700 group-hover:text-rose-700">Admin / Errors</span>
-                <span className="text-rose-400 group-hover:text-rose-500">→</span>
-              </Link>
-            </li>
-          </ul>
+        {/* Right Column: Navigation & Volumes */}
+        <div className="space-y-6">
+          
+          {/* Quick links & navigation */}
+          <div className="card p-6 bg-white border border-slate-200 flex flex-col justify-between hover:shadow-md transition-all duration-300">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-indigo-500" />
+                Pipeline Explorer
+              </h2>
+              <ul className="space-y-3">
+                {[
+                  { label: "All Scraping Jobs", href: "/jobs", desc: "Monitor jobs and outputs" },
+                  { label: "Scraper Registry (P3)", href: "/scrapers", desc: "View auto-saved scrapers" },
+                  { label: "LLM Benchmarks (P1)", href: "/evaluation", desc: "Model evaluation data" },
+                  { label: "CUA Sandbox Runs (P2)", href: "/agents", desc: "Computer Use Agent sessions" },
+                  { label: "System Health & Errors", href: "/admin", desc: "Failed items & platform logs" }
+                ].map((link, idx) => (
+                  <li key={idx}>
+                    <Link 
+                      className="flex items-center justify-between p-3 bg-slate-50 hover:bg-indigo-50/30 rounded-xl border border-slate-100 hover:border-indigo-200 transition-all group" 
+                      href={link.href}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-700 group-hover:text-indigo-600 transition-colors truncate">{link.label}</p>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{link.desc}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Strategy volume and breakdown list */}
+          <div className="card p-6 bg-white border border-slate-200 flex flex-col justify-between hover:shadow-md transition-all duration-300">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-900">Scraping Volume</h2>
+              </div>
+              <p className="text-xs text-slate-500 mb-5">
+                Breakdown of total processed notice URLs by strategy stage.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 flex-1 max-h-[310px] overflow-y-auto pr-1">
+              {chartData.map((strat) => (
+                <div key={strat.key} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-all">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse" style={{ backgroundColor: strat.color }} />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-700 truncate">{strat.strategy}</p>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{strat.desc}</p>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono text-xs flex-shrink-0">
+                    <span className="font-bold text-slate-800">{strat.total}</span>
+                    <span className="text-slate-400 text-[10px] ml-1">runs</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 mt-4 text-[10px] text-slate-400 flex items-center gap-1.5 justify-center">
+              <HelpCircle className="w-3.5 h-3.5" />
+              Runs auto-distribute based on target site requirements.
+            </div>
+          </div>
         </div>
-      </section>
+
+      </div>
     </div>
   );
 }

@@ -3,7 +3,8 @@
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
 import { Fragment, useState } from "react";
-import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 
 export default function ScrapersPage() {
   const { data: scrapers, mutate } = useSWR(api("/scrapers"), fetcher, { refreshInterval: 8000 });
@@ -35,6 +36,12 @@ export default function ScrapersPage() {
 
   return (
     <div className="space-y-6">
+      {/* ── Navigation / Back Button ── */}
+      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Back to Dashboard
+      </Link>
+
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">

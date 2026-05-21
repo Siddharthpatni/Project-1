@@ -16,6 +16,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.phase1_llm_scraper.executor import ExecutionResult
+from app.phase1_llm_scraper.pricing import (  # noqa: F401 — re-exported
+    MODEL_PRICING,
+    calc_cost,
+    format_comparison_table,
+)
 
 
 @dataclass
@@ -72,16 +77,51 @@ def evaluate(truth: GroundTruth, result: ExecutionResult) -> EvaluationMetrics:
 
 
 def load_dataset(path: str) -> list[GroundTruth]:
-    """Load a JSONL evaluation dataset."""
+    """Load a JSONL or CSV evaluation dataset."""
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"dataset not found: {path}")
     out: list[GroundTruth] = []
-    for line in p.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        out.append(GroundTruth.from_dict(json.loads(line)))
+
+    if p.suffix.lower() == ".csv":
+        import csv
+        seen_domains = set()
+        # Skipped domains known to require authentication or block requests
+        skipped_domains = {
+            "bieterportal.noncd.db.de",
+            "vergabeplattform.charite.de",
+            "www.ausschreibungen.ls.brandenburg.de",
+            "www.vergabe.stadt-frankfurt.de",
+            "landesverwaltung.vergabe.rlp.de",
+        }
+        with open(p, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                url = (row.get("url") or "").strip()
+                state = (row.get("state") or "").strip().upper()
+                domain = (row.get("domain") or "").strip()
+                if not url or state != "COMPLETED":
+                    continue
+                if domain in skipped_domains:
+                    continue
+                if domain in seen_domains:
+                    continue
+                seen_domains.add(domain)
+
+                out.append(GroundTruth(
+                    url=url,
+                    expected_doc_count=1,
+                    expected_extensions=["zip"],
+                    notes=f"CSV Export - {domain}",
+                ))
+                if len(out) >= 5:  # Sensible default limit for evaluation runs
+                    break
+    else:
+        for line in p.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            out.append(GroundTruth.from_dict(json.loads(line)))
     return out
 
 
