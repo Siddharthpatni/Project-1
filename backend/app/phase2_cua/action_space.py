@@ -86,6 +86,17 @@ def from_dict(d: dict) -> Action:
         "download_link": DownloadLink,
         "finish": Finish,
     }
+
+    # Self-healing logic for nested JSON formats emitted by LLMs (e.g. {"scroll": {"dy": 1000}})
+    if not t:
+        for key in mapping.keys():
+            if key in d and isinstance(d[key], dict):
+                inner = d[key]
+                inner["type"] = key
+                d = inner
+                t = key
+                break
+
     cls = mapping.get(t)
     if not cls:
         raise ValueError(f"unknown action type: {t}")
