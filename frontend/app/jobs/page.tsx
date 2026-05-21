@@ -4,6 +4,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { api, fetcher } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
+import { Activity } from "lucide-react";
 
 function JobLabel({ job }: { job: any }) {
   return (
@@ -42,43 +43,66 @@ export default function JobsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Jobs</h1>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2 text-slate-900">
+            <Activity className="w-6 h-6 text-brand-600 animate-pulse" />
+            Jobs
+          </h1>
+          <p className="text-slate-600 mt-1 text-sm">
+            Monitor active, completed, and pending tender document scraping tasks.
+          </p>
+        </div>
+        {jobs && (
+          <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-3 py-1 rounded-full border border-brand-100">
+            Total {jobs.length} jobs
+          </span>
+        )}
+      </header>
 
-      <div className="card overflow-x-auto overflow-y-auto max-h-[600px]">
+      <div className="card overflow-hidden border-2 border-slate-100 shadow-sm">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
         <table className="w-full text-sm">
           <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-600 sticky top-0 z-10 shadow-sm">
             <tr>
-              <th className="px-4 py-3 font-medium">Job</th>
-              <th className="px-4 py-3 font-medium">Created</th>
-              <th className="px-4 py-3 font-medium">URLs</th>
-              <th className="px-4 py-3 font-medium">Completed</th>
-              <th className="px-4 py-3 font-medium">Cost</th>
-              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-5 py-3 font-medium">Job</th>
+              <th className="px-5 py-3 font-medium">Created</th>
+              <th className="px-5 py-3 font-medium text-center">URLs</th>
+              <th className="px-5 py-3 font-medium text-center">Completed</th>
+              <th className="px-5 py-3 font-medium text-center">Cost</th>
+              <th className="px-5 py-3 font-medium text-right">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {isLoading && (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">Loading…</td></tr>
+              <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-500">Loading jobs…</td></tr>
             )}
             {jobs?.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No jobs yet.</td></tr>
+              <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-500">No scraping jobs started yet.</td></tr>
             )}
             {jobs?.map((j: any) => (
-              <tr key={j.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="px-4 py-3">
-                  <Link href={`/jobs/${j.id}`} className="text-brand-700 hover:underline">
+              <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-5 py-4">
+                  <Link href={`/jobs/${j.id}`} className="text-brand-700 hover:text-brand-800 transition-colors">
                     <JobLabel job={j} />
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-slate-600">{new Date(j.created_at).toLocaleString()}</td>
-                <td className="px-4 py-3">{j.total_urls}</td>
-                <td className="px-4 py-3">{j.completed}</td>
-                <td className="px-4 py-3">${(j.cost_usd ?? 0).toFixed(4)}</td>
-                <td className="px-4 py-3"><StatusBadge status={j.status} /></td>
+                <td className="px-5 py-4 text-slate-600 font-medium">
+                  {new Date(j.created_at).toLocaleString()}
+                </td>
+                <td className="px-5 py-4 text-center font-semibold text-slate-800">{j.total_urls}</td>
+                <td className="px-5 py-4 text-center font-semibold text-slate-800">{j.completed}</td>
+                <td className="px-5 py-4 text-center font-medium text-slate-600">${(j.cost_usd ?? 0).toFixed(4)}</td>
+                <td className="px-5 py-4 text-right">
+                  <div className="inline-flex justify-end w-full">
+                    <StatusBadge status={j.status} />
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
