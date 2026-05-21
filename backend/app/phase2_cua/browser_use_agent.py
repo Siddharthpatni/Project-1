@@ -12,6 +12,8 @@ import uuid
 from pathlib import Path
 from textwrap import dedent
 
+from pydantic import computed_field
+
 from browser_use import Agent, Browser
 from langchain_openai import ChatOpenAI
 
@@ -44,8 +46,14 @@ def build_agent_task(url: str) -> str:
     """).strip()
 
 
-class ChatOpenAIWithProvider(ChatOpenAI):
+class BrowserUseLLM(ChatOpenAI):
+    """Wrapper that adds `provider` and `model` attributes needed by browser-use."""
     provider: str = "openai"
+
+    @computed_field
+    @property
+    def model(self) -> str:
+        return self.model_name
 
 
 class BrowserUseCUA(BaseAgent):
@@ -65,7 +73,7 @@ class BrowserUseCUA(BaseAgent):
             return AgentRunOutcome(success=False, error="OPENROUTER_API_KEY environment variable is missing")
 
         # 1. Initialize vision/DOM heavy OpenRouter LLM via standard ChatOpenAI wrapper
-        llm = ChatOpenAIWithProvider(
+        llm = BrowserUseLLM(
             model=self.llm_model,
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
