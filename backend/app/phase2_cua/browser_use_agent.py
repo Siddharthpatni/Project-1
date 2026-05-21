@@ -44,6 +44,10 @@ def build_agent_task(url: str) -> str:
     """).strip()
 
 
+class ChatOpenAIWithProvider(ChatOpenAI):
+    provider: str = "openai"
+
+
 class BrowserUseCUA(BaseAgent):
     name = "browser_use"
 
@@ -61,7 +65,7 @@ class BrowserUseCUA(BaseAgent):
             return AgentRunOutcome(success=False, error="OPENROUTER_API_KEY environment variable is missing")
 
         # 1. Initialize vision/DOM heavy OpenRouter LLM via standard ChatOpenAI wrapper
-        llm = ChatOpenAI(
+        llm = ChatOpenAIWithProvider(
             model=self.llm_model,
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
