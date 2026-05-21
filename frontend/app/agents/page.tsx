@@ -4,8 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
 import Link from "next/link";
-import { Bot, Play, CheckCircle2, XCircle, Search, Cpu, Activity, Clock, DollarSign, ArrowLeft, X } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
+import { Bot, Play, CheckCircle2, XCircle, Search, Cpu, Activity, Clock, DollarSign, ArrowLeft, X, ShieldAlert, Sparkles } from "lucide-react";
 
 export default function AgentsPage() {
   const { data: summary } = useSWR(api("/agents/summary"), fetcher, { refreshInterval: 6000 });
@@ -36,95 +35,119 @@ export default function AgentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       {/* ── Navigation / Back Button ── */}
-      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
+      <Link 
+        href="/" 
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-650 transition-all hover:translate-x-[-2px] duration-200"
+      >
         <ArrowLeft className="w-3.5 h-3.5" />
         Back to Dashboard
       </Link>
 
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Bot className="w-6 h-6 text-indigo-600" />
-            Phase 2 — Computer-Use Agents
+          <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-3 text-slate-900 tracking-tight">
+            <Bot className="w-8 h-8 text-indigo-650 animate-pulse" />
+            Phase 2 — Computer-Use Agent Center
           </h1>
-          <p className="text-slate-600 text-sm mt-1">
-            GUI-based agents that interact with tender websites visually. Used as the ultimate fallback in the cascade.
+          <p className="text-slate-500 text-sm sm:text-base font-medium mt-1">
+            GUI-based autonomous agents interacting with notice portals visually. Used as the ultimate fallback in the cascade.
           </p>
         </div>
       </header>
 
-      {/* ── Trigger Run ── */}
-      <div className="card p-6 border-2 border-dashed border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <Play className="w-5 h-5 text-indigo-600" />
+      {/* ── Trigger Run Form ── */}
+      <div className="bg-white border-2 border-dashed border-indigo-200 rounded-3xl p-6 md:p-8 bg-gradient-to-br from-indigo-50/15 via-white to-white space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-indigo-50 border border-indigo-150 rounded-2xl">
+            <Sparkles className="w-6 h-6 text-indigo-600 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-indigo-950">Trigger an Agent Run</h2>
-            <p className="text-xs text-slate-500">Dispatch a visual GUI agent to manually navigate and download documents.</p>
+            <h2 className="text-lg font-extrabold text-slate-900">Trigger Autonomous Agent Session</h2>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">Dispatch a visual GUI agent to manually navigate and download documents.</p>
           </div>
         </div>
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <select
-              value={agentName}
-              onChange={(e) => setAgentName(e.target.value)}
-              className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-64 cursor-pointer"
-              disabled={busy}
-            >
-              <option value="playwright_cua">Playwright CUA (Coordinates & CSS)</option>
-              <option value="browser_use">Browser-Use CUA (Language Chain)</option>
-            </select>
-            <select
-              value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
-              className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-56 cursor-pointer"
-              disabled={busy}
-            >
-              <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
-              <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
-              <option value="openai/gpt-4o">GPT-4o</option>
-              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-            </select>
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="url"
-                placeholder="https://www.evergabe-online.de/tenderdetails.html..."
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && url.trim() && trigger()}
-                className="w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
-                disabled={busy}
-              />
-              {url && (
-                <button
-                  type="button"
-                  onClick={() => setUrl("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+        
+        <div className="space-y-4">
+          <div className="flex flex-col xl:flex-row gap-4 items-stretch xl:items-center">
+            <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Agent Engine</label>
+                <select
+                  value={agentName}
+                  onChange={(e) => setAgentName(e.target.value)}
+                  className="px-4 py-3 border border-slate-250 rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner font-bold text-slate-700 w-full sm:w-64 cursor-pointer"
+                  disabled={busy}
                 >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+                  <option value="playwright_cua">Playwright CUA (Coordinates &amp; CSS)</option>
+                  <option value="browser_use">Browser-Use CUA (Language Chain)</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vision LLM Model</label>
+                <select
+                  value={modelName}
+                  onChange={(e) => setModelName(e.target.value)}
+                  className="px-4 py-3 border border-slate-250 rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner font-bold text-slate-700 w-full sm:w-56 cursor-pointer"
+                  disabled={busy}
+                >
+                  <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
+                  <option value="openai/gpt-4o">GPT-4o</option>
+                  <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                </select>
+              </div>
             </div>
+
+            <div className="flex-1 flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notice Page URL</label>
+              <div className="relative w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="url"
+                  placeholder="https://www.evergabe-online.de/tenderdetails.html..."
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && url.trim() && trigger()}
+                  className="w-full pl-10 pr-10 py-3 border border-slate-250 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner bg-white font-medium"
+                  disabled={busy}
+                />
+                {url && (
+                  <button
+                    type="button"
+                    onClick={() => setUrl("")}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-450 hover:text-slate-650 hover:bg-slate-100 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <button 
               onClick={trigger} 
               disabled={busy || !url.trim()} 
-              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg transition-all active:scale-[0.98] shadow-sm cursor-pointer"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-650 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer self-stretch xl:self-end active:scale-95 text-xs uppercase tracking-wider"
             >
               {busy ? (
-                <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Queuing...</span>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Queuing...
+                </>
               ) : (
-                <span className="flex items-center gap-2"><Cpu className="w-4 h-4" /> Run Agent</span>
+                <>
+                  <Cpu className="w-4 h-4" /> 
+                  Run CUA
+                </>
               )}
             </button>
           </div>
 
           {/* Quick-Start Suggestions Row */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mr-1">Quick Presets:</span>
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-2">Sample Presets:</span>
             {[
               { label: "DTVP Direct Docs", url: "https://www.dtvp.de/Satellite/public/company/project/CXP4YR1MNRM/de/documents?0" },
               { label: "Evergabe Online", url: "https://www.evergabe-online.de/tenderdetails.html?id=12345" },
@@ -134,7 +157,7 @@ export default function AgentsPage() {
                 key={preset.label}
                 type="button"
                 onClick={() => setUrl(preset.url)}
-                className="text-xs px-2.5 py-1 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-full font-medium shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="text-xs px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-full font-bold shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
                 disabled={busy}
               >
                 {preset.label}
@@ -144,43 +167,51 @@ export default function AgentsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* ── Summary Stats ── */}
-        <div className="lg:col-span-2 card overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+        <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
             <Activity className="w-5 h-5 text-indigo-500" />
-            <h2 className="font-semibold text-slate-800">Agent Performance</h2>
+            <h2 className="font-extrabold text-slate-800">Agent Performance Leaderboard</h2>
           </div>
-          <div className="overflow-x-auto overflow-y-auto max-h-[600px] flex-1">
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] flex-1 custom-scrollbar">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-600 border-b border-slate-100 sticky top-0 z-10 shadow-sm">
+              <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-505 text-slate-500 border-b border-slate-100 sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Agent Model</th>
-                  <th className="px-5 py-3 font-medium text-center">Runs</th>
-                  <th className="px-5 py-3 font-medium text-center">Success Rate</th>
-                  <th className="px-5 py-3 font-medium text-center">Avg Steps</th>
-                  <th className="px-5 py-3 font-medium text-right">Total Cost</th>
+                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Agent Engine / Provider</th>
+                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Runs</th>
+                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Accuracy</th>
+                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Avg Steps</th>
+                  <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Total Cost</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {(!finalSummary || finalSummary.length === 0) ? (
-                  <tr><td colSpan={5} className="px-5 py-12 text-center text-slate-400">No agent runs recorded yet.</td></tr>
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-semibold">
+                      No agent logs recorded yet. Trigger a visual session above.
+                    </td>
+                  </tr>
                 ) : (
                   finalSummary.map((s: any) => (
-                    <tr key={s.agent} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 font-mono">
+                    <tr key={s.agent} className="hover:bg-slate-50/30 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 font-mono">
                           {s.agent}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-center text-slate-600">{s.runs}</td>
-                      <td className="px-5 py-4 text-center">
-                        <span className={`font-semibold ${s.success_rate >= 0.7 ? "text-emerald-600" : s.success_rate >= 0.4 ? "text-amber-600" : "text-rose-600"}`}>
+                      <td className="px-6 py-4 text-center font-bold text-slate-700">{s.runs}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
+                          s.success_rate >= 0.7 ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                          s.success_rate >= 0.4 ? "bg-amber-50 text-amber-700 border-amber-100" :
+                          "bg-rose-50 text-rose-700 border-rose-100"
+                        }`}>
                           {Math.round(s.success_rate * 100)}%
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-center text-slate-600">{s.avg_steps}</td>
-                      <td className="px-5 py-4 text-right font-medium text-slate-700">${s.total_cost_usd?.toFixed(3)}</td>
+                      <td className="px-6 py-4 text-center font-bold text-slate-500">{s.avg_steps}</td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-800">${s.total_cost_usd?.toFixed(3)}</td>
                     </tr>
                   ))
                 )}
@@ -190,47 +221,55 @@ export default function AgentsPage() {
         </div>
 
         {/* ── Recent Runs ── */}
-        <div className="card flex flex-col h-[400px]">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-indigo-500" />
-              Recent Executions
+        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm flex flex-col h-[500px]">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h2 className="font-extrabold text-slate-800 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-indigo-500 animate-pulse" />
+              Live Execution Feed
             </h2>
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
             {(!finalRuns || finalRuns.length === 0) ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-                <Bot className="w-8 h-8 opacity-20" />
-                <p className="text-sm">No activity log.</p>
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-8">
+                <Bot className="w-10 h-10 opacity-20" />
+                <p className="text-xs font-semibold">No recent activity log recorded.</p>
               </div>
             ) : (
-              <ul className="space-y-1">
-                {finalRuns.map((r: any) => (
-                  <li key={r.id} className="p-3 rounded-lg hover:bg-slate-50 transition-colors flex flex-col gap-2 border border-transparent hover:border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <div className={`flex items-center gap-1.5 text-xs font-semibold ${r.success ? "text-emerald-700" : "text-rose-700"}`}>
-                        {r.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                        {r.success ? "Success" : "Failed"}
-                      </div>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
-                        <DollarSign className="w-3 h-3" />
-                        {r.cost_usd?.toFixed(4)}
-                      </span>
+              finalRuns.map((r: any) => (
+                <div 
+                  key={r.id} 
+                  className="p-4 rounded-xl border border-slate-200 hover:border-slate-350 hover:bg-slate-50/50 transition-colors flex flex-col gap-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className={`flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide ${
+                      r.success ? "text-emerald-700" : "text-rose-700"
+                    }`}>
+                      {r.success ? <CheckCircle2 className="w-4 h-4 text-emerald-650" /> : <XCircle className="w-4 h-4 text-rose-650" />}
+                      {r.success ? "Success" : "Failed"}
                     </div>
-                    <div className="text-xs text-slate-600 font-mono truncate max-w-[280px]" title={r.url}>
-                      {r.url}
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                      <span className="bg-slate-100 px-1.5 py-0.5 rounded">{r.agent_name}</span>
-                      <span>{r.steps} steps</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    <span className="text-[10px] text-slate-450 flex items-center gap-1 font-mono font-bold">
+                      <DollarSign className="w-3.5 h-3.5 text-slate-400" />
+                      {r.cost_usd?.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-mono font-bold text-slate-500 truncate w-full" title={r.url}>
+                    {r.url}
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 mt-1 border-t border-slate-100/60 pt-2.5">
+                    <span className="bg-slate-150 px-2 py-0.5 rounded text-slate-700">{r.agent_name}</span>
+                    <span className="bg-slate-150 px-2 py-0.5 rounded text-slate-700">{r.steps} steps</span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+// Loader helper if needed inside triggers
+function Loader2({ className }: { className?: string }) {
+  return <div className={`w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin ${className}`} />;
 }
