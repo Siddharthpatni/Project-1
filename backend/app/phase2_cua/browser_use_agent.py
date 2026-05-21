@@ -71,8 +71,20 @@ class BrowserUseCUA(BaseAgent):
             base_url="https://openrouter.ai/api/v1",
         )
 
-        # 2. Configure Browser use session
-        browser = Browser(headless=True, downloads_path=str(downloads_path))
+        # 2. Configure premium human-mimicking Browser session to bypass anti-bot blocks
+        browser = Browser(
+            headless=True,
+            downloads_path=str(downloads_path),
+            accept_downloads=True,
+            disable_security=True,
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            window_size=(1280, 800),
+            wait_between_actions=0.5,  # 0.5s human-like delay between actions!
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+            ]
+        )
         task_prompt = build_agent_task(url)
 
         agent = Agent(

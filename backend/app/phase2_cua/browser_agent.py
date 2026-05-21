@@ -12,6 +12,9 @@ This is the reference implementation for Phase 2. Other agents (e.g. one
 wired to the Anthropic / OpenAI computer-use APIs) can be added as
 sibling files and registered in orchestrator.AGENT_REGISTRY.
 """
+import asyncio
+import random
+
 from __future__ import annotations
 
 import json
@@ -85,8 +88,27 @@ class PlaywrightCUA(BaseAgent):
         t0 = time.time()
 
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
-            context = await browser.new_context(accept_downloads=True)
+            # Emulate real premium desktop browser settings
+            browser = await pw.chromium.launch(
+                headless=True,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--use-fake-ui-for-media-stream",
+                    "--window-size=1280,800",
+                    "--no-sandbox",
+                ]
+            )
+            context = await browser.new_context(
+                accept_downloads=True,
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 800},
+                locale="de-DE",
+                timezone_id="Europe/Berlin",
+            )
+            # Bypass the webdriver detection checks completely
+            await context.add_init_script(
+                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+            )
             page = await context.new_page()
 
             try:
@@ -171,18 +193,34 @@ def _parse_action(text: str) -> Action:
 
 async def _apply_action(page, action: Action, downloads: list[str]) -> None:
     if isinstance(action, Navigate):
+        await asyncio.sleep(0.5)
         await page.goto(action.url, wait_until="domcontentloaded", timeout=30_000)
     elif isinstance(action, Click):
+        # Emulate human moving mouse cursor smoothly and pausing before clicking
+        await asyncio.sleep(random.uniform(0.2, 0.5))
+        await page.mouse.move(action.x, action.y, steps=random.randint(6, 12))
+        await asyncio.sleep(random.uniform(0.1, 0.2))
         await page.mouse.click(action.x, action.y)
     elif isinstance(action, Type):
-        await page.keyboard.type(action.text)
+        # Emulate natural human typing speed with keypress interval variation
+        await asyncio.sleep(random.uniform(0.2, 0.4))
+        for char in action.text:
+            await page.keyboard.type(char)
+            await asyncio.sleep(random.uniform(0.04, 0.12))
     elif isinstance(action, Scroll):
-        await page.mouse.wheel(0, action.dy)
+        # Emulate smooth scrolling increments rather than a single sudden jump
+        scroll_steps = 5
+        step_dy = action.dy / scroll_steps
+        for _ in range(scroll_steps):
+            await page.mouse.wheel(0, step_dy)
+            await asyncio.sleep(0.05)
     elif isinstance(action, WaitFor):
         await page.wait_for_selector(action.selector, timeout=action.timeout_ms)
     elif isinstance(action, DownloadLink):
+        # Trigger expect_download with a slightly delayed click to bypass security
+        await asyncio.sleep(random.uniform(0.2, 0.4))
         async with page.expect_download() as dl_info:
-            await page.click(action.selector)
+            await page.click(action.selector, delay=random.randint(50, 150))
         download = await dl_info.value
         out = Path("/tmp/vergabepilot-downloads") / download.suggested_filename
         out.parent.mkdir(parents=True, exist_ok=True)
