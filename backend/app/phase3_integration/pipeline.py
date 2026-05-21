@@ -139,6 +139,30 @@ async def process_url(
         db.commit()
         return result
 
+    # 1. Prompt Injection Tripwire Check in target URL parameter payloads
+    from app.core.security import detect_prompt_injection
+    injection_hits = detect_prompt_injection(url)
+    if injection_hits:
+        result.error = f"prompt injection detected: request blocked due to forbidden injection patterns {injection_hits}"
+        item.status = JobStatus.FAILED.value
+        item.strategy = Strategy.NONE.value
+        item.error_message = result.error
+        db.commit()
+        return result
+
+    # 2. Connection Pre-flight Check: verify the target portal is reachable
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            await client.head(url, follow_redirects=True)
+    except Exception as e:
+        result.error = f"connection failure: pre-flight check failed with error {e}"
+        item.status = JobStatus.FAILED.value
+        item.strategy = Strategy.NONE.value
+        item.error_message = result.error
+        db.commit()
+        return result
+
     scratch = _job_downloads_dir(item)
     result._scratch_dirs.append(str(scratch))
 

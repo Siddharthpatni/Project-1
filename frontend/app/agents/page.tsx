@@ -16,12 +16,13 @@ export default function AgentsPage() {
 
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [agentName, setAgentName] = useState("playwright_cua");
 
   async function trigger() {
     if (!url) return;
     setBusy(true);
     try {
-      await postJSON("/agents/run", { agent_name: "playwright_cua", url });
+      await postJSON("/agents/run", { agent_name: agentName, url });
       setUrl("");
       setTimeout(() => mutate(), 2000);
     } finally {
@@ -60,7 +61,16 @@ export default function AgentsPage() {
             <p className="text-xs text-slate-500">Dispatch a visual GUI agent to manually navigate and download documents.</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select
+            value={agentName}
+            onChange={(e) => setAgentName(e.target.value)}
+            className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-64"
+            disabled={busy}
+          >
+            <option value="playwright_cua">Playwright CUA (Coordinates & CSS)</option>
+            <option value="browser_use">Browser-Use CUA (Language Chain)</option>
+          </select>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
