@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
 import Link from "next/link";
-import { Bot, Play, CheckCircle2, XCircle, Search, Cpu, Activity, Clock, DollarSign, ArrowLeft } from "lucide-react";
+import { Bot, Play, CheckCircle2, XCircle, Search, Cpu, Activity, Clock, DollarSign, ArrowLeft, X } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
 
 export default function AgentsPage() {
@@ -61,38 +61,70 @@ export default function AgentsPage() {
             <p className="text-xs text-slate-500">Dispatch a visual GUI agent to manually navigate and download documents.</p>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <select
-            value={agentName}
-            onChange={(e) => setAgentName(e.target.value)}
-            className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-64"
-            disabled={busy}
-          >
-            <option value="playwright_cua">Playwright CUA (Coordinates & CSS)</option>
-            <option value="browser_use">Browser-Use CUA (Language Chain)</option>
-          </select>
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="url"
-              placeholder="https://www.evergabe-online.de/tenderdetails.html..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <select
+              value={agentName}
+              onChange={(e) => setAgentName(e.target.value)}
+              className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-64"
               disabled={busy}
-            />
+            >
+              <option value="playwright_cua">Playwright CUA (Coordinates & CSS)</option>
+              <option value="browser_use">Browser-Use CUA (Language Chain)</option>
+            </select>
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="url"
+                placeholder="https://www.evergabe-online.de/tenderdetails.html..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && url.trim() && trigger()}
+                className="w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+                disabled={busy}
+              />
+              {url && (
+                <button
+                  type="button"
+                  onClick={() => setUrl("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <button 
+              onClick={trigger} 
+              disabled={busy || !url.trim()} 
+              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg transition-all active:scale-[0.98] shadow-sm cursor-pointer"
+            >
+              {busy ? (
+                <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Queuing...</span>
+              ) : (
+                <span className="flex items-center gap-2"><Cpu className="w-4 h-4" /> Run Agent</span>
+              )}
+            </button>
           </div>
-          <button 
-            onClick={trigger} 
-            disabled={busy || !url.trim()} 
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg transition-colors shadow-sm"
-          >
-            {busy ? (
-              <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Queuing...</span>
-            ) : (
-              <span className="flex items-center gap-2"><Cpu className="w-4 h-4" /> Run Agent</span>
-            )}
-          </button>
+
+          {/* Quick-Start Suggestions Row */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mr-1">Quick Presets:</span>
+            {[
+              { label: "DTVP Direct Docs", url: "https://www.dtvp.de/Satellite/public/company/project/CXP4YR1MNRM/de/documents?0" },
+              { label: "Evergabe Online", url: "https://www.evergabe-online.de/tenderdetails.html?id=12345" },
+              { label: "DTVP Project Summary", url: "https://www.dtvp.de/Satellite/public/company/project/CXP4YR1MNRM/de/about" }
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => setUrl(preset.url)}
+                className="text-xs px-2.5 py-1 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-full font-medium shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                disabled={busy}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
