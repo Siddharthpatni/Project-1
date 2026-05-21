@@ -309,7 +309,7 @@ export default function AdminPage() {
       </div>
 
       {/* ── Error Log ── */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-x-auto max-w-full">
         <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-rose-50/30 to-white flex flex-wrap justify-between items-center gap-4">
           <h2 className="font-extrabold flex items-center gap-2 text-slate-800">
             <AlertTriangle className="w-5 h-5 text-rose-500" />
