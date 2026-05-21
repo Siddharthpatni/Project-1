@@ -13,10 +13,10 @@ from app.phase2_cua.browser_agent import PlaywrightCUA
 from app.phase2_cua.browser_use_agent import BrowserUseCUA
 
 
-def _build_registry(llm: LLMClient) -> dict[str, BaseAgent]:
+def _build_registry(llm: LLMClient, model_name: str | None = None) -> dict[str, BaseAgent]:
     return {
-        "playwright_cua": PlaywrightCUA(llm),
-        "browser_use": BrowserUseCUA(),
+        "playwright_cua": PlaywrightCUA(llm, model_name),
+        "browser_use": BrowserUseCUA(model_name),
     }
 
 
@@ -25,8 +25,9 @@ async def run_agent(
     url: str,
     llm: LLMClient,
     max_steps: int | None = None,
+    model_name: str | None = None,
 ) -> AgentRunOutcome:
-    registry = _build_registry(llm)
+    registry = _build_registry(llm, model_name)
     if agent_name not in registry:
         return AgentRunOutcome(success=False, error=f"unknown agent: {agent_name}")
     agent = registry[agent_name]

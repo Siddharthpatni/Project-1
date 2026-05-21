@@ -47,8 +47,8 @@ def build_agent_task(url: str) -> str:
 class BrowserUseCUA(BaseAgent):
     name = "browser_use"
 
-    def __init__(self, llm_model: str = "google/gemini-2.5-flash"):
-        self.llm_model = llm_model
+    def __init__(self, llm_model: str | None = None):
+        self.llm_model = llm_model or "google/gemini-2.5-flash"
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
         t0 = time.time()

@@ -202,3 +202,4 @@ class AgentRunRequest(BaseModel):
     agent_name: str = "playwright_cua"
     url: HttpUrl
     max_steps: int | None = None
+    model_name: str | None = None

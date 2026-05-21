@@ -169,14 +169,14 @@ async def _run_evaluation_async(dataset, models: list[str], max_iterations: int)
 # --------------------------------------------------------------------
 
 @celery_app.task(name="app.workers.tasks.run_cua_task")
-def run_cua_task(agent_name: str, url: str, max_steps: int | None = None) -> dict:
+def run_cua_task(agent_name: str, url: str, max_steps: int | None = None, model_name: str | None = None) -> dict:
     db = SessionLocal()
     llm = LLMClient()
 
     t0 = time.time()
     try:
         outcome = asyncio.run(
-            run_agent(agent_name=agent_name, url=url, llm=llm, max_steps=max_steps or 30)
+            run_agent(agent_name=agent_name, url=url, llm=llm, max_steps=max_steps or 30, model_name=model_name)
         )
     except Exception as e:  # noqa: BLE001
         log.exception("cua.task.failed")

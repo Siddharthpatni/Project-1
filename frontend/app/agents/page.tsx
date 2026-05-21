@@ -17,12 +17,17 @@ export default function AgentsPage() {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentName, setAgentName] = useState("playwright_cua");
+  const [modelName, setModelName] = useState("google/gemini-2.5-flash");
 
   async function trigger() {
     if (!url) return;
     setBusy(true);
     try {
-      await postJSON("/agents/run", { agent_name: agentName, url });
+      await postJSON("/agents/run", { 
+        agent_name: agentName, 
+        url,
+        model_name: modelName 
+      });
       setUrl("");
       setTimeout(() => mutate(), 2000);
     } finally {
@@ -66,11 +71,22 @@ export default function AgentsPage() {
             <select
               value={agentName}
               onChange={(e) => setAgentName(e.target.value)}
-              className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-64"
+              className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-64 cursor-pointer"
               disabled={busy}
             >
               <option value="playwright_cua">Playwright CUA (Coordinates & CSS)</option>
               <option value="browser_use">Browser-Use CUA (Language Chain)</option>
+            </select>
+            <select
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm font-medium text-slate-700 sm:w-56 cursor-pointer"
+              disabled={busy}
+            >
+              <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
+              <option value="openai/gpt-4o">GPT-4o</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
             </select>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />

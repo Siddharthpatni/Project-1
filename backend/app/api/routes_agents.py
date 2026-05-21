@@ -24,6 +24,7 @@ def trigger_cua(payload: AgentRunRequest):
         agent_name=payload.agent_name,
         url=str(payload.url),
         max_steps=payload.max_steps,
+        model_name=payload.model_name,
     )
     return {"task_id": task.id, "status": "queued"}
 

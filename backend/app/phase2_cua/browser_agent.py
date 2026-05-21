@@ -70,8 +70,9 @@ SYSTEM_PROMPT = dedent(f"""
 class PlaywrightCUA(BaseAgent):
     name = "playwright_cua"
 
-    def __init__(self, llm: LLMClient):
+    def __init__(self, llm: LLMClient, model_name: str | None = None):
         self.llm = llm
+        self.model_name = model_name
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
         try:
@@ -135,7 +136,7 @@ class PlaywrightCUA(BaseAgent):
                         system=SYSTEM_PROMPT,
                         user=user_msg,
                         image_b64=shot.to_base64(),
-                        model=settings.llm_model_vision,
+                        model=self.model_name or settings.llm_model_vision,
                     )
                 except Exception as e:  # noqa: BLE001
                     trace.append({"step": step, "error": f"llm call failed: {e}"})
