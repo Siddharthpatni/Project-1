@@ -295,6 +295,24 @@ export default function JobDetailPage() {
                           {item.error_message}
                         </div>
                       </div>
+                    ) : item.error_message.startsWith("[CUA-DISCOVERY]") || item.error_message.startsWith("[CUA-DISCOVERY-FAILED]") ? (
+                      <div className="bg-indigo-50/60 border border-indigo-200 text-indigo-950 p-4 rounded-xl text-xs space-y-2 shadow-sm">
+                        <div className="flex items-center justify-between font-bold text-indigo-900 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Cpu className="w-4 h-4 text-indigo-600 animate-pulse" />
+                            <span>🧠 CUA Pre-flight Path & Selector Discovery Log</span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${item.error_message.startsWith("[CUA-DISCOVERY]") ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-amber-100 text-amber-800 border border-amber-200"}`}>
+                            {item.error_message.startsWith("[CUA-DISCOVERY]") ? "Success" : "Scraper Error Fallback"}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-slate-700 leading-relaxed">
+                          This domain has no prior recorded template. An intelligent pre-flight CUA browser session was autonomously launched to inspect elements, accept cookie frames, navigate tabs, and discover DOM selectors to guide LLM code generation.
+                        </p>
+                        <div className="bg-slate-900 border border-slate-800 text-slate-200 p-3.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto leading-normal whitespace-pre-wrap max-h-[300px] custom-scrollbar shadow-inner">
+                          {item.error_message.replace("[CUA-DISCOVERY] ", "").replace("[CUA-DISCOVERY-FAILED] ", "")}
+                        </div>
+                      </div>
                     ) : (
                       <div className="text-xs font-bold font-mono text-rose-600 bg-rose-50/50 border border-rose-100 p-3 rounded-xl max-w-full leading-relaxed select-all">
                         🚨 {item.error_message}

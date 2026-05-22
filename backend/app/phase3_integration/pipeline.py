@@ -260,6 +260,9 @@ async def process_url(
     # Store clean self-healed indicator or the failed error
     if result.success and item.error_message and item.error_message.startswith("[SELF-HEALED]"):
         pass # keep our self-healed message!
+    elif last_outcome and last_outcome.cua_discovery_report:
+        prefix = "[CUA-DISCOVERY]" if result.success else f"[CUA-DISCOVERY-FAILED] Scraper failed: {result.error}\n\n"
+        item.error_message = f"{prefix} {last_outcome.cua_discovery_report}"
     else:
         item.error_message = result.error if not result.success else None
         
@@ -471,6 +474,8 @@ async def _try_llm_generated(
     result.iterations += loop.iterations
     result.cost_usd += loop.total_cost_usd
 
+    report_data = route_map.cua_discovery_report if route_map else None
+
     if loop.success and loop.final_scraper and loop.final_execution:
         moved = _move_into(scratch, loop.final_execution.downloaded_files)
         cleanup_output_dir(loop.final_execution.output_dir)
@@ -481,12 +486,12 @@ async def _try_llm_generated(
                 platform=resolved_platform,
                 route_used=loop.final_scraper.route_used,
             )
-            return StrategyOutcome(Strategy.LLM_GENERATED, True, len(moved))
+            return StrategyOutcome(Strategy.LLM_GENERATED, True, len(moved), cua_discovery_report=report_data)
 
     err = (loop.final_execution.error if loop.final_execution else None) or "loop exhausted"
     if loop.final_execution:
         cleanup_output_dir(loop.final_execution.output_dir)
-    return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err)
+    return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err, cua_discovery_report=report_data)
 
 
 def _run_loop_sync(url: str, default_model: str | None, route_map=None, platform=None):

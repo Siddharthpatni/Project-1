@@ -18,6 +18,7 @@ class StrategyOutcome:
     success: bool
     downloaded: int
     error: str | None = None
+    cua_discovery_report: str | None = None
 
 
 # Order encoded once so the pipeline driver and the fallback policy stay
