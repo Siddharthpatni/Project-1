@@ -50,7 +50,7 @@ class BrowserUseCUA(BaseAgent):
     name = "browser_use"
 
     def __init__(self, model_name: str | None = None):
-        self.llm_model = model_name or "google/gemini-2.5-flash"
+        self.llm_model = model_name or settings.llm_model_fallback or "openai/gpt-4o-mini"
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
         t0 = time.time()

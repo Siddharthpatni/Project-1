@@ -20,7 +20,7 @@ export default function AgentsPage() {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [agentName, setAgentName] = useState("playwright_cua");
-  const [modelName, setModelName] = useState("google/gemini-2.5-flash");
+  const [modelName, setModelName] = useState("openai/gpt-4o-mini");
 
   async function trigger() {
     if (!url) return;
@@ -135,9 +135,10 @@ export default function AgentsPage() {
                   className="px-4 py-3 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-slate-700 w-full sm:w-56 cursor-pointer"
                   disabled={busy}
                 >
+                  <option value="openai/gpt-4o-mini">GPT-4o Mini (High-Speed & stable)</option>
+                  <option value="openai/gpt-4o">GPT-4o</option>
                   <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
                   <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
-                  <option value="openai/gpt-4o">GPT-4o</option>
                   <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                 </select>
               </div>
