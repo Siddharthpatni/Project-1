@@ -81,9 +81,10 @@ class RouteMap:
     total_documents_found: int = 0
     learned: bool = False            # True if any documents were found
     error: str | None = None
+    cua_discovery_report: str | None = None
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "domain": self.domain,
             "start_url": self.start_url,
             "steps": [asdict(s) for s in self.steps],
@@ -92,6 +93,9 @@ class RouteMap:
             "learned": self.learned,
             "error": self.error,
         }
+        if self.cua_discovery_report:
+            d["cua_discovery_report"] = self.cua_discovery_report
+        return d
 
     def format_for_prompt(self) -> str:
         """Human-readable summary of the route for inclusion in the LLM prompt."""
@@ -115,7 +119,11 @@ class RouteMap:
                 if len(step.found_downloads) > 5:
                     lines.append(f"     → (+{len(step.found_downloads) - 5} more)")
         lines.append(f"\nTotal documents discovered along this route: {self.total_documents_found}")
-        return "\n".join(lines)
+        
+        main_summary = "\n".join(lines)
+        if self.cua_discovery_report:
+            main_summary += f"\n\n## CUA DISCOVERED NAVIGATION ROUTE & ERROR LOGS:\n{self.cua_discovery_report}"
+        return main_summary
 
 
 # ---------------------------------------------------------------------------

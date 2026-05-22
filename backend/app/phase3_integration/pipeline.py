@@ -450,6 +450,20 @@ async def _try_llm_generated(
             log.warning("phase3.route_learning_failed", url=url, error=str(e))
             route_map = None
 
+        # Fallback to Computer-Use Agent (CUA) Pre-flight Discovery if standard learner failed
+        if route_map is None or not route_map.learned:
+            try:
+                log.info("phase3.route_learning.cua_preflight_trigger", url=url)
+                from app.phase1_llm_scraper.cua_discovery import run_cua_preflight_discovery
+                route_map = await run_cua_preflight_discovery(url, max_steps=8)
+                log.info(
+                    "phase3.route_learning.cua_preflight_complete",
+                    url=url, learned=route_map.learned,
+                    docs=route_map.total_documents_found,
+                )
+            except Exception as e:
+                log.warning("phase3.route_learning.cua_preflight_failed", url=url, error=str(e))
+
     # 6. Run the LLM feedback loop (generator uses platform + route).
     loop = await asyncio.to_thread(
         _run_loop_sync, url, llm.default_model, route_map, resolved_platform,
