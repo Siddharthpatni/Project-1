@@ -19,7 +19,7 @@ from textwrap import dedent
 from pydantic import computed_field
 
 from browser_use import Agent, Browser
-from langchain_openai import ChatOpenAI
+from browser_use.llm.openrouter.chat import ChatOpenRouter
 
 from app.config import settings
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
@@ -54,20 +54,6 @@ def build_agent_task(url: str) -> str:
     """).strip()
 
 
-# ── LLM wrapper ────────────────────────────────────────────────────────
-# browser-use requires `llm.provider` and `llm.model` as Pydantic fields.
-# LangChain's ChatOpenAI stores the model as `model_name` and lacks `provider`.
-
-class PlaywrightLLM(ChatOpenAI):
-    """ChatOpenAI wrapper with the extra fields browser-use expects."""
-    provider: str = "openai"
-
-    @computed_field
-    @property
-    def model(self) -> str:
-        return self.model_name
-
-
 # ── Agent implementation ───────────────────────────────────────────────
 
 class PlaywrightCUA(BaseAgent):
@@ -89,10 +75,9 @@ class PlaywrightCUA(BaseAgent):
             )
 
         # 1. Initialise the LLM with OpenRouter
-        llm = PlaywrightLLM(
+        llm = ChatOpenRouter(
             model=self.llm_model,
             api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
         )
 
         # 2. Configure browser session

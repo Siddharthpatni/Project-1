@@ -15,7 +15,7 @@ from textwrap import dedent
 from pydantic import computed_field
 
 from browser_use import Agent, Browser
-from langchain_openai import ChatOpenAI
+from browser_use.llm.openrouter.chat import ChatOpenRouter
 
 from app.config import settings
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
@@ -46,16 +46,6 @@ def build_agent_task(url: str) -> str:
     """).strip()
 
 
-class BrowserUseLLM(ChatOpenAI):
-    """Wrapper that adds `provider` and `model` attributes needed by browser-use."""
-    provider: str = "openai"
-
-    @computed_field
-    @property
-    def model(self) -> str:
-        return self.model_name
-
-
 class BrowserUseCUA(BaseAgent):
     name = "browser_use"
 
@@ -72,11 +62,10 @@ class BrowserUseCUA(BaseAgent):
         if not api_key:
             return AgentRunOutcome(success=False, error="OPENROUTER_API_KEY environment variable is missing")
 
-        # 1. Initialize vision/DOM heavy OpenRouter LLM via standard ChatOpenAI wrapper
-        llm = BrowserUseLLM(
+        # 1. Initialize vision/DOM heavy OpenRouter LLM via native ChatOpenRouter
+        llm = ChatOpenRouter(
             model=self.llm_model,
             api_key=api_key,
-            base_url="https://openrouter.ai/api/v1",
         )
 
         # 2. Configure premium human-mimicking Browser session to bypass anti-bot blocks
