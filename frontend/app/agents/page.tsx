@@ -63,7 +63,7 @@ export default function AgentsPage() {
             Phase 2 — Computer-Use Agents
           </h1>
           <p className="text-slate-500 text-sm sm:text-base font-medium mt-1">
-            GUI-based autonomous agents that visually navigate procurement portals. Both engines use <strong>browser-use</strong> under the hood.
+            GUI-based autonomous agent that visually navigates procurement portals to discover and download tender files.
           </p>
         </div>
         <button
@@ -114,18 +114,7 @@ export default function AgentsPage() {
         <div className="space-y-4">
           <div className="flex flex-col xl:flex-row gap-4 items-stretch xl:items-end">
             <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Agent Engine</label>
-                <select
-                  value={agentName}
-                  onChange={(e) => setAgentName(e.target.value)}
-                  className="px-4 py-3 border border-slate-200 rounded-xl text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold text-slate-700 w-full sm:w-64 cursor-pointer"
-                  disabled={busy}
-                >
-                  <option value="playwright_cua">Playwright CUA (Primary)</option>
-                  <option value="browser_use">Browser-Use CUA (Secondary)</option>
-                </select>
-              </div>
+
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vision LLM Model</label>
