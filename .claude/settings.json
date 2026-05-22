@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat /Users/siddharthpatni/Project-Pilot/.venv/lib/python3.11/site-packages/browser_use/browser/browser.py 2>/dev/null | head -80)",
+      "Read(//Users/siddharthpatni/Project-Pilot/.venv/lib/python3.11/site-packages/browser_use/browser/**)",
+      "Bash(/Users/siddharthpatni/Project-Pilot/.venv/bin/python -c \"from browser_use import Agent; import inspect; sig = inspect.signature\\(Agent.__init__\\); print\\(sig\\)\")",
+      "Bash(/Users/siddharthpatni/Project-Pilot/.venv/bin/python -c \"import pkg_resources; print\\(pkg_resources.get_distribution\\('browser-use'\\).version\\)\")",
+      "Bash(/Users/siddharthpatni/Project-Pilot/.venv/bin/python -c \"import browser_use; print\\(browser_use.__version__\\)\")"
+    ]
+  }
+}

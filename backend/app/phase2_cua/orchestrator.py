@@ -7,27 +7,26 @@ pipeline uses for its CUA fallback.
 """
 from __future__ import annotations
 
-from app.core.llm_client import LLMClient
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
 from app.phase2_cua.browser_agent import PlaywrightCUA
 from app.phase2_cua.browser_use_agent import BrowserUseCUA
 
 
-def _build_registry(llm: LLMClient, model_name: str | None = None) -> dict[str, BaseAgent]:
+def _build_registry(model_name: str | None = None) -> dict[str, BaseAgent]:
     return {
-        "playwright_cua": PlaywrightCUA(llm, model_name),
-        "browser_use": BrowserUseCUA(model_name),
+        "playwright_cua": PlaywrightCUA(model_name=model_name),
+        "browser_use": BrowserUseCUA(model_name=model_name),
     }
 
 
 async def run_agent(
     agent_name: str,
     url: str,
-    llm: LLMClient,
     max_steps: int | None = None,
     model_name: str | None = None,
+    **kwargs,
 ) -> AgentRunOutcome:
-    registry = _build_registry(llm, model_name)
+    registry = _build_registry(model_name)
     if agent_name not in registry:
         return AgentRunOutcome(success=False, error=f"unknown agent: {agent_name}")
     agent = registry[agent_name]
@@ -35,4 +34,4 @@ async def run_agent(
 
 
 def available_agents() -> list[str]:
-    return list(_build_registry(LLMClient()).keys())
+    return list(_build_registry().keys())

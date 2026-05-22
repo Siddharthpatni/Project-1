@@ -247,7 +247,7 @@ async def _run_strategy(
     if strategy is Strategy.LLM_GENERATED:
         return await _try_llm_generated(db, url, domain, llm, scratch, result)
     if strategy is Strategy.CUA:
-        return await _try_cua(url, llm, scratch, result)
+        return await _try_cua(url, scratch, result)
     return StrategyOutcome(strategy=strategy, success=False, downloaded=0, error="no runner")
 
 
@@ -443,10 +443,10 @@ def _run_loop_sync(url: str, default_model: str | None, route_map=None, platform
 
 
 async def _try_cua(
-    url: str, llm: LLMClient, scratch: Path, result: PipelineResult,
+    url: str, scratch: Path, result: PipelineResult,
 ) -> StrategyOutcome:
     outcome = await run_agent(
-        "playwright_cua", url=url, llm=llm, max_steps=settings.cua_max_steps,
+        "playwright_cua", url=url, max_steps=settings.cua_max_steps,
     )
     result.cost_usd += outcome.cost_usd
     if outcome.success and outcome.downloaded_files:

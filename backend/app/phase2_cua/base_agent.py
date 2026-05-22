@@ -1,24 +1,13 @@
 """
 Abstract base class for all computer-use agents.
 
-Each concrete agent (Playwright, OpenAI Computer-Use API, Anthropic
-computer-use, Browser-Use, etc.) implements the same interface so the
-orchestrator can compare them on the same dataset.
+Each concrete agent (Playwright CUA, Browser-Use CUA, etc.) implements
+the same interface so the orchestrator can compare them on the same dataset.
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-
-from app.phase2_cua.action_space import Action
-
-
-@dataclass
-class AgentStepResult:
-    action: Action
-    screenshot_path: str
-    dom_snippet: str = ""
-    error: str | None = None
 
 
 @dataclass
