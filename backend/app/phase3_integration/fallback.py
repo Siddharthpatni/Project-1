@@ -25,9 +25,9 @@ class StrategyOutcome:
 # cheaper than the LLM and produces fewer false positives than a stale
 # registry entry.
 CASCADE_ORDER: list[Strategy] = [
+    Strategy.DETERMINISTIC,
     Strategy.MANUAL,
     Strategy.EXISTING,
-    Strategy.DETERMINISTIC,
     Strategy.LLM_GENERATED,
     Strategy.CUA,
 ]

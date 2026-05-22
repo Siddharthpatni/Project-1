@@ -167,9 +167,9 @@ async def process_url(
     result._scratch_dirs.append(str(scratch))
 
     strategies = [force_strategy] if force_strategy else [
+        Strategy.DETERMINISTIC,
         Strategy.MANUAL,
         Strategy.EXISTING,
-        Strategy.DETERMINISTIC,
         Strategy.LLM_GENERATED,
         Strategy.CUA,
     ]

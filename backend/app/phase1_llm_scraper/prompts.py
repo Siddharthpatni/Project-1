@@ -132,10 +132,21 @@ SYSTEM_PROMPT = dedent("""
     - Click "Download All" and capture with `page.expect_download()`.
 
     ## DTVP (vergabeportal-bw.de and VMPSatellite/Satellite family)
-    - The ZIP URL template is already known — the pipeline handles this deterministically.
-    - If you receive a DTVP URL, the file is at:
-      `/{Satellite|VMPSatellite}/public/company/project/{PROJECT_ID}/de/documents/archive/Vergabeunterlagen_{PROJECT_ID}.zip`
-    - Just download that URL directly with requests.
+    - If you encounter a DTVP/Satellite family URL, you can extract the project ID and build the direct ZIP archive download URL without clicking or Playwright.
+    - Path signature: `/Satellite/` or `/VMPSatellite/` containing `/project/<PROJECT_ID>/` or `/notice/<PROJECT_ID>/` (e.g. `CXP4Y92MNG1`).
+    - Python dynamic builder code you should generate for DTVP:
+      ```python
+      import re
+      from urllib.parse import urlsplit
+      # Extract project ID
+      m = re.search(r"/(?:project|notice)/([A-Z0-9]+)(?:/|$)", url, re.IGNORECASE)
+      if m:
+          project_id = m.group(1)
+          prefix = "VMPSatellite" if "/VMPSatellite/" in url else "Satellite"
+          parts = urlsplit(url)
+          zip_url = f"{parts.scheme}://{parts.netloc}/{prefix}/public/company/project/{project_id}/de/documents/archive/Vergabeunterlagen_{project_id}.zip"
+          # Download this zip_url directly using requests.get(...) and save to output_dir!
+      ```
 
     ## FUNCTION REQUIREMENTS
     1. Signature (do not change):
