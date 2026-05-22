@@ -254,14 +254,52 @@ export default function JobDetailPage() {
                       </span>
                     </>
                   )}
-                  <span className="ml-auto">
+                  <span className="ml-auto flex items-center gap-2">
+                    {item.error_message && item.error_message.includes("[SELF-HEALED]") && (
+                      <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-350 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-sm">
+                        <span>💚</span> Self-Healed
+                      </span>
+                    )}
+                    {item.error_message && item.error_message.includes("[CRITICAL]") && (
+                      <span className="text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-350 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                        <span>⚠️</span> High Risk Blocked
+                      </span>
+                    )}
                     <StatusBadge status={item.status} />
                   </span>
                 </div>
 
                 {item.error_message && (
-                  <div className="text-xs font-bold font-mono text-rose-600 bg-rose-50/50 border border-rose-100 p-3 rounded-xl max-w-full leading-relaxed select-all">
-                    🚨 {item.error_message}
+                  <div className="space-y-2">
+                    {item.error_message.startsWith("[CRITICAL]") ? (
+                      <div className="bg-rose-50 border border-rose-250 text-rose-900 p-4 rounded-xl text-xs space-y-2 shadow-sm">
+                        <div className="flex items-center gap-2 font-bold text-rose-800 text-sm">
+                          <span>⚠️ Security Alert: High Risk / Sandbox Blocked</span>
+                        </div>
+                        <p className="font-semibold text-slate-700 leading-relaxed">
+                          Downstream scraping pipeline was aborted instantly. This block triggers when prompt injection, unauthorized system execution, private network access (SSRF), or a severe sandbox breach is detected in either target URL or crawled HTML text to protect host infrastructure.
+                        </p>
+                        <div className="bg-white border border-rose-150 p-2.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto text-rose-700 leading-normal">
+                          {item.error_message}
+                        </div>
+                      </div>
+                    ) : item.error_message.startsWith("[SELF-HEALED]") ? (
+                      <div className="bg-emerald-50 border border-emerald-250 text-emerald-950 p-4 rounded-xl text-xs space-y-2 shadow-sm">
+                        <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
+                          <span>💚 Self-Healing Resolution</span>
+                        </div>
+                        <p className="font-semibold text-slate-700 leading-relaxed">
+                          System successfully recovered! A moderate risk error (e.g., connection reset or DOM page selector timeout) was detected. The pipeline automatically initialized Self-Healing mode, delayed execution, and recovered successfully.
+                        </p>
+                        <div className="bg-white border border-emerald-150 p-2.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto text-emerald-700 leading-normal">
+                          {item.error_message}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-bold font-mono text-rose-600 bg-rose-50/50 border border-rose-100 p-3 rounded-xl max-w-full leading-relaxed select-all">
+                        🚨 {item.error_message}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -158,11 +158,12 @@ class ScraperGenerator:
         # Scan for prompt injection in fetched HTML
         injection_hits = detect_prompt_injection(raw)
         if injection_hits:
-            log.warning(
+            log.error(
                 "phase1.prompt_injection_detected",
                 url=url,
                 patterns=injection_hits[:5],
             )
+            raise ValueError(f"prompt injection detected: HTML payload matches forbidden patterns {injection_hits[:5]}")
 
         return sanitize_web_content(raw, max_length=20_000)
 

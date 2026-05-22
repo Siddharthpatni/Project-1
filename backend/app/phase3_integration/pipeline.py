@@ -42,7 +42,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.llm_client import LLMClient
-from app.core.security import is_url_allowed
+from app.core.security import is_url_allowed, classify_risk, detect_prompt_injection
 from app.core.storage import ObjectStorage
 from app.models import Document, JobItem, JobStatus, Strategy
 from app.phase0_manual.v1_reference import scrape as manual_scrape
@@ -185,6 +185,41 @@ async def process_url(
         )
         last_outcome = outcome
 
+        # --- Self-Healing and High-Risk Management Layer ---
+        if not outcome.success and outcome.error:
+            risk = classify_risk(outcome.error)
+            if risk == "high":
+                log.error("phase3.pipeline.high_risk_detected", strategy=strategy.value, error=outcome.error)
+                outcome.error = f"[CRITICAL] {outcome.error}"
+                result.error = outcome.error
+                result.attempts.append({
+                    "strategy": strategy.value,
+                    "success": False,
+                    "downloaded": 0,
+                    "error": outcome.error,
+                })
+                # Immediately abort execution to prevent security sandbox breach or unnecessary cost!
+                break
+            
+            elif risk == "moderate":
+                log.info("phase3.pipeline.self_healing_triggered", strategy=strategy.value, error=outcome.error)
+                # Self-healing action: Wait 2.0s to let network recover and retry strategy once more!
+                await asyncio.sleep(2.0)
+                try:
+                    retry_outcome = await _run_strategy(
+                        db, strategy, url, domain, llm, scratch, result
+                    )
+                    if retry_outcome.success:
+                        log.info("phase3.pipeline.self_healing_success", strategy=strategy.value)
+                        outcome = retry_outcome
+                        last_outcome = outcome
+                        # Prepend healed notice for frontend visualization
+                        item.error_message = f"[SELF-HEALED] Automatically resolved: {retry_outcome.error}"
+                    else:
+                        log.warning("phase3.pipeline.self_healing_failed", strategy=strategy.value)
+                except Exception as retry_err:
+                    log.warning("phase3.pipeline.self_healing_exception", strategy=strategy.value, err=str(retry_err))
+
         result.attempts.append({
             "strategy": strategy.value,
             "success": outcome.success,
@@ -202,7 +237,11 @@ async def process_url(
 
     result.runtime_seconds = time.time() - t0
     if not result.success and last_outcome:
-        result.error = last_outcome.error
+        # Prepend critical label if it was determined high risk earlier
+        if last_outcome.error and last_outcome.error.startswith("[CRITICAL]"):
+            result.error = last_outcome.error
+        else:
+            result.error = last_outcome.error
 
     # Persist documents if we have any
     if result.downloaded:
@@ -217,7 +256,13 @@ async def process_url(
     item.strategy = result.strategy_used.value
     item.iterations = result.iterations
     item.runtime_seconds = result.runtime_seconds
-    item.error_message = result.error if not result.success else None
+    
+    # Store clean self-healed indicator or the failed error
+    if result.success and item.error_message and item.error_message.startswith("[SELF-HEALED]"):
+        pass # keep our self-healed message!
+    else:
+        item.error_message = result.error if not result.success else None
+        
     db.commit()
 
     # Clean up scratch dirs once everything is in S3.

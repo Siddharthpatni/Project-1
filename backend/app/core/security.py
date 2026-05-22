@@ -125,3 +125,14 @@ def is_url_allowed(url: str) -> tuple[bool, str]:
             return False, f"private network blocked: {host}"
 
     return True, "ok"
+
+
+def classify_risk(error_msg: str | None) -> str:
+    """Classify risk of an error message into low, moderate, or high."""
+    cat = classify_error(error_msg)
+    if cat in {"prompt_injection", "blocked_url", "auth", "sandbox"}:
+        return "high"
+    if cat in {"timeout", "network", "code_validation"}:
+        return "moderate"
+    return "low"
+
