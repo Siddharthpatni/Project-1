@@ -1,0 +1,5 @@
+httpx==0.28.1
+pytest==8.3.4
+# Optional: lets generator.py render JS-heavy pages before prompting the LLM.
+# After install, also run: playwright install chromium
+playwright==1.49.1
