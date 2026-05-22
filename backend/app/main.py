@@ -27,6 +27,27 @@ log = get_logger(__name__)
 async def lifespan(app: FastAPI):
     log.info("vergabepilot.starting", version="0.1.0")
     Base.metadata.create_all(bind=engine)
+    
+    # Clean up any zombie jobs left in "running" or "pending" state from prior boot sessions
+    from app.database import SessionLocal
+    from app.models import Job, JobItem, JobStatus
+    db = SessionLocal()
+    try:
+        stale_jobs = db.query(Job).filter(Job.status.in_([JobStatus.RUNNING.value, JobStatus.PENDING.value])).all()
+        for j in stale_jobs:
+            j.status = JobStatus.FAILED.value
+            for item in j.items:
+                if item.status in [JobStatus.RUNNING.value, JobStatus.PENDING.value]:
+                    item.status = JobStatus.FAILED.value
+                    item.error_message = "Task interrupted due to container/system restart"
+        db.commit()
+        if stale_jobs:
+            log.info("vergabepilot.startup_cleanup", count=len(stale_jobs))
+    except Exception as e:
+        log.error("vergabepilot.startup_cleanup_failed", error=str(e))
+    finally:
+        db.close()
+        
     yield
     log.info("vergabepilot.shutdown")
 

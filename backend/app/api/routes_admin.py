@@ -165,3 +165,24 @@ def reset_database(db: Session = Depends(get_db)):
         db.rollback()
         return {"status": "error", "message": str(e)}
 
+
+@router.post("/reset-stale-jobs")
+def reset_stale_jobs(db: Session = Depends(get_db)):
+    try:
+        stale_jobs = db.query(Job).filter(Job.status.in_([JobStatus.RUNNING.value, JobStatus.PENDING.value])).all()
+        for j in stale_jobs:
+            j.status = JobStatus.FAILED.value
+            for item in j.items:
+                if item.status in [JobStatus.RUNNING.value, JobStatus.PENDING.value]:
+                    item.status = JobStatus.FAILED.value
+                    item.error_message = "Task manually aborted or reset as stale"
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Successfully updated {len(stale_jobs)} stale jobs to failed state."
+        }
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
+
+

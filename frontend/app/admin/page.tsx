@@ -73,6 +73,9 @@ export default function AdminPage() {
   const [isResetting, setIsResetting] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
+  const [isResettingJobs, setIsResettingJobs] = useState(false);
+  const [resetJobsSuccess, setResetJobsSuccess] = useState(false);
+
   const isRefreshing = statsLoading || errorsLoading;
 
   const handleReset = async () => {
@@ -93,6 +96,25 @@ export default function AdminPage() {
       alert("Error during reset");
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleResetStaleJobs = async () => {
+    setIsResettingJobs(true);
+    try {
+      const res = await fetch(api("/admin/reset-stale-jobs"), { method: "POST" });
+      if (res.ok) {
+        setResetJobsSuccess(true);
+        mutateStats();
+        mutateErrors();
+        setTimeout(() => setResetJobsSuccess(false), 5000);
+      } else {
+        alert("Failed to reset stale jobs");
+      }
+    } catch (err) {
+      alert("Error resetting stale jobs");
+    } finally {
+      setIsResettingJobs(false);
     }
   };
 
@@ -470,6 +492,47 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Stuck Jobs Recovery Panel ── */}
+      <div className="bg-indigo-50/10 border border-indigo-200 rounded-2xl p-6 md:p-8 hover:shadow transition-all duration-300 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-xl">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">Stuck Jobs recovery</h2>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">Detects and fails any pending or running tasks that got stuck due to worker restarts or environment updates.</p>
+          </div>
+        </div>
+
+        {resetJobsSuccess && (
+          <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-2xl font-bold animate-pulse">
+            ✓ Successfully cleaned up and aborted all stale running tasks!
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-indigo-50">
+          <div className="text-xs text-slate-650 font-medium">
+            This transitions all zombie jobs from <span className="bg-amber-100 text-amber-800 font-mono font-bold px-1.5 py-0.5 rounded">running</span> or <span className="bg-blue-100 text-blue-800 font-mono font-bold px-1.5 py-0.5 rounded">pending</span> into failed status, freeing the pipeline.
+          </div>
+
+          <button
+            onClick={handleResetStaleJobs}
+            disabled={isResettingJobs}
+            className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 cursor-pointer shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            {isResettingJobs ? (
+              <>
+                <RefreshCcw className="w-4 h-4 animate-spin" />
+                Recovering Jobs...
+              </>
+            ) : (
+              "Reset Stuck Jobs"
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
+
