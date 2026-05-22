@@ -59,8 +59,8 @@ class BrowserUseLLM(ChatOpenAI):
 class BrowserUseCUA(BaseAgent):
     name = "browser_use"
 
-    def __init__(self, llm_model: str | None = None):
-        self.llm_model = llm_model or "google/gemini-2.5-flash"
+    def __init__(self, model_name: str | None = None):
+        self.llm_model = model_name or "google/gemini-2.5-flash"
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
         t0 = time.time()

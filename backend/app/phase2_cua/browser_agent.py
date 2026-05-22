@@ -73,9 +73,7 @@ class PlaywrightLLM(ChatOpenAI):
 class PlaywrightCUA(BaseAgent):
     name = "playwright_cua"
 
-    def __init__(self, llm=None, model_name: str | None = None):
-        # llm (LLMClient) is accepted for API compatibility but not used;
-        # we create our own browser-use compatible LLM wrapper instead.
+    def __init__(self, model_name: str | None = None):
         self.llm_model = model_name or "google/gemini-2.5-flash"
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
