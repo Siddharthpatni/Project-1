@@ -104,12 +104,16 @@ class BrowserUseCUA(BaseAgent):
                     downloaded_files.append(str(entry))
             
             success = len(downloaded_files) > 0
+            steps_count = len(result.history) if hasattr(result, "history") else max_steps
+            from app.phase1_llm_scraper.pricing import calc_cost
+            cost = calc_cost(steps_count * 15000, steps_count * 150, self.llm_model)
+
             return AgentRunOutcome(
                 success=success,
                 downloaded_files=downloaded_files,
-                steps=len(result.history) if hasattr(result, "history") else max_steps,
+                steps=steps_count,
                 runtime_seconds=time.time() - t0,
-                cost_usd=0.0, # Tracked internally by OpenRouter
+                cost_usd=cost,
                 trace=[{"step": i, "state": str(s)} for i, s in enumerate(getattr(result, "history", []))],
             )
         except Exception as e:

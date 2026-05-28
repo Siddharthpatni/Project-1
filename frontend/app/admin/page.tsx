@@ -76,6 +76,29 @@ export default function AdminPage() {
   const [isResettingJobs, setIsResettingJobs] = useState(false);
   const [resetJobsSuccess, setResetJobsSuccess] = useState(false);
 
+  const [systemCheck, setSystemCheck] = useState<any | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [activeModalService, setActiveModalService] = useState<any | null>(null);
+
+  const handleSystemCheck = async () => {
+    setIsChecking(true);
+    setCheckError(null);
+    try {
+      const res = await fetch(api("/admin/system-check"));
+      if (res.ok) {
+        const data = await res.json();
+        setSystemCheck(data);
+      } else {
+        setCheckError("Failed to fetch system integrity diagnostic report.");
+      }
+    } catch (err) {
+      setCheckError("Network error while running system diagnostic check.");
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   const isRefreshing = statsLoading || errorsLoading;
 
   const handleReset = async () => {
@@ -186,35 +209,204 @@ export default function AdminPage() {
         </button>
       </header>
 
+      {/* ── System Integrity Diagnostic Check ── */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 hover:shadow-md transition-all duration-300 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl border ${
+              systemCheck?.overall_health === "healthy"
+                ? "bg-emerald-50 border-emerald-150 text-emerald-700"
+                : systemCheck?.overall_health === "unhealthy"
+                ? "bg-rose-50 border-rose-150 text-rose-700"
+                : "bg-indigo-50 border-indigo-150 text-indigo-700"
+            }`}>
+              {systemCheck?.overall_health === "healthy" ? (
+                <ShieldCheck className="w-5 h-5 animate-pulse" />
+              ) : (
+                <ShieldAlert className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">System Integrity Diagnostics</h2>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                Verify the live heartbeat, responsiveness, and database latency of Vergabepilot&apos;s core pipeline services.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleSystemCheck}
+            disabled={isChecking}
+            className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 cursor-pointer shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap self-start sm:self-auto"
+          >
+            {isChecking ? (
+              <>
+                <RefreshCcw className="w-4 h-4 animate-spin" />
+                Running Diagnostics...
+              </>
+            ) : (
+              "Run System Integrity Check"
+            )}
+          </button>
+        </div>
+
+        {checkError && (
+          <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-2xl font-bold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-650" />
+            {checkError}
+          </div>
+        )}
+
+        {/* Diagnostic Results Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[
+            {
+              key: "database",
+              label: "PostgreSQL Database",
+              desc: "Primary schema persistence storage",
+              icon: <Database className="w-4 h-4" />
+            },
+            {
+              key: "redis",
+              label: "Redis Task Broker",
+              desc: "Celery task queue & event listener",
+              icon: <Activity className="w-4 h-4" />
+            },
+            {
+              key: "storage",
+              label: "MinIO S3 Storage",
+              desc: "Scraped ZIP/PDF package hosting",
+              icon: <Clock className="w-4 h-4" />
+            },
+            {
+              key: "openrouter",
+              label: "OpenRouter LLM API",
+              desc: "AI code generator & live rates",
+              icon: <Globe className="w-4 h-4" />
+            },
+            {
+              key: "workers",
+              label: "Celery Task Workers",
+              desc: "Background scraper executors",
+              icon: <Layers className="w-4 h-4" />
+            }
+          ].map((srv) => {
+            const status = systemCheck?.[srv.key];
+            return (
+              <div
+                key={srv.key}
+                className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between h-36 ${
+                  status?.status === "online"
+                    ? "bg-emerald-50/10 border-emerald-150 hover:bg-emerald-50/20"
+                    : status?.status === "warning"
+                    ? "bg-amber-50/15 border-amber-200 hover:bg-amber-50/25"
+                    : status?.status === "offline"
+                    ? "bg-rose-50/10 border-rose-200 hover:bg-rose-50/20"
+                    : "bg-slate-50/20 border-slate-100"
+                }`}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className={`p-1.5 rounded-lg ${
+                      status?.status === "online"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : status?.status === "warning"
+                        ? "bg-amber-100 text-amber-700"
+                        : status?.status === "offline"
+                        ? "bg-rose-100 text-rose-700"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {srv.icon}
+                    </span>
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      status?.status === "online"
+                        ? "bg-emerald-100 text-emerald-850"
+                        : status?.status === "warning"
+                        ? "bg-amber-100 text-amber-850"
+                        : status?.status === "offline"
+                        ? "bg-rose-100 text-rose-850"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {status?.status || "Pending"}
+                    </span>
+                  </div>
+                  <h3 className="text-xs font-black text-slate-800 pt-2">{srv.label}</h3>
+                  <p className="text-[10px] text-slate-400 font-semibold leading-tight line-clamp-2">{srv.desc}</p>
+                </div>
+                <div className="pt-2 border-t border-slate-100/50 flex items-center justify-between text-[10px] font-mono">
+                  <span className="text-slate-400">
+                    {status?.latency_ms ? `Latency: ${status.latency_ms}ms` : "—"}
+                  </span>
+                  {status && (
+                    <button
+                      className="text-indigo-650 hover:underline font-bold cursor-pointer"
+                      onClick={() => setActiveModalService({ label: srv.label, status: status.status, latency: status.latency_ms, message: status.message })}
+                    >
+                      Details
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Top Stats Grid ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className={`bg-white border border-slate-200 rounded-2xl p-5 shadow-sm transition-all ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <Database className="w-4 h-4 text-slate-450" /> Total Jobs
+        {/* Total Jobs */}
+        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-indigo-50/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+          <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
+            <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-150 text-slate-500">
+              <Database className="w-3.5 h-3.5" />
+            </div>
+            Total Jobs
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-800">{stats?.jobs ?? "—"}</div>
+          <div className="text-3xl font-extrabold text-slate-800 tracking-tight">{stats?.jobs ?? "—"}</div>
+          <div className="text-[10px] text-slate-400 font-semibold mt-1">Total procurement scraper task runs</div>
         </div>
-        <div className={`bg-white border border-slate-200 rounded-2xl p-5 shadow-sm transition-all ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <Layers className="w-4 h-4 text-slate-450" /> Total Items
+
+        {/* Total Items */}
+        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-violet-50/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+          <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
+            <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-150 text-slate-500">
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            Total Items
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-800">{stats?.items ?? "—"}</div>
+          <div className="text-3xl font-extrabold text-slate-800 tracking-tight">{stats?.items ?? "—"}</div>
+          <div className="text-[10px] text-slate-400 font-semibold mt-1">Extracted tender items & notices</div>
         </div>
-        <div className={`bg-white border border-emerald-200 rounded-2xl p-5 bg-gradient-to-br from-emerald-50/15 to-white shadow-sm transition-all ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" /> Success Rate
+
+        {/* Success Rate */}
+        <div className={`bg-emerald-50/5 border border-emerald-250/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-emerald-100/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+          <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-3">
+            <div className="p-1.5 bg-emerald-100/50 rounded-lg text-emerald-700">
+              <ShieldCheck className="w-3.5 h-3.5" />
+            </div>
+            Success Rate
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-700">
+          <div className="text-3xl font-extrabold text-emerald-700 tracking-tight">
             {stats ? `${Math.round((stats.item_success_rate ?? 0) * 100)}%` : "—"}
           </div>
+          <div className="text-[10px] text-emerald-600/75 font-semibold mt-1">Cascade pipeline success index</div>
         </div>
-        <div className={`bg-white border border-rose-200 rounded-2xl p-5 bg-gradient-to-br from-rose-50/15 to-white shadow-sm transition-all ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider mb-2">
-            <AlertTriangle className="w-4 h-4 text-rose-500" /> Failed Items
+
+        {/* Failed Items */}
+        <div className={`bg-rose-50/5 border border-rose-200/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-rose-100/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+          <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider mb-3">
+            <div className="p-1.5 bg-rose-100/50 rounded-lg text-rose-700">
+              <AlertTriangle className="w-3.5 h-3.5" />
+            </div>
+            Failed Items
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-rose-700">
+          <div className="text-3xl font-extrabold text-rose-700 tracking-tight">
             {stats?.failed_items ?? errors?.length ?? "—"}
           </div>
+          <div className="text-[10px] text-rose-600/75 font-semibold mt-1">Aborted or blocked scraper items</div>
         </div>
       </div>
 
@@ -442,96 +634,165 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* ── System Maintenance & Data Purging ── */}
-      <div className="bg-rose-50/10 border border-rose-200/80 rounded-2xl p-6 md:p-8 hover:shadow transition-all duration-300 space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-rose-100 border border-rose-200 text-rose-700 rounded-xl">
-            <Trash2 className="w-5 h-5" />
+      {/* ── System Maintenance & Recovery Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Platform Maintenance & Data Purging */}
+        <div className="bg-rose-50/10 border border-rose-200/85 rounded-3xl p-6 md:p-8 hover:shadow transition-all duration-300 flex flex-col justify-between space-y-5">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-rose-100 border border-rose-200 text-rose-700 rounded-xl">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">Platform Data Purging</h2>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">Erases all scraping notices, PDF packages, leaderboard telemetry, and logs.</p>
+              </div>
+            </div>
+
+            {resetSuccess && (
+              <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-2xl font-bold animate-pulse">
+                ✓ Platform data completely erased!
+              </div>
+            )}
           </div>
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">Platform Maintenance &amp; Database Purge</h2>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">Erases all past scraping execution runs, downloaded PDF packages, benchmark leaderboards, and telemetry logs.</p>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white p-5 rounded-xl border border-rose-100">
+            <div className="flex-1 space-y-1.5">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Confirm DB Reset</p>
+              <input 
+                type="text" 
+                value={resetConfirm}
+                onChange={(e) => setResetConfirm(e.target.value)}
+                placeholder="Type RESET"
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono uppercase focus:ring-2 focus:ring-rose-500 focus:outline-none bg-slate-50/50"
+              />
+            </div>
+
+            <button
+              onClick={handleReset}
+              disabled={resetConfirm !== "RESET" || isResetting}
+              className={`px-5 py-3 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 whitespace-nowrap self-end ${
+                resetConfirm === "RESET" && !isResetting
+                  ? "bg-rose-600 hover:bg-rose-700 cursor-pointer shadow-sm active:scale-95"
+                  : "bg-slate-350 cursor-not-allowed"
+              }`}
+            >
+              {isResetting ? (
+                <>
+                  <RefreshCcw className="w-4 h-4 animate-spin" />
+                  Purging...
+                </>
+              ) : (
+                "Purge DB Data"
+              )}
+            </button>
           </div>
         </div>
 
-        {resetSuccess && (
-          <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-2xl font-bold animate-pulse">
-            ✓ Platform data completely erased! All statistics, benchmark runs, and diagnostic logs have been reset to zero.
-          </div>
-        )}
+        {/* Stuck Jobs Recovery */}
+        <div className="bg-indigo-50/10 border border-indigo-200 rounded-3xl p-6 md:p-8 hover:shadow transition-all duration-300 flex flex-col justify-between space-y-5">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-xl">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">Stuck Jobs Recovery</h2>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">Detects and fails tasks that got stuck due to unexpected restarts.</p>
+              </div>
+            </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white p-5 rounded-xl border border-rose-100">
-          <div className="flex-1 space-y-1.5">
-            <p className="text-xs font-bold text-slate-700">Type &quot;RESET&quot; to authorize database purging:</p>
-            <input 
-              type="text" 
-              value={resetConfirm}
-              onChange={(e) => setResetConfirm(e.target.value)}
-              placeholder="Type RESET"
-              className="w-full sm:w-48 px-3.5 py-2.5 border border-slate-250 rounded-xl text-xs font-mono uppercase focus:ring-2 focus:ring-rose-500 focus:outline-none bg-slate-50/50"
-            />
-          </div>
-
-          <button
-            onClick={handleReset}
-            disabled={resetConfirm !== "RESET" || isResetting}
-            className={`px-5 py-3 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 ${
-              resetConfirm === "RESET" && !isResetting
-                ? "bg-rose-600 hover:bg-rose-700 cursor-pointer shadow-sm active:scale-95"
-                : "bg-slate-350 cursor-not-allowed"
-            }`}
-          >
-            {isResetting ? (
-              <>
-                <RefreshCcw className="w-4 h-4 animate-spin" />
-                Purging Data...
-              </>
-            ) : (
-              "Authorize Database Reset"
+            {resetJobsSuccess && (
+              <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-2xl font-bold animate-pulse">
+                ✓ Successfully aborted zombie tasks!
+              </div>
             )}
-          </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-indigo-50">
+            <div className="text-[11px] text-slate-500 font-medium leading-relaxed pr-2">
+              Transitions all <span className="bg-amber-100 text-amber-800 font-mono font-bold px-1.5 py-0.5 rounded">running</span> or <span className="bg-blue-100 text-blue-800 font-mono font-bold px-1.5 py-0.5 rounded">pending</span> jobs into failed states.
+            </div>
+
+            <button
+              onClick={handleResetStaleJobs}
+              disabled={isResettingJobs}
+              className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 cursor-pointer shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              {isResettingJobs ? (
+                <>
+                  <RefreshCcw className="w-4 h-4 animate-spin" />
+                  Recovering...
+                </>
+              ) : (
+                "Reset Stuck Jobs"
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ── Stuck Jobs Recovery Panel ── */}
-      <div className="bg-indigo-50/10 border border-indigo-200 rounded-2xl p-6 md:p-8 hover:shadow transition-all duration-300 space-y-5">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-xl">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">Stuck Jobs recovery</h2>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">Detects and fails any pending or running tasks that got stuck due to worker restarts or environment updates.</p>
+      {/* ── Immersive Details Modal ── */}
+      {activeModalService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full mx-4 shadow-2xl relative space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full animate-ping ${
+                  activeModalService.status === "online" ? "bg-emerald-500" : activeModalService.status === "warning" ? "bg-amber-500" : "bg-rose-500"
+                }`} />
+                <h3 className="text-md font-extrabold text-slate-800">{activeModalService.label} Diagnostics</h3>
+              </div>
+              <button
+                onClick={() => setActiveModalService(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-650 transition cursor-pointer"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-150">
+                <span>Heartbeat Status:</span>
+                <span className={`px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px] font-black ${
+                  activeModalService.status === "online" ? "bg-emerald-100 text-emerald-800" : activeModalService.status === "warning" ? "bg-amber-100 text-amber-800" : "bg-rose-100 text-rose-800"
+                }`}>
+                  {activeModalService.status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-150">
+                <span>Response Latency:</span>
+                <span className="font-mono text-slate-850 font-black">{activeModalService.latency ? `${activeModalService.latency} ms` : "—"}</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Raw Telemetry Log Payload</span>
+                <div className="bg-slate-900 text-slate-100 p-4 rounded-2xl text-xs font-mono whitespace-pre-wrap leading-relaxed shadow-inner max-h-48 overflow-y-auto custom-scrollbar select-all">
+                  {activeModalService.message}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(activeModalService.message);
+                  alert("Diagnostic payload copied to clipboard!");
+                }}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-650 hover:bg-slate-50 transition active:scale-95 cursor-pointer"
+              >
+                Copy Payload
+              </button>
+              <button
+                onClick={() => setActiveModalService(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 rounded-xl text-xs font-bold text-white transition active:scale-95 cursor-pointer"
+              >
+                Dismiss Diagnostics
+              </button>
+            </div>
           </div>
         </div>
-
-        {resetJobsSuccess && (
-          <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-2xl font-bold animate-pulse">
-            ✓ Successfully cleaned up and aborted all stale running tasks!
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-indigo-50">
-          <div className="text-xs text-slate-650 font-medium">
-            This transitions all zombie jobs from <span className="bg-amber-100 text-amber-800 font-mono font-bold px-1.5 py-0.5 rounded">running</span> or <span className="bg-blue-100 text-blue-800 font-mono font-bold px-1.5 py-0.5 rounded">pending</span> into failed status, freeing the pipeline.
-          </div>
-
-          <button
-            onClick={handleResetStaleJobs}
-            disabled={isResettingJobs}
-            className="px-5 py-3 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 cursor-pointer shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-          >
-            {isResettingJobs ? (
-              <>
-                <RefreshCcw className="w-4 h-4 animate-spin" />
-                Recovering Jobs...
-              </>
-            ) : (
-              "Reset Stuck Jobs"
-            )}
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

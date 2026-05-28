@@ -182,6 +182,8 @@ def run_cua_task(agent_name: str, url: str, max_steps: int | None = None, model_
         db.close()
         return {"error": str(e)}
 
+    import os
+    downloaded_filenames = [os.path.basename(f) for f in outcome.downloaded_files]
     row = AgentRun(
         agent_name=agent_name,
         url=url,
@@ -189,7 +191,10 @@ def run_cua_task(agent_name: str, url: str, max_steps: int | None = None, model_
         success=outcome.success,
         runtime_seconds=time.time() - t0,
         cost_usd=outcome.cost_usd,
-        trace={"steps": outcome.trace[:50]},  # cap to keep payload small
+        trace={
+            "steps": outcome.trace[:50],
+            "downloaded_files": downloaded_filenames
+        },
     )
     db.add(row)
     db.commit()

@@ -9,7 +9,14 @@ as listed on https://openrouter.ai/models.
 from __future__ import annotations
 
 
-# OpenRouter pricing per million tokens: (input_price, output_price)
+import httpx
+import threading
+import time
+from app.utils.logger import get_logger
+
+log = get_logger(__name__)
+
+# OpenRouter fallback pricing per million tokens: (input_price, output_price)
 MODEL_PRICING: dict[str, tuple[float, float]] = {
     "google/gemini-2.5-flash":        (0.30, 2.50),
     "google/gemini-2.5-flash-lite":   (0.075, 0.30),
@@ -27,16 +34,64 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
 }
 
 
+class OpenRouterPricingManager:
+    """Manages live pricing by fetching from OpenRouter's API dynamically."""
+
+    def __init__(self):
+        self._pricing: dict[str, tuple[float, float]] = MODEL_PRICING.copy()
+        self._lock = threading.Lock()
+        self._last_fetched = 0.0
+        self._fetch_interval = 3600.0  # cache live prices for 1 hour
+
+    def _fetch_live_prices(self):
+        """Fetch models list and pricing from OpenRouter API synchronously."""
+        try:
+            url = "https://openrouter.ai/api/v1/models"
+            r = httpx.get(url, timeout=10.0)
+            if r.status_code == 200:
+                data = r.json()
+                new_pricing = {}
+                for model_data in data.get("data", []):
+                    model_id = model_data.get("id")
+                    pricing_data = model_data.get("pricing", {})
+                    try:
+                        prompt_price = float(pricing_data.get("prompt", 0)) * 1_000_000
+                        completion_price = float(pricing_data.get("completion", 0)) * 1_000_000
+                        new_pricing[model_id] = (prompt_price, completion_price)
+                    except (ValueError, TypeError):
+                        continue
+                if new_pricing:
+                    with self._lock:
+                        self._pricing.update(new_pricing)
+                        self._last_fetched = time.time()
+                    log.info("openrouter.pricing.fetch_success", models_count=len(new_pricing))
+            else:
+                log.warning("openrouter.pricing.fetch_failed", status_code=r.status_code)
+        except Exception as e:
+            log.warning("openrouter.pricing.fetch_error", error=str(e))
+
+    def get_pricing(self, model: str) -> tuple[float, float]:
+        """Get input/output price per 1M tokens. Fetches dynamically in background if cache is stale."""
+        now = time.time()
+        if now - self._last_fetched > self._fetch_interval:
+            with self._lock:
+                self._last_fetched = now
+            threading.Thread(target=self._fetch_live_prices, daemon=True).start()
+
+        with self._lock:
+            return self._pricing.get(model, (0.0, 0.0))
+
+
+pricing_manager = OpenRouterPricingManager()
+
+
 def calc_cost(
     prompt_tokens: int,
     completion_tokens: int,
     model: str,
 ) -> float:
-    """Estimate USD cost from token counts and model slug.
-
-    Returns 0.0 for unknown models.
-    """
-    input_price, output_price = MODEL_PRICING.get(model, (0.0, 0.0))
+    """Calculate USD cost from token counts using dynamic live OpenRouter pricing."""
+    input_price, output_price = pricing_manager.get_pricing(model)
     return (prompt_tokens * input_price + completion_tokens * output_price) / 1_000_000
 
 

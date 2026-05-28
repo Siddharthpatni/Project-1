@@ -22,7 +22,9 @@ import sys
 from dotenv import load_dotenv
 
 # Import the CUA framework components
+# pyrefly: ignore [missing-import]
 from browser_use.llm.openrouter.chat import ChatOpenRouter
+# pyrefly: ignore [missing-import]
 from browser_use import Agent, Browser
 
 load_dotenv()

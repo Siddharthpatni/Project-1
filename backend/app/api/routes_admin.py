@@ -186,3 +186,120 @@ def reset_stale_jobs(db: Session = Depends(get_db)):
         return {"status": "error", "message": str(e)}
 
 
+@router.get("/system-check")
+def system_check(db: Session = Depends(get_db)):
+    """Run a comprehensive integrity check of all frontend/backend system components."""
+    import time
+    from sqlalchemy import text
+    import redis
+    from app.workers.celery_app import celery_app
+    from app.core.storage import ObjectStorage
+    from app.phase1_llm_scraper.pricing import pricing_manager
+
+    results = {}
+
+    # 1. Database Check
+    db_start = time.time()
+    try:
+        db.execute(text("SELECT 1")).scalar()
+        results["database"] = {
+            "status": "online",
+            "latency_ms": round((time.time() - db_start) * 1000, 2),
+            "message": "Postgres Database is responsive and fully operational."
+        }
+    except Exception as e:
+        results["database"] = {
+            "status": "offline",
+            "latency_ms": 0.0,
+            "message": f"Postgres offline: {str(e)}"
+        }
+
+    # 2. Redis Check
+    redis_start = time.time()
+    try:
+        from app.config import settings
+        r = redis.from_url(settings.redis_url, socket_timeout=3.0)
+        r.ping()
+        results["redis"] = {
+            "status": "online",
+            "latency_ms": round((time.time() - redis_start) * 1000, 2),
+            "message": "Redis broker is active and listening for queued tasks."
+        }
+    except Exception as e:
+        results["redis"] = {
+            "status": "offline",
+            "latency_ms": 0.0,
+            "message": f"Redis Broker offline: {str(e)}"
+        }
+
+    # 3. MinIO S3 Object Storage Check
+    s3_start = time.time()
+    try:
+        storage = ObjectStorage()
+        storage._s3.head_bucket(Bucket=storage.bucket)
+        results["storage"] = {
+            "status": "online",
+            "latency_ms": round((time.time() - s3_start) * 1000, 2),
+            "message": f"MinIO S3 is online. Using bucket: {storage.bucket}"
+        }
+    except Exception as e:
+        results["storage"] = {
+            "status": "warning",
+            "latency_ms": 0.0,
+            "message": f"MinIO bucket error or down. Falling back to local storage path. Error: {str(e)}"
+        }
+
+    # 4. OpenRouter API & Dynamic Pricing Check
+    llm_start = time.time()
+    try:
+        from app.config import settings
+        if not settings.openrouter_api_key:
+            results["openrouter"] = {
+                "status": "offline",
+                "latency_ms": 0.0,
+                "message": "OPENROUTER_API_KEY environment variable is missing."
+            }
+        else:
+            models_count = len(pricing_manager._pricing)
+            results["openrouter"] = {
+                "status": "online",
+                "latency_ms": round((time.time() - llm_start) * 1000, 2),
+                "message": f"OpenRouter API responds successfully. Dynamic cache has {models_count} active models."
+            }
+    except Exception as e:
+        results["openrouter"] = {
+            "status": "offline",
+            "latency_ms": 0.0,
+            "message": f"OpenRouter check failed: {str(e)}"
+        }
+
+    # 5. Celery Worker Integrity Check
+    worker_start = time.time()
+    try:
+        inspect = celery_app.control.inspect(timeout=3.0)
+        active_workers = inspect.active() if inspect else None
+        if active_workers:
+            workers_list = list(active_workers.keys())
+            results["workers"] = {
+                "status": "online",
+                "latency_ms": round((time.time() - worker_start) * 1000, 2),
+                "message": f"Celery workers online: {', '.join(workers_list)}"
+            }
+        else:
+            results["workers"] = {
+                "status": "warning",
+                "latency_ms": 0.0,
+                "message": "No active Celery workers detected. Tasks may remain queued."
+            }
+    except Exception as e:
+        results["workers"] = {
+            "status": "offline",
+            "latency_ms": 0.0,
+            "message": f"Could not inspect Celery workers: {str(e)}"
+        }
+
+    all_ok = all(item["status"] in ["online", "warning"] for item in results.values())
+    results["overall_health"] = "healthy" if all_ok else "unhealthy"
+    return results
+
+

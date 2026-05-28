@@ -136,7 +136,8 @@ class LLMClient:
         usage = data.get("usage", {})
         in_tok = usage.get("prompt_tokens", 0)
         out_tok = usage.get("completion_tokens", 0)
-        cost = _estimate_cost(model, in_tok, out_tok)
+        from app.phase1_llm_scraper.pricing import calc_cost
+        cost = calc_cost(in_tok, out_tok, model)
 
         return LLMResponse(
             text=content,
@@ -145,10 +146,3 @@ class LLMClient:
             output_tokens=out_tok,
             cost_usd=cost,
         )
-
-
-def _estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    if model not in _COSTS:
-        return 0.0
-    in_price, out_price = _COSTS[model]
-    return (input_tokens / 1_000_000) * in_price + (output_tokens / 1_000_000) * out_price

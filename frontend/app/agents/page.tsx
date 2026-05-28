@@ -7,7 +7,7 @@ import Link from "next/link";
 import {
   Bot, CheckCircle2, XCircle, Search, Cpu, Activity, Clock,
   DollarSign, ArrowLeft, X, Sparkles, Zap, Timer, Hash,
-  RefreshCcw, Globe, ExternalLink
+  RefreshCcw, Globe, ExternalLink, FileText
 } from "lucide-react";
 
 export default function AgentsPage() {
@@ -298,6 +298,24 @@ export default function AgentsPage() {
                       {r.steps} steps
                     </span>
                   </div>
+
+                  {r.trace?.downloaded_files && r.trace.downloaded_files.length > 0 && (
+                    <div className="mt-2 space-y-1.5 border-t border-slate-100/60 pt-2">
+                      <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                        Downloaded Files ({r.trace.downloaded_files.length})
+                      </div>
+                      <div className="space-y-1 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
+                        {r.trace.downloaded_files.map((file: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-1.5 p-1.5 px-2.5 bg-slate-50 border border-slate-150 rounded-xl text-[10px] font-bold text-slate-600 hover:bg-slate-100/80 transition-colors">
+                            <span className="truncate w-full" title={file}>
+                              {file}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             )}
