@@ -28,9 +28,12 @@ interface UploadedFile {
 // Simple native IndexedDB helper to avoid localStorage 5MB limit
 const DB_NAME = "VergabepilotExcelDB";
 const STORE_NAME = "excel_files";
+let dbPromise: Promise<IDBDatabase> | null = null;
 
 function getDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !window.indexedDB) {
       reject(new Error("IndexedDB is not supported on this environment"));
       return;
@@ -43,8 +46,13 @@ function getDB(): Promise<IDBDatabase> {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      dbPromise = null; // reset on error to allow retry
+      reject(request.error);
+    };
   });
+
+  return dbPromise;
 }
 
 function setDBItem(key: string, value: any): Promise<void> {
@@ -90,38 +98,48 @@ export default function ExcelWorkspace() {
 
   // Load from IndexedDB on mount
   useEffect(() => {
+    let active = true;
     async function loadSavedData() {
       try {
         const savedFiles = await getDBItem<UploadedFile[]>("vergabepilot_excel_files");
         const savedActiveId = await getDBItem<string>("vergabepilot_excel_active_id");
-        if (savedFiles) {
-          setUploadedFiles(savedFiles);
-        }
-        if (savedActiveId) {
-          setActiveFileId(savedActiveId);
+        if (active) {
+          if (savedFiles) {
+            setUploadedFiles(savedFiles);
+          }
+          if (savedActiveId) {
+            setActiveFileId(savedActiveId);
+          }
         }
       } catch (e) {
         console.error("Failed to load Excel workspace files from IndexedDB:", e);
       } finally {
-        setIsLoaded(true);
+        if (active) {
+          setIsLoaded(true);
+        }
       }
     }
     loadSavedData();
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // Save to IndexedDB when files change
+  // Save to IndexedDB when files change (with 300ms debounce to prevent lag during rapid user edits)
   useEffect(() => {
     if (!isLoaded) return;
-    async function saveFiles() {
+
+    const timer = setTimeout(async () => {
       try {
         await setDBItem("vergabepilot_excel_files", uploadedFiles);
-        setErrorMsg(null); // clear any previous storage quota/save errors
+        setErrorMsg(null);
       } catch (e: any) {
         console.error("Failed to save Excel workspace files to IndexedDB:", e);
         setErrorMsg("Failed to persist spreadsheet data locally.");
       }
-    }
-    saveFiles();
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [uploadedFiles, isLoaded]);
 
   // Save active file ID to IndexedDB
