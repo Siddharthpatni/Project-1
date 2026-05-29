@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, ChangeEvent, DragEvent } from "react";
+import { useState, useRef, useEffect, ChangeEvent, DragEvent } from "react";
 import * as XLSX from "xlsx";
 import { 
   FileSpreadsheet, 
@@ -28,6 +28,51 @@ interface UploadedFile {
 export default function ExcelWorkspace() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedFiles = localStorage.getItem("vergabepilot_excel_files");
+      const savedActiveId = localStorage.getItem("vergabepilot_excel_active_id");
+      if (savedFiles) {
+        setUploadedFiles(JSON.parse(savedFiles));
+      }
+      if (savedActiveId) {
+        setActiveFileId(savedActiveId);
+      }
+    } catch (e) {
+      console.error("Failed to load Excel workspace files from localStorage:", e);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save to localStorage when files change
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      localStorage.setItem("vergabepilot_excel_files", JSON.stringify(uploadedFiles));
+    } catch (e: any) {
+      console.error("Failed to save Excel workspace files to localStorage:", e);
+      if (e.name === "QuotaExceededError" || e.code === 22) {
+        setErrorMsg("Storage quota exceeded. Spreadsheet data is too large to persist locally.");
+      }
+    }
+  }, [uploadedFiles, isLoaded]);
+
+  // Save active file ID to localStorage
+  useEffect(() => {
+    if (!isLoaded) return;
+    try {
+      if (activeFileId) {
+        localStorage.setItem("vergabepilot_excel_active_id", activeFileId);
+      } else {
+        localStorage.removeItem("vergabepilot_excel_active_id");
+      }
+    } catch (e) {
+      console.error("Failed to save active file ID to localStorage:", e);
+    }
+  }, [activeFileId, isLoaded]);
   
   // Table filters & editing state
   const [selectedDomain, setSelectedDomain] = useState<string>("ALL");
