@@ -8,6 +8,7 @@ const links = [
   { href: "/",            label: "Dashboard" },
   { href: "/jobs",        label: "Jobs" },
   { href: "/library",     label: "Library" },
+  { href: "/excel",       label: "Excel Viewer" },
   { href: "/scrapers",    label: "Scrapers" },
   { href: "/evaluation",  label: "Phase 1 Eval" },
   { href: "/agents",      label: "Phase 2 CUA" },

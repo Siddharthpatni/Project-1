@@ -17,8 +17,10 @@ import {
   ChevronRight,
   ShieldAlert,
   Zap,
-  ArrowRight
+  ArrowRight,
+  FileSpreadsheet
 } from "lucide-react";
+import ExcelWorkspace from "@/components/ExcelWorkspace";
 import { 
   BarChart, 
   Bar, 
@@ -40,6 +42,7 @@ const STRATEGIES_CONFIG = [
 ];
 
 export default function HomePage() {
+  const [activeTab, setActiveTab] = useState<"dashboard" | "excel">("dashboard");
   const { data: stats } = useSWR(api("/admin/stats"), fetcher, { refreshInterval: 5000 });
   
   const chartData = STRATEGIES_CONFIG.map(strat => {
@@ -100,8 +103,35 @@ export default function HomePage() {
         />
       </section>
 
-      {/* ── Unified Operations & Performance Workspace ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* ── Tabs Selector Header ── */}
+      <div className="flex border-b border-slate-200/80 gap-2">
+        <button
+          onClick={() => setActiveTab("dashboard")}
+          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-extrabold transition-all border-b-2 ${
+            activeTab === "dashboard"
+              ? "border-indigo-650 text-indigo-650"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <Zap className="w-4 h-4 text-indigo-500 fill-indigo-500" /> Live Pipeline Dashboard
+        </button>
+        <button
+          onClick={() => setActiveTab("excel")}
+          className={`flex items-center gap-2 px-5 py-3 text-xs sm:text-sm font-extrabold transition-all border-b-2 ${
+            activeTab === "excel"
+              ? "border-indigo-650 text-indigo-650"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Excel/CSV Workspace
+        </button>
+      </div>
+
+      {/* ── Active View Rendering ── */}
+      {activeTab === "excel" ? (
+        <ExcelWorkspace />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left Column: Primary Actions & Analytics */}
         <div className="lg:col-span-2 space-y-8">
@@ -262,8 +292,8 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-
       </div>
+      )}
     </div>
   );
 }

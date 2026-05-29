@@ -5,6 +5,7 @@ All tunable knobs live here. Never read os.environ directly from feature
 code — import `settings` from this module instead.
 """
 from functools import lru_cache
+import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,7 +25,7 @@ class Settings(BaseSettings):
     llm_model_vision: str = "google/gemini-2.5-flash-lite"
 
     # --- Database ---
-    database_url: str = "sqlite:///./vergabepilot.db"
+    database_url: str = os.getenv("DATABASE_URL", "sqlite:///./vergabepilot.db")
 
     # --- Redis / Celery ---
     redis_url: str = "redis://localhost:6379/0"
