@@ -25,53 +25,120 @@ interface UploadedFile {
   rows: Record<string, any>[]; // Array of row objects
 }
 
+// Simple native IndexedDB helper to avoid localStorage 5MB limit
+const DB_NAME = "VergabepilotExcelDB";
+const STORE_NAME = "excel_files";
+
+function getDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !window.indexedDB) {
+      reject(new Error("IndexedDB is not supported on this environment"));
+      return;
+    }
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function setDBItem(key: string, value: any): Promise<void> {
+  return getDB().then((db) => {
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(value, key);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
+
+function getDBItem<T>(key: string): Promise<T | null> {
+  return getDB().then((db) => {
+    return new Promise<T | null>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readonly");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(key);
+      request.onsuccess = () => resolve((request.result as T) || null);
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
+
+function removeDBItem(key: string): Promise<void> {
+  return getDB().then((db) => {
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(key);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
+
 export default function ExcelWorkspace() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from IndexedDB on mount
   useEffect(() => {
-    try {
-      const savedFiles = localStorage.getItem("vergabepilot_excel_files");
-      const savedActiveId = localStorage.getItem("vergabepilot_excel_active_id");
-      if (savedFiles) {
-        setUploadedFiles(JSON.parse(savedFiles));
+    async function loadSavedData() {
+      try {
+        const savedFiles = await getDBItem<UploadedFile[]>("vergabepilot_excel_files");
+        const savedActiveId = await getDBItem<string>("vergabepilot_excel_active_id");
+        if (savedFiles) {
+          setUploadedFiles(savedFiles);
+        }
+        if (savedActiveId) {
+          setActiveFileId(savedActiveId);
+        }
+      } catch (e) {
+        console.error("Failed to load Excel workspace files from IndexedDB:", e);
+      } finally {
+        setIsLoaded(true);
       }
-      if (savedActiveId) {
-        setActiveFileId(savedActiveId);
-      }
-    } catch (e) {
-      console.error("Failed to load Excel workspace files from localStorage:", e);
     }
-    setIsLoaded(true);
+    loadSavedData();
   }, []);
 
-  // Save to localStorage when files change
+  // Save to IndexedDB when files change
   useEffect(() => {
     if (!isLoaded) return;
-    try {
-      localStorage.setItem("vergabepilot_excel_files", JSON.stringify(uploadedFiles));
-    } catch (e: any) {
-      console.error("Failed to save Excel workspace files to localStorage:", e);
-      if (e.name === "QuotaExceededError" || e.code === 22) {
-        setErrorMsg("Storage quota exceeded. Spreadsheet data is too large to persist locally.");
+    async function saveFiles() {
+      try {
+        await setDBItem("vergabepilot_excel_files", uploadedFiles);
+        setErrorMsg(null); // clear any previous storage quota/save errors
+      } catch (e: any) {
+        console.error("Failed to save Excel workspace files to IndexedDB:", e);
+        setErrorMsg("Failed to persist spreadsheet data locally.");
       }
     }
+    saveFiles();
   }, [uploadedFiles, isLoaded]);
 
-  // Save active file ID to localStorage
+  // Save active file ID to IndexedDB
   useEffect(() => {
     if (!isLoaded) return;
-    try {
-      if (activeFileId) {
-        localStorage.setItem("vergabepilot_excel_active_id", activeFileId);
-      } else {
-        localStorage.removeItem("vergabepilot_excel_active_id");
+    async function saveActiveId() {
+      try {
+        if (activeFileId) {
+          await setDBItem("vergabepilot_excel_active_id", activeFileId);
+        } else {
+          await removeDBItem("vergabepilot_excel_active_id");
+        }
+      } catch (e) {
+        console.error("Failed to save active file ID to IndexedDB:", e);
       }
-    } catch (e) {
-      console.error("Failed to save active file ID to localStorage:", e);
     }
+    saveActiveId();
   }, [activeFileId, isLoaded]);
   
   // Table filters & editing state
