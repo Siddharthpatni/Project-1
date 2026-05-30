@@ -25,6 +25,13 @@ data/runs/
 *.sqlite
 *.db
 
+# Celery beat schedule (runtime-generated, not source)
+backend/celerybeat-schedule
+backend/celerybeat.pid
+
+# Test database created by CI
+test_vergabepilot.db
+
 # OS / editors
 .DS_Store
 .idea/
