@@ -132,7 +132,7 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd frontend
-          npm ci
+          npm ci --no-audit --prefer-offline
 
       - name: TypeScript type check
         run: |
