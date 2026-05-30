@@ -35,8 +35,18 @@ def process_job_task(
     force_strategy: str | None = None,
     force_model: str | None = None,
 ) -> dict:
-    db = SessionLocal()
+    """
+    Orchestrate a scraping job.
 
+    For small jobs (<= JOB_CHUNK_SIZE URLs): process directly with
+    parallel asyncio within this worker.
+
+    For large jobs (> JOB_CHUNK_SIZE): fan out into per-chunk Celery
+    sub-tasks so multiple workers share the load, then finalize.
+    """
+    from app.config import settings as cfg
+
+    db = SessionLocal()
     job: Job | None = db.query(Job).filter(Job.id == job_id).first()
     if job is None:
         db.close()
@@ -52,21 +62,48 @@ def process_job_task(
         except ValueError:
             log.warning("job.invalid_force_strategy", value=force_strategy)
 
-    try:
-        # LLMClient and ObjectStorage are created inside the async scope
-        # by _process_job_async to keep the httpx client bound to the loop.
-        asyncio.run(_process_job_async(db, job, force_model, force))
-    except Exception as e:  # noqa: BLE001
-        log.exception("job.failed", job_id=job_id)
-        job.status = JobStatus.FAILED.value
-        db.commit()
-        db.close()
-        return {"error": str(e), "job_id": job_id}
+    item_ids = [item.id for item in job.items]
+    total_urls = job.total_urls
 
-    # Re-fetch counts after all items processed
-    db.refresh(job)
+    if total_urls <= cfg.job_chunk_size:
+        # ── Small job: process everything locally ──────────────────────
+        try:
+            asyncio.run(_process_job_async(db, job, force_model, force))
+        except Exception as e:  # noqa: BLE001
+            log.exception("job.failed", job_id=job_id)
+            job.status = JobStatus.FAILED.value
+            db.commit()
+            db.close()
+            return {"error": str(e), "job_id": job_id}
+    else:
+        # ── Large job: fan out in chunks ────────────────────────────────
+        db.close()
+        db = None
+        chunks = [
+            item_ids[i : i + cfg.job_chunk_size]
+            for i in range(0, len(item_ids), cfg.job_chunk_size)
+        ]
+        log.info(
+            "job.fanout", job_id=job_id,
+            total_urls=total_urls, chunks=len(chunks),
+            chunk_size=cfg.job_chunk_size,
+        )
+        # Dispatch chunk tasks and wait for all to complete
+        from celery import group as celery_group
+        chunk_tasks = celery_group(
+            process_chunk_task.s(job_id, chunk, force_strategy, force_model)
+            for chunk in chunks
+        )
+        result = chunk_tasks.apply_async()
+        # Block this orchestrator task until all chunks finish
+        result.get(timeout=cfg.sandbox_timeout_seconds * total_urls, propagate=False)
+        db = SessionLocal()
+
+    if db is None:
+        db = SessionLocal()
+    db.expire_all()
+    job = db.query(Job).filter(Job.id == job_id).first()
     n_success = sum(1 for i in job.items if i.status == JobStatus.SUCCESS.value)
-    total_urls = job.total_urls  # capture before commit expires the object
     if n_success == total_urls:
         job.status = JobStatus.SUCCESS.value
     elif n_success == 0:
@@ -79,23 +116,80 @@ def process_job_task(
     return {"job_id": job_id, "success": n_success, "total": total_urls}
 
 
-async def _process_job_async(db, job, force_model: str | None, force_strategy):
-    llm = LLMClient(default_model=force_model)
-    storage = ObjectStorage()
-    for item in job.items:
+@celery_app.task(name="app.workers.tasks.process_chunk_task", bind=True, queue="chunks")
+def process_chunk_task(
+    self,
+    job_id: str,
+    item_ids: list[str],
+    force_strategy: str | None = None,
+    force_model: str | None = None,
+) -> dict:
+    """
+    Process a chunk of URL items in parallel within a single worker.
+
+    Multiple workers can each be handling a different chunk simultaneously,
+    giving horizontal scale-out for large jobs.
+    """
+    db = SessionLocal()
+    job: Job | None = db.query(Job).filter(Job.id == job_id).first()
+    if job is None:
+        db.close()
+        return {"error": "job not found"}
+
+    items = [i for i in job.items if i.id in set(item_ids)]
+    force = None
+    if force_strategy:
         try:
-            result = await process_url(db, item, llm, storage, force_strategy)
-        except Exception as e:  # noqa: BLE001
-            log.exception("job.item_failed", item_id=item.id)
-            item.status = JobStatus.FAILED.value
-            item.error_message = str(e)[:1000]
-            db.commit()
-            continue
-        job.cost_usd = (job.cost_usd or 0.0) + (result.cost_usd or 0.0)
-        job.completed = sum(
-            1 for i in job.items if i.status == JobStatus.SUCCESS.value
-        )
-        db.commit()
+            force = Strategy(force_strategy)
+        except ValueError:
+            pass
+
+    try:
+        asyncio.run(_process_items_async(db, job, items, force_model, force))
+    except Exception as e:  # noqa: BLE001
+        log.exception("chunk.failed", job_id=job_id, chunk_size=len(items))
+    finally:
+        db.close()
+
+    return {"job_id": job_id, "chunk_size": len(item_ids)}
+
+
+async def _process_job_async(db, job, force_model: str | None, force_strategy):
+    """Process all items in a job with bounded concurrency."""
+    await _process_items_async(db, job, job.items, force_model, force_strategy)
+
+
+async def _process_items_async(db, job, items, force_model: str | None, force_strategy):
+    """
+    Process a list of items with a per-worker concurrency semaphore.
+
+    KEY CHANGE: Previously this was a plain `for` loop (serial).
+    Now all items run concurrently up to `settings.job_concurrency`
+    simultaneous coroutines, giving a direct N× speedup.
+    """
+    from app.config import settings as cfg
+
+    llm     = LLMClient(default_model=force_model)
+    storage = ObjectStorage()
+    sem     = asyncio.Semaphore(cfg.job_concurrency)
+
+    async def _process_one(item):
+        async with sem:
+            try:
+                result = await process_url(db, item, llm, storage, force_strategy)
+                job.cost_usd = (job.cost_usd or 0.0) + (result.cost_usd or 0.0)
+            except Exception as e:  # noqa: BLE001
+                log.exception("job.item_failed", item_id=item.id)
+                item.status = JobStatus.FAILED.value
+                item.error_message = str(e)[:1000]
+            finally:
+                # Thread-safe progress update
+                job.completed = sum(
+                    1 for i in job.items if i.status == JobStatus.SUCCESS.value
+                )
+                db.commit()
+
+    await asyncio.gather(*(_process_one(item) for item in items))
 
 
 # --------------------------------------------------------------------

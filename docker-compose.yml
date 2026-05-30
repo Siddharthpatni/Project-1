@@ -1,21 +1,48 @@
-version: "3.9"
+# Vergabepilot.AI — full stack
+#
+# Scale architecture for 10,000+ URLs:
+#
+#   worker-default   : Job orchestration + evaluation tasks       concurrency=4
+#   worker-chunks    : Per-chunk parallel URL processing (x2)     concurrency=16 each
+#   worker-cua       : Computer-use agent (browser-heavy)         concurrency=2
+#   beat             : Periodic tasks (versioning, crash-recovery)
+#
+# Total parallel URL capacity: 2 × 16 = 32 URLs simultaneously
+# (Scale worker-chunks replicas or JOB_CONCURRENCY for more throughput)
 
-# Vergabepilot.AI full stack
-# - api       : FastAPI REST service
-# - worker    : Celery worker for async scraping jobs
-# - beat      : Celery beat for periodic document versioning checks
-# - redis     : broker + result backend
-# - postgres  : persistent metadata (jobs, scrapers, evaluation runs)
-# - minio     : S3-compatible object storage for downloaded tender documents
-# - frontend  : Next.js dashboard
+x-worker-common: &worker-common
+  build: ./backend
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
+    REDIS_URL: redis://redis:6379/0
+    S3_ENDPOINT: http://minio:9000
+    # Tune these via .env for your hardware
+    JOB_CONCURRENCY: ${JOB_CONCURRENCY:-16}
+    JOB_CHUNK_SIZE: ${JOB_CHUNK_SIZE:-50}
+    LLM_GLOBAL_CONCURRENCY: ${LLM_GLOBAL_CONCURRENCY:-8}
+    DOMAIN_LLM_LOCK_TTL: ${DOMAIN_LLM_LOCK_TTL:-360}
+  depends_on:
+    - api
+  volumes:
+    - ./backend:/app
+    - ./data:/app/data
 
 services:
+  # ── Infrastructure ────────────────────────────────────────────────
+
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vergabepilot}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vergabepilot}
       POSTGRES_DB: ${POSTGRES_DB:-vergabepilot}
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -28,6 +55,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save ""
     ports:
       - "6379:6379"
     healthcheck:
@@ -53,6 +85,8 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── API ───────────────────────────────────────────────────────────
+
   api:
     build: ./backend
     env_file: .env
@@ -74,19 +108,43 @@ services:
       - ./backend:/app
       - ./data:/app/data
 
-  worker:
-    build: ./backend
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
-      REDIS_URL: redis://redis:6379/0
-      S3_ENDPOINT: http://minio:9000
-    depends_on:
-      - api
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
-    volumes:
-      - ./backend:/app
-      - ./data:/app/data
+  # ── Celery Workers (tiered) ───────────────────────────────────────
+
+  # Job orchestration: spawns chunk tasks, runs small jobs directly
+  worker-default:
+    <<: *worker-common
+    command: >
+      celery -A app.workers.celery_app worker
+      --queues=default
+      --concurrency=4
+      --loglevel=info
+      --hostname=worker-default@%h
+
+  # Chunk workers: each handles ~50 URLs in parallel using asyncio
+  # Scale replicas for more throughput: docker compose up --scale worker-chunks=4
+  worker-chunks:
+    <<: *worker-common
+    command: >
+      celery -A app.workers.celery_app worker
+      --queues=chunks
+      --concurrency=2
+      --loglevel=info
+      --hostname=worker-chunks@%h
+    # Two replicas by default → 32 simultaneous URL slots
+    deploy:
+      replicas: 2
+
+  # CUA worker: browser-heavy tasks, low concurrency to avoid RAM exhaustion
+  worker-cua:
+    <<: *worker-common
+    command: >
+      celery -A app.workers.celery_app worker
+      --queues=cua
+      --concurrency=2
+      --loglevel=info
+      --hostname=worker-cua@%h
+
+  # ── Celery Beat ───────────────────────────────────────────────────
 
   beat:
     build: ./backend
@@ -95,10 +153,14 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - worker
-    command: celery -A app.workers.celery_app beat --loglevel=info
+      - worker-default
+    command: >
+      celery -A app.workers.celery_app beat
+      --loglevel=info
     volumes:
       - ./backend:/app
+
+  # ── Frontend ──────────────────────────────────────────────────────
 
   frontend:
     build: ./frontend

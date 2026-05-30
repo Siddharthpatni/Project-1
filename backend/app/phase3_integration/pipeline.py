@@ -516,31 +516,72 @@ async def _try_llm_generated(
             except Exception as e:
                 log.warning("phase3.route_learning.cua_preflight_failed", url=url, error=str(e))
 
-    # 6. Run the LLM feedback loop (generator uses platform + route + pre-fetched HTML).
-    loop = await asyncio.to_thread(
-        _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet,
-    )
-    result.iterations += loop.iterations
-    result.cost_usd += loop.total_cost_usd
+    # 6. Domain-deduplication lock: if another worker is generating a scraper for
+    #    this domain right now, wait for it to finish and then use the cached result.
+    #    This is critical at scale — 100 URLs from the same domain would otherwise
+    #    each trigger their own LLM call (wasted cost + time).
+    lock_acquired = False
+    try:
+        import redis as redis_lib
+        _redis = redis_lib.from_url(settings.redis_url, socket_timeout=2.0)
+        lock_key = f"vergabepilot:domain_llm_lock:{domain}"
+        # Try to acquire with a short poll loop (non-blocking)
+        for _ in range(int(settings.domain_llm_lock_ttl / 5)):
+            lock_acquired = bool(_redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl))
+            if lock_acquired:
+                break
+            # Another worker holds the lock — check if it already built the scraper
+            await asyncio.sleep(5)
+            refreshed = scraper_registry.get_for_domain(db, domain)
+            if refreshed:
+                log.info("phase3.llm.dedup_cache_hit", domain=domain, url=url)
+                ex = await asyncio.to_thread(exec_scraper, refreshed.code, url)
+                scraper_registry.record_outcome(db, refreshed, success=ex.success, runtime=ex.runtime_seconds)
+                if ex.success and ex.downloaded_files:
+                    moved = _move_into(scratch, ex.downloaded_files)
+                    cleanup_output_dir(ex.output_dir)
+                    if moved:
+                        result.downloaded.extend(moved)
+                        return StrategyOutcome(Strategy.EXISTING, True, len(moved))
+                cleanup_output_dir(ex.output_dir)
+                return StrategyOutcome(Strategy.EXISTING, False, 0, "dedup scraper did not return files")
+        # Timed out waiting for lock — proceed with own LLM generation
+    except Exception:  # Redis unavailable — proceed without dedup
+        pass
 
     report_data = route_map.cua_discovery_report if route_map else None
 
-    if loop.success and loop.final_scraper and loop.final_execution:
-        moved = _move_into(scratch, loop.final_execution.downloaded_files)
-        cleanup_output_dir(loop.final_execution.output_dir)
-        if moved:
-            result.downloaded.extend(moved)
-            scraper_registry.upsert_from_generation(
-                db, domain, loop.final_scraper.code,
-                platform=resolved_platform,
-                route_used=loop.final_scraper.route_used,
-            )
-            return StrategyOutcome(Strategy.LLM_GENERATED, True, len(moved), cua_discovery_report=report_data)
+    try:
+        # Run the LLM feedback loop (generator uses platform + route + pre-fetched HTML).
+        loop = await asyncio.to_thread(
+            _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet,
+        )
+        result.iterations += loop.iterations
+        result.cost_usd += loop.total_cost_usd
 
-    err = (loop.final_execution.error if loop.final_execution else None) or "loop exhausted"
-    if loop.final_execution:
-        cleanup_output_dir(loop.final_execution.output_dir)
-    return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err, cua_discovery_report=report_data)
+        if loop.success and loop.final_scraper and loop.final_execution:
+            moved = _move_into(scratch, loop.final_execution.downloaded_files)
+            cleanup_output_dir(loop.final_execution.output_dir)
+            if moved:
+                result.downloaded.extend(moved)
+                scraper_registry.upsert_from_generation(
+                    db, domain, loop.final_scraper.code,
+                    platform=resolved_platform,
+                    route_used=loop.final_scraper.route_used,
+                )
+                return StrategyOutcome(Strategy.LLM_GENERATED, True, len(moved), cua_discovery_report=report_data)
+
+        err = (loop.final_execution.error if loop.final_execution else None) or "loop exhausted"
+        if loop.final_execution:
+            cleanup_output_dir(loop.final_execution.output_dir)
+        return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err, cua_discovery_report=report_data)
+    finally:
+        # Always release the domain lock after generation
+        if lock_acquired:
+            try:
+                _redis.delete(lock_key)
+            except Exception:
+                pass
 
 
 def _run_loop_sync(

@@ -54,6 +54,23 @@ class Settings(BaseSettings):
     route_learning_max_clicks: int = 2
     versioning_check_interval_hours: int = 24
 
+    # --- Parallelism & Scalability ---
+    # Max concurrent URL tasks within a single async worker context.
+    # Raise this (e.g. 32) when running many workers on large jobs.
+    job_concurrency: int = 16
+
+    # Max concurrent LLM-generation tasks globally (prevents API rate-limiting).
+    # Each domain gets at most 1 LLM call at a time via Redis lock.
+    llm_global_concurrency: int = 8
+
+    # Redis TTL for per-domain LLM generation lock (seconds).
+    # Set high enough to cover worst-case LLM generation time.
+    domain_llm_lock_ttl: int = 360
+
+    # Job chunk size — how many URLs per Celery sub-task when fanning out.
+    # Smaller = more parallelism, larger = less queue overhead.
+    job_chunk_size: int = 50
+
     # --- Misc ---
     log_level: str = "INFO"
     secret_key: str = "change-me"

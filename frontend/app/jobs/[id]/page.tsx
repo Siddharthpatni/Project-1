@@ -112,6 +112,53 @@ function ItemErrorBox({ msg }: { msg: string }) {
   return <div className="bg-rose-50 border border-rose-100 p-2.5 rounded-lg text-[10px] font-mono text-rose-700 break-all">{msg}</div>;
 }
 
+// ── Throughput + ETA component ─────────────────────────────────────
+
+function ThroughputBar({ completed, total, status }: { completed: number; total: number; status: string }) {
+  const [snapshots, setSnapshots] = useState<{ t: number; c: number }[]>([]);
+
+  // Record snapshots every 5s to measure URL/min rate
+  useMemo(() => {
+    if (status !== "running" && status !== "pending") return;
+    const now = Date.now();
+    setSnapshots(prev => {
+      const updated = [...prev, { t: now, c: completed }];
+      // Keep last 60 seconds of data
+      return updated.filter(s => now - s.t < 60_000);
+    });
+  }, [completed, status]);
+
+  if (snapshots.length < 2) {
+    return (
+      <div className="flex items-center gap-2 text-[10px] text-indigo-500/70">
+        <span>Calculating throughput…</span>
+      </div>
+    );
+  }
+
+  const oldest = snapshots[0];
+  const newest = snapshots[snapshots.length - 1];
+  const deltaURLs = newest.c - oldest.c;
+  const deltaMs   = newest.t - oldest.t;
+  const ratePerMin = deltaMs > 0 ? Math.round((deltaURLs / deltaMs) * 60_000 * 10) / 10 : 0;
+  const remaining  = total - completed;
+  const etaSeconds = ratePerMin > 0 ? Math.round((remaining / ratePerMin) * 60) : null;
+
+  const fmtEta = (s: number) => {
+    if (s < 60) return `${s}s`;
+    if (s < 3600) return `${Math.round(s / 60)}min`;
+    return `${(s / 3600).toFixed(1)}h`;
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-4 text-[10px] font-semibold text-indigo-600/80">
+      <span>⚡ {ratePerMin} URL/min</span>
+      {etaSeconds !== null && <span>⏱ ETA: ~{fmtEta(etaSeconds)}</span>}
+      <span className="text-indigo-400">{remaining} remaining</span>
+    </div>
+  );
+}
+
 function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onRetry:(id:string)=>void; retrying:boolean }) {
   const [open, setOpen] = useState(false);
   return (
@@ -219,6 +266,9 @@ export default function JobDetailPage() {
   const [showDiag,     setShowDiag]     = useState(false);
   const [diag,         setDiag]         = useState<any|null>(null);
   const [diagLoading,  setDiagLoading]  = useState(false);
+  // Throughput tracking
+  const [startCompleted, setStartCompleted] = useState<number|null>(null);
+  const [startTime,      setStartTime]      = useState<number|null>(null);
 
   const { data: job, mutate: mutateJob } = useSWR(id?api(`/jobs/${id}`):null, fetcher, {
     refreshInterval: d=>(!d||d.status==="pending"||d.status==="running")?2000:0,
@@ -340,14 +390,19 @@ export default function JobDetailPage() {
 
       {/* Progress */}
       {(job.status==="pending"||job.status==="running")&&(
-        <div className="p-4 border border-indigo-100 bg-indigo-50/40 rounded-2xl space-y-2">
+        <div className="p-4 border border-indigo-100 bg-indigo-50/40 rounded-2xl space-y-3">
+          {/* Progress bar */}
           <div className="flex justify-between text-xs font-semibold text-indigo-700">
-            <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin"/>Pipeline running…</span>
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin"/>Pipeline running…
+            </span>
             <span>{pct}% ({job.completed}/{job.total_urls})</span>
           </div>
           <div className="w-full bg-indigo-100 rounded-full h-2.5 overflow-hidden">
             <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-700" style={{width:`${pct}%`}}/>
           </div>
+          {/* Throughput + ETA */}
+          <ThroughputBar completed={job.completed} total={job.total_urls} status={job.status}/>
         </div>
       )}
 
