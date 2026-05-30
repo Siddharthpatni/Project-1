@@ -427,6 +427,124 @@ def retry_job_item(
     return {"status": "queued", "item_id": item_id, "job_id": job_id}
 
 
+@router.post("/{job_id}/stop", status_code=200)
+def stop_job(job_id: str, db: Session = Depends(get_db)):
+    """
+    Gracefully stop a running or pending job.
+
+    Marks the job and all of its pending/running items as FAILED so
+    no new work starts. Already-succeeded items are left untouched.
+    Workers that are currently mid-scrape will finish their current
+    URL but the pipeline will not process further items.
+    """
+    from app.utils.audit import WARNING, write_audit
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "job not found")
+
+    if job.status not in (JobStatus.PENDING.value, JobStatus.RUNNING.value):
+        raise HTTPException(400, f"job is '{job.status}' — only pending/running jobs can be stopped")
+
+    stopped_items = 0
+    for item in job.items:
+        if item.status in (JobStatus.PENDING.value, JobStatus.RUNNING.value):
+            item.status = JobStatus.FAILED.value
+            item.error_message = "Manually stopped by user"
+            stopped_items += 1
+
+    job.status = JobStatus.FAILED.value
+    db.commit()
+
+    write_audit(
+        "job.stopped",
+        f"Job {job_id} manually stopped — {stopped_items} items cancelled",
+        level=WARNING,
+        job_id=job_id,
+        metadata={"stopped_items": stopped_items},
+    )
+
+    return {
+        "status": "stopped",
+        "job_id": job_id,
+        "items_cancelled": stopped_items,
+    }
+
+
+@router.get("/{job_id}/diagnostics")
+def job_diagnostics(job_id: str, db: Session = Depends(get_db)):
+    """
+    Return a detailed failure breakdown for a job — which domains failed,
+    why they failed, which strategy was attempted, and how many iterations
+    were spent — so operators can understand what went wrong at a glance.
+    """
+    from app.core.security import classify_error
+    from app.models import AuditLog
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "job not found")
+
+    # Audit trail for this job
+    audit_events = (
+        db.query(AuditLog)
+        .filter(AuditLog.job_id == job_id)
+        .order_by(AuditLog.created_at.asc())
+        .all()
+    )
+
+    failed_items = [i for i in job.items if i.status == JobStatus.FAILED.value]
+    succeeded_items = [i for i in job.items if i.status == JobStatus.SUCCESS.value]
+    pending_items = [i for i in job.items if i.status in (JobStatus.PENDING.value, JobStatus.RUNNING.value)]
+
+    # Error category breakdown
+    error_summary: dict[str, int] = {}
+    for item in failed_items:
+        cat = classify_error(item.error_message)
+        error_summary[cat] = error_summary.get(cat, 0) + 1
+
+    # Per-domain results
+    domain_results: dict[str, dict] = {}
+    for item in job.items:
+        d = item.domain or "unknown"
+        if d not in domain_results:
+            domain_results[d] = {"succeeded": 0, "failed": 0, "pending": 0, "urls": []}
+        domain_results[d][item.status if item.status in ("succeeded","failed","pending") else item.status] = \
+            domain_results[d].get(item.status, 0) + 1
+        domain_results[d]["urls"].append({
+            "url": item.url,
+            "status": item.status,
+            "strategy": item.strategy,
+            "iterations": item.iterations,
+            "runtime_seconds": round(item.runtime_seconds, 2),
+            "error": item.error_message[:500] if item.error_message else None,
+            "documents": len(item.documents),
+        })
+
+    return {
+        "job_id": job_id,
+        "status": job.status,
+        "total_urls": job.total_urls,
+        "succeeded": len(succeeded_items),
+        "failed": len(failed_items),
+        "pending": len(pending_items),
+        "cost_usd": round(job.cost_usd or 0.0, 4),
+        "error_category_breakdown": error_summary,
+        "domain_results": domain_results,
+        "audit_trail": [
+            {
+                "time": str(e.created_at),
+                "level": e.level,
+                "event": e.event_type,
+                "domain": e.domain,
+                "strategy": e.strategy,
+                "message": e.message[:300],
+            }
+            for e in audit_events
+        ],
+    }
+
+
 @router.delete("/{job_id}", status_code=204)
 def delete_job(job_id: str, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id).first()
