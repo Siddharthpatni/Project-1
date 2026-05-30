@@ -2,11 +2,14 @@
 Job submission and retrieval.
 
 POST /api/jobs                         → create a job (async Celery task kicked off)
+POST /api/jobs/smart-domain            → smart domain-aware batch: 1 URL/domain, auto-fallback to backup URL on failure
+POST /api/jobs/upload                  → upload CSV/Excel containing URL list
 GET  /api/jobs                         → list recent jobs
 GET  /api/jobs/{id}                    → full job detail with items
 GET  /api/jobs/{id}/documents          → flat list of downloaded documents
 GET  /api/jobs/{id}/download-all       → download all docs as ZIP
 GET  /api/jobs/local-files             → list locally stored files
+POST /api/jobs/{id}/items/{item_id}/retry → retry a single failed item
 DELETE /api/jobs/{id}                  → cancel / delete
 """
 import io
@@ -28,6 +31,8 @@ from app.schemas import (
     JobRead,
     JobSummary,
     LocalFileRead,
+    SmartDomainBatchRequest,
+    SmartDomainBatchResult,
 )
 from app.workers.tasks import process_job_task
 
@@ -141,6 +146,74 @@ async def upload_job(
     return _to_job_read(job)
 
 
+@router.post("/smart-domain", response_model=SmartDomainBatchResult, status_code=202)
+def create_smart_domain_batch(payload: SmartDomainBatchRequest, db: Session = Depends(get_db)):
+    """
+    Smart domain-aware batch job.
+
+    For each domain in `domain_urls`:
+    - Submit the **first** URL as the primary target.
+    - If the primary fails after cascade, the system automatically retries
+      with the **second** URL (backup) for that domain.
+
+    Maximum 2 URL attempts per domain. Only one URL is in-flight per
+    domain at any time — the fallback job is queued after the primary
+    finishes so the scraper registry is populated before the retry.
+    """
+    from app.workers.tasks import smart_domain_batch_task  # noqa: PLC0415
+
+    domain_urls = payload.domain_urls
+    if not domain_urls:
+        raise HTTPException(400, "domain_urls must not be empty")
+
+    # Build primary job (one URL per domain)
+    primary_urls = [urls[0] for urls in domain_urls.values() if urls]
+    domains_with_backup = sum(1 for urls in domain_urls.values() if len(urls) >= 2)
+
+    primary_job = Job(
+        submitted_by=payload.submitted_by or "smart-domain-batch",
+        total_urls=len(primary_urls),
+        status=JobStatus.PENDING.value,
+    )
+    db.add(primary_job)
+    db.flush()
+
+    for url in primary_urls:
+        db.add(JobItem(
+            job_id=primary_job.id,
+            url=url,
+            domain=urlparse(url).netloc,
+            status=JobStatus.PENDING.value,
+        ))
+
+    db.commit()
+    db.refresh(primary_job)
+
+    # Build backup mapping: domain → backup_url
+    backup_map: dict[str, str] = {
+        domain: urls[1]
+        for domain, urls in domain_urls.items()
+        if len(urls) >= 2
+    }
+
+    # Run primary job, then auto-queue fallback for failed domains.
+    smart_domain_batch_task.delay(
+        primary_job_id=primary_job.id,
+        backup_map=backup_map,
+        submitted_by=payload.submitted_by,
+        force_strategy=payload.force_strategy,
+        force_model=payload.force_model,
+    )
+
+    return SmartDomainBatchResult(
+        primary_job_id=primary_job.id,
+        fallback_job_id=None,    # set by the Celery task after primary finishes
+        domains_total=len(domain_urls),
+        domains_with_backup=domains_with_backup,
+        status="queued",
+    )
+
+
 @router.get("", response_model=list[JobSummary])
 def list_jobs(limit: int = 50, db: Session = Depends(get_db)):
     jobs = (
@@ -220,6 +293,7 @@ def get_job_documents(job_id: str, db: Session = Depends(get_db)):
         for doc in item.documents:
             doc_data = {
                 "id": doc.id,
+                "job_item_id": item.id,          # lets the frontend group docs under their URL
                 "filename": doc.filename,
                 "mime_type": doc.mime_type,
                 "size_bytes": doc.size_bytes,
@@ -227,7 +301,7 @@ def get_job_documents(job_id: str, db: Session = Depends(get_db)):
                 "download_url": f"/jobs/{job_id}/documents/{doc.id}/download",
             }
             result.append(doc_data)
-            
+
     return result
 
 @router.get("/{job_id}/documents/{doc_id}/download")
@@ -317,6 +391,40 @@ def download_local_file(job_id: str, item_id: str, filename: str):
         media_type=mime or "application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/{job_id}/items/{item_id}/retry", status_code=202)
+def retry_job_item(
+    job_id: str,
+    item_id: str,
+    force_strategy: str | None = None,
+    force_model: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Re-queue a single failed job item through the cascade pipeline."""
+    from app.workers.tasks import process_job_task
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "job not found")
+
+    item = next((i for i in job.items if i.id == item_id), None)
+    if not item:
+        raise HTTPException(404, "item not found")
+
+    if item.status not in (JobStatus.FAILED.value, JobStatus.PENDING.value):
+        raise HTTPException(400, f"item status is '{item.status}' — only failed or pending items can be retried")
+
+    # Reset the item so the worker processes it fresh.
+    item.status = JobStatus.PENDING.value
+    item.error_message = None
+    item.iterations = 0
+    item.runtime_seconds = 0.0
+    db.commit()
+
+    # Re-run the whole job task; it will skip already-succeeded items.
+    process_job_task.delay(job_id, force_strategy=force_strategy, force_model=force_model)
+    return {"status": "queued", "item_id": item_id, "job_id": job_id}
 
 
 @router.delete("/{job_id}", status_code=204)

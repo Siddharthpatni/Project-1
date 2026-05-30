@@ -45,6 +45,7 @@ from app.core.llm_client import LLMClient
 from app.core.security import is_url_allowed, classify_risk, detect_prompt_injection
 from app.core.storage import ObjectStorage
 from app.models import Document, JobItem, JobStatus, Strategy
+from app.utils.audit import CRITICAL, ERROR, INFO, WARNING, write_audit
 from app.phase0_manual.v1_reference import scrape as manual_scrape
 from app.phase1_llm_scraper.executor import (
     cleanup_output_dir,
@@ -129,6 +130,9 @@ async def process_url(
     result = PipelineResult(success=False, strategy_used=Strategy.NONE, downloaded=[])
     t0 = time.time()
 
+    write_audit("pipeline.start", f"Processing URL: {url}", level=INFO,
+                job_id=item.job_id, item_id=item.id, domain=domain, url=url)
+
     # SSRF / scheme guard before we spin anything up.
     allowed, reason = is_url_allowed(url)
     if not allowed:
@@ -136,6 +140,8 @@ async def process_url(
         item.status = JobStatus.FAILED.value
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
+        write_audit("security.blocked_url", reason, level=CRITICAL,
+                    job_id=item.job_id, item_id=item.id, domain=domain, url=url)
         db.commit()
         return result
 
@@ -147,29 +153,41 @@ async def process_url(
         item.status = JobStatus.FAILED.value
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
+        write_audit("security.prompt_injection", f"Patterns matched: {injection_hits[:3]}", level=CRITICAL,
+                    job_id=item.job_id, item_id=item.id, domain=domain, url=url)
         db.commit()
         return result
 
-    # 2. Connection Pre-flight Check: verify the target portal is reachable
+    # 2. Connection Pre-flight Check: verify the target portal is reachable.
+    # Try HEAD first (cheapest); fall back to a GET if the server rejects HEAD
+    # (405 or SSL error) — many German government sites do not support HEAD.
     import httpx
     try:
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            await client.head(url, follow_redirects=True)
-    except Exception as e:
-        result.error = f"connection failure: pre-flight check failed with error {e}"
+        async with httpx.AsyncClient(timeout=8.0, verify=False, follow_redirects=True) as client:  # noqa: S501
+            try:
+                await client.head(url)
+            except (httpx.HTTPStatusError, Exception):
+                # HEAD unsupported or failed — try a lightweight GET to confirm reachability.
+                await client.get(url, headers={"Range": "bytes=0-0"})
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.TooManyRedirects) as e:
+        # Only hard network failures (DNS, TCP, redirect loops) abort early.
+        result.error = f"connection failure: pre-flight check failed — {e}"
         item.status = JobStatus.FAILED.value
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
         db.commit()
         return result
+    except Exception:
+        # Any other exception (e.g. SSL even with verify=False) — let the cascade try anyway.
+        pass
 
     scratch = _job_downloads_dir(item)
     result._scratch_dirs.append(str(scratch))
 
     strategies = [force_strategy] if force_strategy else [
-        Strategy.DETERMINISTIC,
         Strategy.MANUAL,
         Strategy.EXISTING,
+        Strategy.DETERMINISTIC,
         Strategy.LLM_GENERATED,
         Strategy.CUA,
     ]
@@ -180,6 +198,9 @@ async def process_url(
             continue
 
         log.info("phase3.pipeline.attempt", url=url, strategy=strategy.value)
+        write_audit("strategy.attempt", f"Trying {strategy.value}", level=INFO,
+                    job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
+
         outcome = await _run_strategy(
             db, strategy, url, domain, llm, scratch, result
         )
@@ -192,18 +213,21 @@ async def process_url(
                 log.error("phase3.pipeline.high_risk_detected", strategy=strategy.value, error=outcome.error)
                 outcome.error = f"[CRITICAL] {outcome.error}"
                 result.error = outcome.error
+                write_audit("security.high_risk_abort", outcome.error[:500], level=CRITICAL,
+                            job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
                 result.attempts.append({
                     "strategy": strategy.value,
                     "success": False,
                     "downloaded": 0,
                     "error": outcome.error,
                 })
-                # Immediately abort execution to prevent security sandbox breach or unnecessary cost!
                 break
-            
+
             elif risk == "moderate":
                 log.info("phase3.pipeline.self_healing_triggered", strategy=strategy.value, error=outcome.error)
-                # Self-healing action: Wait 2.0s to let network recover and retry strategy once more!
+                write_audit("self_heal.triggered", f"Moderate risk on {strategy.value} — retrying in 2s", level=WARNING,
+                            job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value,
+                            metadata={"error": (outcome.error or "")[:300]})
                 await asyncio.sleep(2.0)
                 try:
                     retry_outcome = await _run_strategy(
@@ -211,12 +235,15 @@ async def process_url(
                     )
                     if retry_outcome.success:
                         log.info("phase3.pipeline.self_healing_success", strategy=strategy.value)
+                        write_audit("self_heal.success", f"Auto-recovered {strategy.value}", level=INFO,
+                                    job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
                         outcome = retry_outcome
                         last_outcome = outcome
-                        # Prepend healed notice for frontend visualization
                         item.error_message = f"[SELF-HEALED] Automatically resolved: {retry_outcome.error}"
                     else:
                         log.warning("phase3.pipeline.self_healing_failed", strategy=strategy.value)
+                        write_audit("self_heal.failed", f"Self-heal retry failed for {strategy.value}", level=WARNING,
+                                    job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
                 except Exception as retry_err:
                     log.warning("phase3.pipeline.self_healing_exception", strategy=strategy.value, err=str(retry_err))
 
@@ -229,8 +256,15 @@ async def process_url(
 
         if outcome.success:
             result.success = True
-            result.strategy_used = strategy
+            result.strategy_used = outcome.strategy
+            write_audit("pipeline.success", f"Strategy {outcome.strategy.value} downloaded {outcome.downloaded} doc(s)", level=INFO,
+                        job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=outcome.strategy.value,
+                        metadata={"downloaded": outcome.downloaded})
             break
+
+        write_audit("strategy.failed", outcome.error or "no documents", level=WARNING,
+                    job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value,
+                    metadata={"error": (outcome.error or "")[:500]})
 
         if next_strategy(strategy, outcome, settings.enable_fallback_cua) is None:
             break
@@ -250,6 +284,12 @@ async def process_url(
         except Exception as e:  # noqa: BLE001
             log.exception("phase3.pipeline.persist_failed", error=str(e))
             result.error = (result.error or "") + f"; persist failed: {e}"
+
+    # Final outcome audit
+    if not result.success:
+        write_audit("pipeline.failure", result.error or "all strategies exhausted", level=ERROR,
+                    job_id=item.job_id, item_id=item.id, domain=domain, url=url,
+                    metadata={"attempts": len(result.attempts), "runtime_s": round(result.runtime_seconds, 2)})
 
     # Update item record
     item.status = JobStatus.SUCCESS.value if result.success else JobStatus.FAILED.value
@@ -408,17 +448,26 @@ async def _try_llm_generated(
     # 1. URL-level classification (no HTTP).
     platform = platform_classifier.classify_url(url)
 
-    # 2. Fetch HTML once — used for HTML-level classification AND passed to
-    #    the generator so it doesn't make a second round-trip.
+    # 2. Fetch HTML once — used for HTML-level classification AND forwarded to
+    #    the LLM generator so it doesn't make a second round-trip.
     html_snippet: str | None = None
+    sanitized_snippet: str | None = None
     try:
         import httpx
-        async with httpx.AsyncClient(timeout=12, follow_redirects=True) as client:
+        from app.core.security import detect_prompt_injection, sanitize_web_content
+        async with httpx.AsyncClient(timeout=12, follow_redirects=True, verify=False) as client:  # noqa: S501
             r = await client.get(url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
             })
             html_snippet = r.text
+        # Security: run injection scan on fetched HTML before handing to LLM.
+        hits = detect_prompt_injection(html_snippet)
+        if hits:
+            log.warning("phase3.llm.prompt_injection_in_html", url=url, patterns=hits[:3])
+            html_snippet = None  # discard tainted content; generator will re-fetch safely
+        else:
+            sanitized_snippet = sanitize_web_content(html_snippet, max_length=20_000)
     except Exception as e:  # noqa: BLE001
         log.warning("phase3.llm.html_fetch_failed", url=url, error=str(e))
 
@@ -467,9 +516,9 @@ async def _try_llm_generated(
             except Exception as e:
                 log.warning("phase3.route_learning.cua_preflight_failed", url=url, error=str(e))
 
-    # 6. Run the LLM feedback loop (generator uses platform + route).
+    # 6. Run the LLM feedback loop (generator uses platform + route + pre-fetched HTML).
     loop = await asyncio.to_thread(
-        _run_loop_sync, url, llm.default_model, route_map, resolved_platform,
+        _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet,
     )
     result.iterations += loop.iterations
     result.cost_usd += loop.total_cost_usd
@@ -494,15 +543,24 @@ async def _try_llm_generated(
     return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err, cua_discovery_report=report_data)
 
 
-def _run_loop_sync(url: str, default_model: str | None, route_map=None, platform=None):
+def _run_loop_sync(
+    url: str,
+    default_model: str | None,
+    route_map=None,
+    platform: str | None = None,
+    html_snippet: str | None = None,
+):
     """Run the async feedback loop from inside asyncio.to_thread().
 
     A fresh LLMClient is created here so its httpx.AsyncClient is bound
     to the new event loop started by asyncio.run() — not the outer loop.
+    `html_snippet` is the already-sanitized page content forwarded from the
+    pipeline so the generator skips its own HTTP fetch.
     """
     llm = LLMClient(default_model=default_model)
     return asyncio.run(run_feedback_loop(
         url=url, llm=llm, route_map=route_map, platform=platform,
+        html_snippet=html_snippet,
     ))
 
 
@@ -515,6 +573,12 @@ async def _try_cua(
     result.cost_usd += outcome.cost_usd
     if outcome.success and outcome.downloaded_files:
         moved = _move_into(scratch, outcome.downloaded_files)
+        # Clean up the agent's run-specific temp dir once files are in scratch.
+        for f in outcome.downloaded_files:
+            cua_dir = str(Path(f).parent)
+            if cua_dir and cua_dir != str(scratch):
+                cleanup_output_dir(cua_dir)
+                break
         if moved:
             result.downloaded.extend(moved)
             return StrategyOutcome(Strategy.CUA, True, len(moved))

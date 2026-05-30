@@ -47,7 +47,6 @@ class LLMClient:
     def __init__(self, default_model: str | None = None):
         self.base_url = settings.openrouter_base_url.rstrip("/")
         self.api_key = settings.openrouter_api_key
-        self._client = httpx.AsyncClient(timeout=120)
         self.default_model = default_model or settings.llm_model_primary
 
     async def chat(self, system: str, user: str, model: str | None = None) -> LLMResponse:
@@ -98,6 +97,8 @@ class LLMClient:
             log.warning("llm.no_api_key", note="returning stub response")
             return LLMResponse(text="```python\n# stub: no API key configured\n```", model=model)
 
+        import asyncio
+
         url = f"{self.base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -106,27 +107,27 @@ class LLMClient:
             "Content-Type": "application/json",
         }
 
-        import asyncio
         max_retries = 3
-        last_error = None
+        last_error: Exception | None = None
         data = None
 
-        for attempt in range(1, max_retries + 1):
-            try:
-                async with httpx.AsyncClient(timeout=120) as client:
+        # Re-use one connection for all retry attempts.
+        async with httpx.AsyncClient(timeout=120) as client:
+            for attempt in range(1, max_retries + 1):
+                try:
                     r = await client.post(url, json=payload, headers=headers)
                     r.raise_for_status()
                     data = r.json()
                     break
-            except (httpx.HTTPError, httpx.RemoteProtocolError, Exception) as e:
-                last_error = e
-                log.warning("llm.call_retry", attempt=attempt, error=str(e))
-                if attempt < max_retries:
-                    await asyncio.sleep(attempt * 1.5)
-                continue
-        else:
+                except (httpx.HTTPError, httpx.RemoteProtocolError, Exception) as e:
+                    last_error = e
+                    log.warning("llm.call_retry", attempt=attempt, error=str(e))
+                    if attempt < max_retries:
+                        await asyncio.sleep(attempt * 1.5)
+
+        if data is None:
             log.error("llm.call_failed", error=str(last_error))
-            raise last_error
+            raise last_error  # type: ignore[misc]
 
         content = data["choices"][0]["message"]["content"]
         if isinstance(content, list):

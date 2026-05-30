@@ -363,7 +363,7 @@ export default function ExcelWorkspace() {
       }
     }
     return result;
-  }, [activeFile, selectedDomain, dataVersion]);
+  }, [activeFile, selectedDomain]);
 
   // ─── File processing ──────────────────────────────────────────────
   const processFile = useCallback(
@@ -798,7 +798,7 @@ export default function ExcelWorkspace() {
                         style={{ height: gridHeight - 44 }}
                         rowCount={filteredRows.length}
                         rowHeight={38}
-                        rowComponent={VirtualRow}
+                        rowComponent={VirtualRow as any}
                         rowProps={rowProps}
                         overscanCount={8}
                       />

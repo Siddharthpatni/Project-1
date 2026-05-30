@@ -103,7 +103,7 @@ export default function AgentsPage() {
       <div className="bg-white border-2 border-dashed border-indigo-200 rounded-3xl p-6 md:p-8 bg-gradient-to-br from-indigo-50/15 via-white to-white space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-2xl">
-            <Sparkles className="w-6 h-6 text-indigo-600 animate-pulse" />
+            <Sparkles className="w-6 h-6 text-indigo-600" />
           </div>
           <div>
             <h2 className="text-lg font-extrabold text-slate-900">Trigger Autonomous Agent Session</h2>
@@ -128,7 +128,7 @@ export default function AgentsPage() {
                   <option value="openai/gpt-4o">GPT-4o</option>
                   <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
                   <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
-                  <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                  <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
                 </select>
               </div>
             </div>
@@ -307,7 +307,7 @@ export default function AgentsPage() {
                       </div>
                       <div className="space-y-1 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
                         {r.trace.downloaded_files.map((file: string, idx: number) => (
-                          <div key={idx} className="flex items-center gap-1.5 p-1.5 px-2.5 bg-slate-50 border border-slate-150 rounded-xl text-[10px] font-bold text-slate-600 hover:bg-slate-100/80 transition-colors">
+                          <div key={idx} className="flex items-center gap-1.5 p-1.5 px-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 hover:bg-slate-100/80 transition-colors">
                             <span className="truncate w-full" title={file}>
                               {file}
                             </span>

@@ -36,10 +36,10 @@ import { useState } from "react";
 
 // Severity → visual style
 const SEVERITY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  critical: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-250", dot: "bg-rose-500" },
-  error:    { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-250", dot: "bg-orange-500" },
-  warning:  { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-250", dot: "bg-amber-500" },
-  info:     { bg: "bg-slate-50", text: "text-slate-650", border: "border-slate-200", dot: "bg-slate-400" },
+  critical: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", dot: "bg-rose-500" },
+  error:    { bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200", dot: "bg-orange-500" },
+  warning:  { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", dot: "bg-amber-500" },
+  info:     { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400" },
 };
 
 // Error category → colors for the pie chart
@@ -170,7 +170,7 @@ export default function AdminPage() {
       {/* ── Navigation / Back Button ── */}
       <Link 
         href="/" 
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-650 transition-all hover:translate-x-[-2px] duration-200"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all hover:translate-x-[-2px] duration-200"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         Back to Dashboard
@@ -178,11 +178,11 @@ export default function AdminPage() {
 
       {/* ── Backend Offline Warning ── */}
       {(statsError || errorsError) && (
-        <div className="p-4 rounded-2xl border-2 border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-center gap-3 animate-pulse shadow-sm">
-          <ShieldAlert className="w-5 h-5 text-rose-650 flex-shrink-0" />
+        <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-center gap-3 shadow-sm">
+          <ShieldAlert className="w-5 h-5 text-rose-600 flex-shrink-0" />
           <div>
             <p className="font-bold uppercase tracking-wider">Telemetry Core Disconnected</p>
-            <p className="text-rose-650/90 mt-0.5 font-semibold">Failed to fetch system analytics. Check backend service status.</p>
+            <p className="text-rose-600/90 mt-0.5 font-semibold">Failed to fetch system analytics. Check backend service status.</p>
           </div>
         </div>
       )}
@@ -191,7 +191,7 @@ export default function AdminPage() {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-3 text-slate-900 tracking-tight">
-            <ShieldAlert className="w-8 h-8 text-rose-500 animate-pulse" />
+            <ShieldAlert className="w-8 h-8 text-rose-500" />
             Admin &amp; Pipeline Control Center
           </h1>
           <p className="text-slate-500 text-sm sm:text-base font-medium mt-1">
@@ -200,7 +200,7 @@ export default function AdminPage() {
         </div>
         <button
           onClick={() => { mutateStats(); mutateErrors(); }}
-          className="p-3 text-slate-550 hover:text-indigo-600 bg-white hover:bg-indigo-50/10 rounded-xl transition border border-slate-200 flex items-center justify-center gap-2 self-start sm:self-auto cursor-pointer shadow-sm"
+          className="p-3 text-slate-500 hover:text-indigo-600 bg-white hover:bg-indigo-50/10 rounded-xl transition border border-slate-200 flex items-center justify-center gap-2 self-start sm:self-auto cursor-pointer shadow-sm"
           title="Refresh Data"
           disabled={isRefreshing}
         >
@@ -215,13 +215,13 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl border ${
               systemCheck?.overall_health === "healthy"
-                ? "bg-emerald-50 border-emerald-150 text-emerald-700"
+                ? "bg-emerald-50 border-emerald-100 text-emerald-700"
                 : systemCheck?.overall_health === "unhealthy"
-                ? "bg-rose-50 border-rose-150 text-rose-700"
-                : "bg-indigo-50 border-indigo-150 text-indigo-700"
+                ? "bg-rose-50 border-rose-100 text-rose-700"
+                : "bg-indigo-50 border-indigo-100 text-indigo-700"
             }`}>
               {systemCheck?.overall_health === "healthy" ? (
-                <ShieldCheck className="w-5 h-5 animate-pulse" />
+                <ShieldCheck className="w-5 h-5" />
               ) : (
                 <ShieldAlert className="w-5 h-5" />
               )}
@@ -251,13 +251,13 @@ export default function AdminPage() {
 
         {checkError && (
           <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-2xl font-bold flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-650" />
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
             {checkError}
           </div>
         )}
 
         {/* Diagnostic Results Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {[
             {
               key: "database",
@@ -296,7 +296,7 @@ export default function AdminPage() {
                 key={srv.key}
                 className={`p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between h-36 ${
                   status?.status === "online"
-                    ? "bg-emerald-50/10 border-emerald-150 hover:bg-emerald-50/20"
+                    ? "bg-emerald-50/10 border-emerald-100 hover:bg-emerald-50/20"
                     : status?.status === "warning"
                     ? "bg-amber-50/15 border-amber-200 hover:bg-amber-50/25"
                     : status?.status === "offline"
@@ -319,11 +319,11 @@ export default function AdminPage() {
                     </span>
                     <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                       status?.status === "online"
-                        ? "bg-emerald-100 text-emerald-850"
+                        ? "bg-emerald-100 text-emerald-800"
                         : status?.status === "warning"
-                        ? "bg-amber-100 text-amber-850"
+                        ? "bg-amber-100 text-amber-800"
                         : status?.status === "offline"
-                        ? "bg-rose-100 text-rose-850"
+                        ? "bg-rose-100 text-rose-800"
                         : "bg-slate-100 text-slate-500"
                     }`}>
                       {status?.status || "Pending"}
@@ -338,7 +338,7 @@ export default function AdminPage() {
                   </span>
                   {status && (
                     <button
-                      className="text-indigo-650 hover:underline font-bold cursor-pointer"
+                      className="text-indigo-600 hover:underline font-bold cursor-pointer"
                       onClick={() => setActiveModalService({ label: srv.label, status: status.status, latency: status.latency_ms, message: status.message })}
                     >
                       Details
@@ -354,10 +354,10 @@ export default function AdminPage() {
       {/* ── Top Stats Grid ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Jobs */}
-        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
           <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-indigo-50/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
           <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-150 text-slate-500">
+            <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-100 text-slate-500">
               <Database className="w-3.5 h-3.5" />
             </div>
             Total Jobs
@@ -367,10 +367,10 @@ export default function AdminPage() {
         </div>
 
         {/* Total Items */}
-        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
           <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-violet-50/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
           <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
-            <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-150 text-slate-500">
+            <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-100 text-slate-500">
               <Layers className="w-3.5 h-3.5" />
             </div>
             Total Items
@@ -380,7 +380,7 @@ export default function AdminPage() {
         </div>
 
         {/* Success Rate */}
-        <div className={`bg-emerald-50/5 border border-emerald-250/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+        <div className={`bg-emerald-50/5 border border-emerald-200/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
           <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-emerald-100/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
           <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-emerald-100/50 rounded-lg text-emerald-700">
@@ -395,7 +395,7 @@ export default function AdminPage() {
         </div>
 
         {/* Failed Items */}
-        <div className={`bg-rose-50/5 border border-rose-200/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-102 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+        <div className={`bg-rose-50/5 border border-rose-200/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
           <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-rose-100/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
           <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-rose-100/50 rounded-lg text-rose-700">
@@ -496,7 +496,7 @@ export default function AdminPage() {
                         onClick={() => setFilterCategory(filterCategory === cat.key ? null : cat.key)}
                         className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all border active:scale-98 cursor-pointer ${
                           filterCategory === cat.key
-                            ? "bg-slate-100 border-slate-350 shadow-sm"
+                            ? "bg-slate-100 border-slate-300 shadow-sm"
                             : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
                         }`}
                       >
@@ -536,14 +536,14 @@ export default function AdminPage() {
             {filterCategory && (
               <button
                 onClick={() => setFilterCategory(null)}
-                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-250 rounded-xl text-slate-700 transition-colors cursor-pointer active:scale-95 shadow-sm"
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-slate-700 transition-colors cursor-pointer active:scale-95 shadow-sm"
               >
-                <XCircle className="w-3.5 h-3.5 text-slate-450" />
+                <XCircle className="w-3.5 h-3.5 text-slate-400" />
                 Reset filter
               </button>
             )}
             {filterCategory && (
-              <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-150">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
                 <Filter className="w-3.5 h-3.5" />
                 Category: {stats?.error_category_labels?.[filterCategory] || filterCategory}
               </span>
@@ -559,7 +559,7 @@ export default function AdminPage() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-150 max-h-[700px] overflow-y-auto custom-scrollbar">
+          <ul className="divide-y divide-slate-100 max-h-[700px] overflow-y-auto custom-scrollbar">
             {filteredErrors.map((e: any) => {
               const style = SEVERITY_STYLES[e.severity] || SEVERITY_STYLES.info;
               const isExpanded = expandedId === e.id;
@@ -571,7 +571,7 @@ export default function AdminPage() {
                     onClick={() => setExpandedId(isExpanded ? null : e.id)}
                   >
                     {/* Severity Indicator */}
-                    <div className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 animate-pulse ${style.dot}`} />
+                    <div className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 ${style.dot}`} />
 
                     {/* Main Content */}
                     <div className="flex-1 min-w-0">
@@ -582,7 +582,7 @@ export default function AdminPage() {
                           {e.error_label}
                         </span>
                         {/* Strategy badge */}
-                        <span className="px-2.5 py-0.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-full text-[10px] font-bold">
+                        <span className="px-2.5 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-[10px] font-bold">
                           {e.strategy_label}
                         </span>
                         {/* Iterations */}
@@ -593,31 +593,31 @@ export default function AdminPage() {
                       </div>
 
                       {/* URL */}
-                      <div className="flex items-center gap-2 text-xs font-bold text-slate-600 font-mono truncate bg-slate-50 border border-slate-150 p-2.5 rounded-xl w-full" title={e.url}>
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-600 font-mono truncate bg-slate-50 border border-slate-100 p-2.5 rounded-xl w-full" title={e.url}>
                         <Globe className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                         <span className="truncate">{e.url}</span>
                       </div>
                     </div>
 
                     {/* Expand chevron */}
-                    <div className="text-slate-350 mt-1 flex-shrink-0 p-1.5 bg-slate-100 rounded-lg">
+                    <div className="text-slate-300 mt-1 flex-shrink-0 p-1.5 bg-slate-100 rounded-lg">
                       {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
                     </div>
                   </button>
 
                   {/* Expanded Detail */}
                   {isExpanded && (
-                    <div className="px-5 pb-5 ml-7 space-y-4 animate-in slide-in-from-top-1 duration-200">
+                    <div className="px-5 pb-5 ml-7 space-y-4 ">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-150">
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Target Host Domain</div>
                           <div className="text-xs font-bold text-slate-800 font-mono break-all">{e.domain}</div>
                         </div>
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-150">
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Resolved Strategy</div>
                           <div className="text-xs font-bold text-slate-800">{e.strategy_label}</div>
                         </div>
-                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-150">
+                        <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Failure Classification</div>
                           <div className="text-xs font-bold text-slate-800">{e.error_label}</div>
                         </div>
@@ -650,7 +650,7 @@ export default function AdminPage() {
             </div>
 
             {resetSuccess && (
-              <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-2xl font-bold animate-pulse">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl font-bold">
                 ✓ Platform data completely erased!
               </div>
             )}
@@ -670,11 +670,11 @@ export default function AdminPage() {
 
             <button
               onClick={handleReset}
-              disabled={resetConfirm !== "RESET" || isResetting}
+              disabled={resetConfirm.toLowerCase() !== "reset" || isResetting}
               className={`px-5 py-3 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-2 whitespace-nowrap self-end ${
                 resetConfirm === "RESET" && !isResetting
                   ? "bg-rose-600 hover:bg-rose-700 cursor-pointer shadow-sm active:scale-95"
-                  : "bg-slate-350 cursor-not-allowed"
+                  : "bg-slate-300 cursor-not-allowed"
               }`}
             >
               {isResetting ? (
@@ -693,7 +693,7 @@ export default function AdminPage() {
         <div className="bg-indigo-50/10 border border-indigo-200 rounded-3xl p-6 md:p-8 hover:shadow transition-all duration-300 flex flex-col justify-between space-y-5">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-indigo-50 border border-indigo-150 text-indigo-700 rounded-xl">
+              <div className="p-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl">
                 <Clock className="w-5 h-5" />
               </div>
               <div>
@@ -703,7 +703,7 @@ export default function AdminPage() {
             </div>
 
             {resetJobsSuccess && (
-              <div className="p-4 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-2xl font-bold animate-pulse">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl font-bold">
                 ✓ Successfully aborted zombie tasks!
               </div>
             )}
@@ -735,7 +735,7 @@ export default function AdminPage() {
       {/* ── Immersive Details Modal ── */}
       {activeModalService && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full mx-4 shadow-2xl relative space-y-5 animate-in zoom-in-95 duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full mx-4 shadow-2xl relative space-y-5 ">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full animate-ping ${
@@ -745,14 +745,14 @@ export default function AdminPage() {
               </div>
               <button
                 onClick={() => setActiveModalService(null)}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-650 transition cursor-pointer"
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition cursor-pointer"
               >
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
             
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-150">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span>Heartbeat Status:</span>
                 <span className={`px-2.5 py-0.5 rounded-full uppercase tracking-wider text-[10px] font-black ${
                   activeModalService.status === "online" ? "bg-emerald-100 text-emerald-800" : activeModalService.status === "warning" ? "bg-amber-100 text-amber-800" : "bg-rose-100 text-rose-800"
@@ -760,9 +760,9 @@ export default function AdminPage() {
                   {activeModalService.status}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-150">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span>Response Latency:</span>
-                <span className="font-mono text-slate-850 font-black">{activeModalService.latency ? `${activeModalService.latency} ms` : "—"}</span>
+                <span className="font-mono text-slate-800 font-black">{activeModalService.latency ? `${activeModalService.latency} ms` : "—"}</span>
               </div>
 
               <div className="space-y-1.5">
@@ -779,7 +779,7 @@ export default function AdminPage() {
                   navigator.clipboard.writeText(activeModalService.message);
                   alert("Diagnostic payload copied to clipboard!");
                 }}
-                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-650 hover:bg-slate-50 transition active:scale-95 cursor-pointer"
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 cursor-pointer"
               >
                 Copy Payload
               </button>

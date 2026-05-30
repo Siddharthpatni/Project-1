@@ -8,6 +8,7 @@ Tables:
 - ScraperTemplate  : a reusable scraper (either manually written or LLM-generated)
 - EvaluationRun    : a row in the phase-1 benchmark table
 - AgentRun         : a row in the phase-2 CUA benchmark table
+- AuditLog         : append-only structured event log for all system operations
 """
 from __future__ import annotations
 
@@ -138,3 +139,26 @@ class AgentRun(Base):
     runtime_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     cost_usd:   Mapped[float] = mapped_column(Float, default=0.0)
     trace:      Mapped[dict]  = mapped_column(JSON, default=dict)
+
+
+class AuditLog(Base):
+    """
+    Append-only structured event log.
+
+    Every significant pipeline event, error, recovery action, and security
+    alert is written here so ops can replay the exact sequence that led to
+    any outcome. Never UPDATE or DELETE rows — only INSERT.
+    """
+    __tablename__ = "audit_logs"
+
+    id:          Mapped[str]      = mapped_column(String, primary_key=True, default=_uuid)
+    created_at:  Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    level:       Mapped[str]      = mapped_column(String, default="info")   # info|warning|error|critical
+    event_type:  Mapped[str]      = mapped_column(String, index=True)        # pipeline.start, strategy.attempt, …
+    job_id:      Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    item_id:     Mapped[str | None] = mapped_column(String, nullable=True)
+    domain:      Mapped[str | None] = mapped_column(String, nullable=True)
+    url:         Mapped[str | None] = mapped_column(Text,   nullable=True)
+    strategy:    Mapped[str | None] = mapped_column(String, nullable=True)
+    message:     Mapped[str]      = mapped_column(Text, default="")
+    extra:       Mapped[dict]     = mapped_column(JSON, default=dict)        # arbitrary extra fields (metadata reserved by SQLAlchemy)

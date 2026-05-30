@@ -13,7 +13,6 @@ from pathlib import Path
 from textwrap import dedent
 from urllib.parse import urlparse
 
-from app.phase2_cua.orchestrator import run_agent
 from app.phase1_llm_scraper.route_learner import RouteMap, RouteStep
 from app.utils.logger import get_logger
 
@@ -51,7 +50,9 @@ async def run_cua_preflight_discovery(url: str, max_steps: int = 8) -> RouteMap:
 
     log.info("cua_discovery.preflight.start", url=url, max_steps=max_steps)
     try:
-        # Run CUA playwright agent with discovery instructions
+        # Lazy import keeps cua_discovery importable even when browser_use
+        # fails to load (e.g. missing playwright binaries in certain envs).
+        from app.phase2_cua.orchestrator import run_agent  # noqa: PLC0415
         outcome = await run_agent(
             agent_name="browser_use",
             url=url,

@@ -63,14 +63,19 @@ class ScraperGenerator:
         model: str | None = None,
         route_map: RouteMap | None = None,
         platform: str | None = None,
+        html_snippet: str | None = None,
     ) -> GeneratedScraper:
         """
         Generate a scraper. If `route_map` is provided and represents a
         successfully-learned route, the route-guided prompt is used and
         the LLM is asked to follow the exact discovered click sequence.
         Otherwise we fall back to the plain generation prompt.
+
+        Pass `html_snippet` when the caller already has a pre-fetched and
+        sanitized copy of the page — avoids a second HTTP round-trip.
         """
-        html_snippet = await self._fetch_snippet(url)
+        if html_snippet is None:
+            html_snippet = await self._fetch_snippet(url)
         domain = urlparse(url).netloc
 
         # Refine platform via HTML classification if not already known.

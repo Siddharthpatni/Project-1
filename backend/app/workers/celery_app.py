@@ -32,4 +32,9 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.tasks.check_document_versions_task",
         "schedule": crontab(hour="*/{}".format(settings.versioning_check_interval_hours), minute=0),
     },
+    # Auto-recovery: rescue zombie jobs every 10 minutes
+    "crash-recovery": {
+        "task": "app.workers.tasks.crash_recovery_task",
+        "schedule": 600,  # every 600 seconds = 10 minutes
+    },
 }

@@ -60,13 +60,15 @@ async def run_feedback_loop(
     max_iterations: int | None = None,
     route_map=None,           # phase1_llm_scraper.route_learner.RouteMap | None
     platform: str | None = None,
+    html_snippet: str | None = None,
 ) -> LoopResult:
     """Generate → validate → execute → evaluate → retry until success.
 
     Optional ``route_map`` (from `route_learner.learn_route`) is passed to
     the generator on the FIRST iteration to give the LLM a verified click
     sequence. Optional ``platform`` (from `platform_classifier`) splices
-    domain-specific guidance into the prompt.
+    domain-specific guidance into the prompt. Optional ``html_snippet``
+    lets the caller pass a pre-fetched page to avoid a second HTTP fetch.
     """
     max_iter = max_iterations or settings.max_feedback_iterations
     generator = ScraperGenerator(llm)
@@ -87,6 +89,7 @@ async def run_feedback_loop(
         if scraper is None:
             scraper = await generator.generate(
                 url, model=model, route_map=route_map, platform=platform,
+                html_snippet=html_snippet,  # skip re-fetch if caller supplied it
             )
         else:
             outcome = (

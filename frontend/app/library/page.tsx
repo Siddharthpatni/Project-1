@@ -62,7 +62,7 @@ export default function LibraryPage() {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <FolderArchive className="w-8 h-8 text-indigo-600 animate-pulse" />
+            <FolderArchive className="w-8 h-8 text-indigo-600" />
             Library &amp; Artifact Repository
           </h1>
           <p className="text-slate-500 mt-1.5 text-sm sm:text-base font-medium">

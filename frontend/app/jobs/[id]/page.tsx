@@ -5,8 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { api, fetcher } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import Link from "next/link";
-import { Download, FileText, AlertCircle, CheckCircle2, BadgeCheck, Loader2, ArrowLeft, Trash2, Copy, Cpu, Clock, DollarSign, Layers } from "lucide-react";
-import { useState } from "react";
+import {
+  Download, FileText, AlertCircle, CheckCircle2, BadgeCheck,
+  Loader2, ArrowLeft, Trash2, Copy, Cpu, Clock, DollarSign,
+  Layers, Globe, ChevronDown, ChevronRight, RefreshCcw,
+  FolderOpen, Shield, HeartPulse, ExternalLink,
+} from "lucide-react";
+import { useState, useMemo } from "react";
 
 const STRATEGY_STYLES: Record<string, string> = {
   manual_scraper:         "bg-blue-50 text-blue-700 border-blue-200",
@@ -14,439 +19,352 @@ const STRATEGY_STYLES: Record<string, string> = {
   deterministic_template: "bg-emerald-50 text-emerald-700 border-emerald-200",
   llm_generated_scraper:  "bg-amber-50 text-amber-700 border-amber-200",
   computer_use_agent:     "bg-rose-50 text-rose-700 border-rose-200",
+  none:                   "bg-slate-50 text-slate-600 border-slate-200",
 };
-
-const STRATEGY_NAMES: Record<string, string> = {
-  manual_scraper:         "Deterministic Core Scraper",
-  existing_scraper:       "Cached Registry Scraper",
-  deterministic_template: "Autonomous Discovered Scraper",
-  llm_generated_scraper:  "Visual Route Exploration Scraper",
-  computer_use_agent:     "Intelligent CUA Browser Agent",
+const STRATEGY_LABELS: Record<string, string> = {
+  manual_scraper:         "Manual",
+  existing_scraper:       "Cached",
+  deterministic_template: "Deterministic",
+  llm_generated_scraper:  "LLM Generated",
+  computer_use_agent:     "CUA Agent",
+  none:                   "Failed",
 };
+const CASCADE_ORDER = ["manual_scraper","existing_scraper","deterministic_template","llm_generated_scraper","computer_use_agent"];
 
-function StrategyBadge({ strategy }: { strategy: string }) {
-  const cls = STRATEGY_STYLES[strategy] ?? "bg-slate-50 text-slate-655 border-slate-200";
-  const name = STRATEGY_NAMES[strategy] ?? strategy.replace(/_/g, " ");
+function fileIcon(fn: string) {
+  const e = fn.split(".").pop()?.toLowerCase() ?? "";
+  if (e === "pdf") return "📄";
+  if (["zip","rar","7z"].includes(e)) return "🗜️";
+  if (["doc","docx"].includes(e)) return "📝";
+  if (["xls","xlsx"].includes(e)) return "📊";
+  return "📎";
+}
+function fileBadge(e: string) {
+  if (e === "pdf") return "bg-rose-50 border-rose-200 text-rose-700";
+  if (["zip","rar","7z"].includes(e)) return "bg-amber-50 border-amber-200 text-amber-700";
+  if (["doc","docx"].includes(e)) return "bg-blue-50 border-blue-200 text-blue-700";
+  if (["xls","xlsx"].includes(e)) return "bg-emerald-50 border-emerald-200 text-emerald-700";
+  return "bg-slate-50 border-slate-200 text-slate-600";
+}
+function fmt(b: number) {
+  if (b < 1024) return `${b} B`;
+  if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+  return `${(b/1048576).toFixed(1)} MB`;
+}
+
+function StrategyPill({ s, xs }: { s: string; xs?: boolean }) {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${cls}`}>
-      {name}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold border ${STRATEGY_STYLES[s] ?? STRATEGY_STYLES.none} ${xs ? "text-[10px]" : "text-xs"}`}>
+      {STRATEGY_LABELS[s] ?? s.replace(/_/g," ")}
     </span>
   );
 }
 
-function fileIcon(filename: string) {
-  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-  if (ext === "pdf") return "📄";
-  if (["zip", "rar", "7z"].includes(ext)) return "🗜️";
-  if (["doc", "docx"].includes(ext)) return "📝";
-  if (["xls", "xlsx"].includes(ext)) return "📊";
-  return "📎";
+function CascadeTrail({ item }: { item: any }) {
+  const idx = item.strategy === "none" ? -1 : CASCADE_ORDER.indexOf(item.strategy);
+  const tried = CASCADE_ORDER.filter((_,i) => item.status==="failed" ? i===0 : i<=idx);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {tried.map((s,i) => {
+        const ok = s===item.strategy && item.status==="success";
+        const bad = i===tried.length-1 && item.status==="failed";
+        return (
+          <div key={s} className="flex items-center gap-1">
+            {i>0 && <ChevronRight className="w-3 h-3 text-slate-300" />}
+            <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${STRATEGY_STYLES[s]} ${!ok&&!bad?"opacity-35":""}`}>
+              {ok && <CheckCircle2 className="w-3 h-3" />}
+              {bad && <AlertCircle className="w-3 h-3" />}
+              {STRATEGY_LABELS[s]}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function fileBadgeColor(filename: string) {
-  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-  if (ext === "pdf") return "bg-rose-50 border-rose-100 text-rose-700";
-  if (["zip", "rar", "7z"].includes(ext)) return "bg-amber-50 border-amber-100 text-amber-700";
-  if (["doc", "docx"].includes(ext)) return "bg-blue-50 border-blue-100 text-blue-700";
-  if (["xls", "xlsx"].includes(ext)) return "bg-emerald-50 border-emerald-100 text-emerald-700";
-  return "bg-slate-50 border-slate-100 text-slate-700";
+function ItemErrorBox({ msg }: { msg: string }) {
+  if (!msg) return null;
+  if (msg.startsWith("[CRITICAL]"))
+    return (
+      <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl text-xs space-y-1.5">
+        <p className="font-bold text-rose-800 flex items-center gap-1.5"><Shield className="w-3.5 h-3.5"/>Security Alert — Pipeline Aborted</p>
+        <pre className="text-rose-700 font-mono whitespace-pre-wrap break-all text-[10px]">{msg}</pre>
+      </div>
+    );
+  if (msg.startsWith("[SELF-HEALED]"))
+    return (
+      <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs space-y-1.5">
+        <p className="font-bold text-emerald-800 flex items-center gap-1.5"><HeartPulse className="w-3.5 h-3.5"/>Self-Healed — Auto-recovered</p>
+        <pre className="text-emerald-700 font-mono whitespace-pre-wrap break-all text-[10px]">{msg}</pre>
+      </div>
+    );
+  if (msg.startsWith("[CUA-DISCOVERY"))
+    return (
+      <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl text-xs space-y-1.5">
+        <p className="font-bold text-indigo-800 flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5"/>CUA Pre-flight Discovery Log</p>
+        <pre className="bg-slate-900 text-slate-200 p-2.5 rounded-lg font-mono text-[10px] whitespace-pre-wrap break-all max-h-48 overflow-y-auto custom-scrollbar">
+          {msg.replace(/\[CUA-DISCOVERY(-FAILED)?\]\s*/g,"")}
+        </pre>
+      </div>
+    );
+  return <div className="bg-rose-50 border border-rose-100 p-2.5 rounded-lg text-[10px] font-mono text-rose-700 break-all">{msg}</div>;
 }
 
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onRetry:(id:string)=>void; retrying:boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border border-slate-100 rounded-xl overflow-hidden">
+      <div className="flex items-start gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={()=>setOpen(v=>!v)}>
+        <button className="mt-0.5 flex-shrink-0 text-slate-400">{open?<ChevronDown className="w-4 h-4"/>:<ChevronRight className="w-4 h-4"/>}</button>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+            <StatusBadge status={item.status}/>
+            <StrategyPill s={item.strategy}/>
+            {docs.length>0 && <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">{docs.length} file{docs.length!==1?"s":""}</span>}
+            <span className="text-[10px] text-slate-400 font-mono">{item.runtime_seconds?.toFixed(1)}s · {item.iterations} iter{item.iterations!==1?"s":""}</span>
+          </div>
+          <p className="font-mono text-[10px] text-indigo-700 break-all" title={item.url}>{item.url}</p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {item.status==="failed" && (
+            <button onClick={e=>{e.stopPropagation();onRetry(item.id);}} disabled={retrying}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition-all disabled:opacity-50">
+              {retrying?<Loader2 className="w-3 h-3 animate-spin"/>:<RefreshCcw className="w-3 h-3"/>}Retry
+            </button>
+          )}
+          <a href={item.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()}
+            className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors">
+            <ExternalLink className="w-3.5 h-3.5"/>
+          </a>
+        </div>
+      </div>
+      {open && (
+        <div className="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3">
+          <CascadeTrail item={item}/>
+          {item.error_message && <ItemErrorBox msg={item.error_message}/>}
+          {docs.length>0 ? (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Downloaded Documents</p>
+              {docs.map((doc:any)=>{
+                const ext=doc.filename.split(".").pop()?.toLowerCase()??"";
+                const verified=["pdf","zip","docx","xlsx","doc","xls","ppt","pptx","rar","7z"].includes(ext);
+                return (
+                  <div key={doc.id} className="flex items-center justify-between py-2 px-3 bg-white border border-slate-100 rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`text-base p-1.5 rounded-lg border flex-shrink-0 ${fileBadge(ext)}`}>{fileIcon(doc.filename)}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-semibold text-slate-800 truncate max-w-[22ch]" title={doc.filename}>{doc.filename}</p>
+                          {verified?<BadgeCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0"/>:<AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0"/>}
+                        </div>
+                        <p className="text-[10px] text-slate-400">{fmt(doc.size_bytes)} · v{doc.version}</p>
+                      </div>
+                    </div>
+                    {doc.download_url
+                      ? <a href={api(doc.download_url)} download={doc.filename} className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold rounded-lg transition-all ml-3 flex-shrink-0"><Download className="w-3 h-3"/>Download</a>
+                      : <span className="text-[10px] text-slate-400 ml-3">Unavailable</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            item.status!=="running" && item.status!=="pending" &&
+            <p className="text-xs text-slate-400 italic">No documents downloaded for this URL.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DomainSection({ domain, items, docsByItem, onRetry, retryingId }: {
+  domain:string; items:any[]; docsByItem:Record<string,any[]>; onRetry:(id:string)=>void; retryingId:string|null;
+}) {
+  const [open, setOpen] = useState(true);
+  const totalDocs = items.reduce((acc,i)=>acc+(docsByItem[i.id]?.length??0),0);
+  const ok = items.filter(i=>i.status==="success").length;
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+      <button onClick={()=>setOpen(v=>!v)} className="w-full flex items-center gap-3 px-5 py-3.5 bg-slate-50 hover:bg-slate-100 transition-colors text-left">
+        {open?<ChevronDown className="w-4 h-4 text-slate-500"/>:<ChevronRight className="w-4 h-4 text-slate-500"/>}
+        <Globe className="w-4 h-4 text-indigo-500 flex-shrink-0"/>
+        <span className="font-bold text-slate-800 text-sm truncate">{domain}</span>
+        <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+          <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-full font-bold">{items.length} URL{items.length!==1?"s":""}</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${ok===items.length?"bg-emerald-50 text-emerald-700 border-emerald-100":"bg-amber-50 text-amber-700 border-amber-100"}`}>{ok}/{items.length} OK</span>
+          {totalDocs>0 && <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full font-bold">{totalDocs} doc{totalDocs!==1?"s":""}</span>}
+        </div>
+      </button>
+      {open && (
+        <div className="px-5 py-4 space-y-2 border-t border-slate-100">
+          {items.map(item=>(
+            <URLRow key={item.id} item={item} docs={docsByItem[item.id]??[]} onRetry={onRetry} retrying={retryingId===item.id}/>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function JobDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const [isZipping, setIsZipping] = useState(false);
+  const { id }    = useParams<{ id: string }>();
+  const router    = useRouter();
+  const [isZipping,  setIsZipping]  = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { data: job } = useSWR(id ? api(`/jobs/${id}`) : null, fetcher, { 
-    refreshInterval: (data) => (!data || data.status === "pending" || data.status === "running") ? 2000 : 0 
+  const [retryingId, setRetryingId] = useState<string|null>(null);
+  const [copied,     setCopied]     = useState(false);
+
+  const { data: job, mutate: mutateJob } = useSWR(id?api(`/jobs/${id}`):null, fetcher, {
+    refreshInterval: d=>(!d||d.status==="pending"||d.status==="running")?2000:0,
   });
-  const { data: documents } = useSWR(id ? api(`/jobs/${id}/documents`) : null, fetcher, { 
-    refreshInterval: (data) => (job?.status === "pending" || job?.status === "running") ? 2000 : 0 
+  const { data: documents, mutate: mutateDocs } = useSWR(id?api(`/jobs/${id}/documents`):null, fetcher, {
+    refreshInterval: ()=>(job?.status==="pending"||job?.status==="running")?2000:0,
   });
 
-  if (!job) return <p className="text-slate-500 max-w-7xl mx-auto px-4 py-8">Loading task detail log...</p>;
+  const docsByItem = useMemo<Record<string,any[]>>(()=>{
+    const m:Record<string,any[]>={};
+    for (const d of documents??[]) { const k=d.job_item_id??"__x__"; if(!m[k])m[k]=[]; m[k].push(d); }
+    return m;
+  },[documents]);
 
-  const totalDocs = documents?.length ?? 0;
+  const byDomain = useMemo<Record<string,any[]>>(()=>{
+    const m:Record<string,any[]>={};
+    for (const i of job?.items??[]) { const k=i.domain||"unknown"; if(!m[k])m[k]=[]; m[k].push(i); }
+    return m;
+  },[job]);
 
-  const handleDownloadZip = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (isZipping) return;
-    setIsZipping(true);
+  const domains  = Object.keys(byDomain).sort();
+  const totalDocs= documents?.length??0;
+  const pct      = job?Math.max(4,Math.round((job.completed/Math.max(1,job.total_urls))*100)):0;
+
+  if (!job) return (
+    <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+      <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-3"/>
+      <p className="text-slate-500 text-sm">Loading job…</p>
+    </div>
+  );
+
+  const handleZip = async()=>{
+    if (isZipping) return; setIsZipping(true);
     try {
-      const response = await fetch(api(`/jobs/${id}/download-all`));
-      if (!response.ok) throw new Error("Failed to generate ZIP");
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `job-${id?.slice(0, 8)}-documents.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to download ZIP. It might still be processing or there was an error.");
-    } finally {
-      setIsZipping(false);
-    }
+      const r=await fetch(api(`/jobs/${id}/download-all`));
+      if(!r.ok) throw new Error();
+      const a=Object.assign(document.createElement("a"),{href:URL.createObjectURL(await r.blob()),download:`job-${id?.slice(0,8)}-docs.zip`});
+      document.body.appendChild(a);a.click();a.remove();
+    } catch { alert("ZIP download failed."); } finally { setIsZipping(false); }
   };
-
-  const handleDeleteJob = async () => {
-    if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
-    setIsDeleting(true);
-    try {
-      const response = await fetch(api(`/jobs/${id}`), { method: 'DELETE' });
-      if (!response.ok) throw new Error("Failed to delete job");
-      router.push('/jobs');
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete job.");
-      setIsDeleting(false);
-    }
+  const handleDelete=async()=>{
+    if(!confirm("Delete job permanently?")) return; setIsDeleting(true);
+    try { await fetch(api(`/jobs/${id}`),{method:"DELETE"}); router.push("/jobs"); }
+    catch { alert("Delete failed."); setIsDeleting(false); }
   };
+  const handleRetry=async(itemId:string)=>{
+    setRetryingId(itemId);
+    try { await fetch(api(`/jobs/${id}/items/${itemId}/retry`),{method:"POST"}); setTimeout(()=>{mutateJob();mutateDocs();setRetryingId(null);},1500); }
+    catch { setRetryingId(null); alert("Retry failed."); }
+  };
+  const copyId=()=>{ navigator.clipboard.writeText(job.id); setCopied(true); setTimeout(()=>setCopied(false),1500); };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      {/* ── Navigation / Back Button ── */}
-      <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500">
-        <Link href="/" className="hover:text-indigo-650 transition-colors">
-          Dashboard
-        </Link>
-        <span className="text-slate-300">/</span>
-        <Link href="/jobs" className="flex items-center gap-1 hover:text-indigo-650 transition-all hover:translate-x-[-1px]">
-          <ArrowLeft className="w-3.5 h-3.5" />
-          All Jobs
-        </Link>
-        <span className="text-slate-300">/</span>
-        <span className="text-slate-400 font-normal truncate max-w-[20ch]">Job {job.id.slice(0, 8)}</span>
+    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <Link href="/" className="hover:text-indigo-600">Dashboard</Link><span>/</span>
+        <Link href="/jobs" className="flex items-center gap-1 hover:text-indigo-600"><ArrowLeft className="w-3 h-3"/>Jobs</Link><span>/</span>
+        <span className="text-slate-400 truncate max-w-[16ch]">{job.id.slice(0,8)}</span>
       </div>
 
-      <header className="border-b border-slate-100 pb-5 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-lg sm:text-xl font-bold font-mono text-slate-800 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 shadow-inner">
-              {job.id}
-            </h1>
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText(job.id);
-                alert("Copied Job ID!");
-              }}
-              className="text-xs px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl border border-indigo-150 transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              Copy ID
-            </button>
+      {/* Header */}
+      <header className="space-y-3 border-b border-slate-100 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="font-mono text-sm bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-slate-700">{job.id}</code>
+            <button onClick={copyId} className="btn-secondary text-xs gap-1.5"><Copy className="w-3.5 h-3.5"/>{copied?"Copied!":"Copy"}</button>
           </div>
-          <button 
-            onClick={handleDeleteJob}
-            disabled={isDeleting}
-            className="text-xs px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl transition disabled:opacity-50 shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            {isDeleting ? "Deleting..." : "Delete Job"}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link href={`/audit?job=${id}`} className="btn-secondary text-xs gap-1.5"><Layers className="w-3.5 h-3.5"/>Audit Trail</Link>
+            <button onClick={handleDelete} disabled={isDeleting} className="btn-danger text-xs gap-1.5"><Trash2 className="w-3.5 h-3.5"/>{isDeleting?"Deleting…":"Delete"}</button>
+          </div>
         </div>
-
-        {/* Header Stats Chips */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex">
-            <StatusBadge status={job.status} />
-          </div>
-          <span className="bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <Layers className="w-4 h-4 text-slate-500" /> {job.completed}/{job.total_urls} URLs
-          </span>
-          <span className="bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-indigo-500" /> {totalDocs} document{totalDocs !== 1 ? "s" : ""}
-          </span>
-          <span className="bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <DollarSign className="w-4 h-4 text-emerald-500" /> ${(job.cost_usd ?? 0).toFixed(4)}
-          </span>
-          <span className="bg-slate-100 border border-slate-200/60 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-slate-500" /> {new Date(job.created_at).toLocaleString()}
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={job.status}/>
+          {[
+            [Layers, `${job.completed}/${job.total_urls} URLs`],
+            [FileText, `${totalDocs} docs`],
+            [Globe, `${domains.length} domain${domains.length!==1?"s":""}`],
+            [DollarSign, `$${(job.cost_usd??0).toFixed(4)}`],
+            [Clock, new Date(job.created_at).toLocaleString()],
+          ].map(([Icon,label]:any,i)=>(
+            <span key={i} className="badge bg-slate-100 text-slate-600 border-slate-200">
+              <Icon className="w-3 h-3 mr-1"/>{label}
+            </span>
+          ))}
         </div>
       </header>
 
-      {/* Progress Bar */}
-      {(job.status === "pending" || job.status === "running") && (
-        <div className="p-5 border border-indigo-100 bg-indigo-50/40 rounded-2xl space-y-2">
-          <div className="flex justify-between text-xs font-bold text-indigo-750">
-            <span>Retrieving Documents Pipeline...</span>
-            <span>{Math.round((job.completed / Math.max(1, job.total_urls)) * 100)}% ({job.completed}/{job.total_urls})</span>
+      {/* Progress */}
+      {(job.status==="pending"||job.status==="running")&&(
+        <div className="p-4 border border-indigo-100 bg-indigo-50/40 rounded-2xl space-y-2">
+          <div className="flex justify-between text-xs font-semibold text-indigo-700">
+            <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin"/>Pipeline running…</span>
+            <span>{pct}% ({job.completed}/{job.total_urls})</span>
           </div>
-          <div className="w-full bg-indigo-100/50 rounded-full h-3 overflow-hidden">
-            <div 
-              className="bg-indigo-650 h-3 rounded-full transition-all duration-500 ease-out relative" 
-              style={{ width: `${Math.max(5, (job.completed / Math.max(1, job.total_urls)) * 100)}%` }}
-            >
-              <div className="absolute top-0 left-0 bottom-0 right-0 animate-pulse bg-white/20"></div>
-            </div>
+          <div className="w-full bg-indigo-100 rounded-full h-2.5 overflow-hidden">
+            <div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-700" style={{width:`${pct}%`}}/>
           </div>
-          <p className="text-[10px] text-indigo-600/70 text-right mt-1.5 animate-pulse font-semibold">Cascade agent workers currently running...</p>
         </div>
       )}
 
-      {/* ── Strategies / Execution Path Cascade ── */}
-      <div className="bg-white border border-slate-250/80 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-          <BadgeCheck className="w-5 h-5 text-indigo-600" />
-          <h2 className="font-extrabold text-slate-800">Cascade Strategy Execution Paths</h2>
-        </div>
-        <div className="divide-y divide-slate-150">
-          {job.items?.map((item: any) => {
-            const strategyKeys = ["manual_scraper", "existing_scraper", "deterministic_template", "llm_generated_scraper", "computer_use_agent"];
-            const targetIdx = item.strategy === "none" ? -1 : strategyKeys.indexOf(item.strategy);
-            const isJobFailed = item.status === "failed";
-            
-            return (
-              <div key={item.id} className="p-6 space-y-4 hover:bg-slate-50/10 transition-colors">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-slate-400 font-mono tracking-wider uppercase">Source URL Target</div>
-                    <div className="text-xs font-bold font-mono text-indigo-700 break-all select-all mt-1 bg-slate-50 border border-slate-150 p-2.5 rounded-lg w-full" title={item.url}>
-                      {item.url}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                    {strategyKeys.map((s, idx) => {
-                      const isTried = isJobFailed || idx <= targetIdx || (targetIdx === -1 && idx === 0);
-                      if (!isTried) return null;
-                      const isSuccess = s === item.strategy;
-                      const cls = STRATEGY_STYLES[s] ?? "bg-slate-50 text-slate-600 border-slate-200";
-                      
-                      return (
-                        <div key={s} className="flex items-center gap-1.5">
-                          {idx > 0 && <span className="text-slate-300 font-bold">→</span>}
-                          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${cls} ${!isSuccess && isTried && !isJobFailed ? "opacity-40" : "opacity-100"}`}>
-                            {isSuccess ? (
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600 flex-shrink-0" />
-                            ) : (
-                              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 flex-shrink-0" />
-                            )}
-                            {s.replace(/_/g, " ").replace("scraper", "")}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-550 border-t border-slate-100 pt-3">
-                  {item.strategy !== "none" && (
-                    <>
-                      <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">
-                        Downloaded Docs: {item.document_count}
-                      </span>
-                      <span className="text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
-                        Total Time: {item.runtime_seconds?.toFixed(1)}s
-                      </span>
-                      <span className="text-slate-650 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
-                        Iterations: {item.iterations}
-                      </span>
-                    </>
-                  )}
-                  <span className="ml-auto flex items-center gap-2">
-                    {item.error_message && item.error_message.includes("[SELF-HEALED]") && (
-                      <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-350 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-sm">
-                        <span>💚</span> Self-Healed
-                      </span>
-                    )}
-                    {item.error_message && item.error_message.includes("[CRITICAL]") && (
-                      <span className="text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-350 px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                        <span>⚠️</span> High Risk Blocked
-                      </span>
-                    )}
-                    <StatusBadge status={item.status} />
-                  </span>
-                </div>
-
-                {item.error_message && (
-                  <div className="space-y-2">
-                    {item.error_message.startsWith("[CRITICAL]") ? (
-                      <div className="bg-rose-50 border border-rose-250 text-rose-900 p-4 rounded-xl text-xs space-y-2 shadow-sm">
-                        <div className="flex items-center gap-2 font-bold text-rose-800 text-sm">
-                          <span>⚠️ Security Alert: High Risk / Sandbox Blocked</span>
-                        </div>
-                        <p className="font-semibold text-slate-700 leading-relaxed">
-                          Downstream scraping pipeline was aborted instantly. This block triggers when prompt injection, unauthorized system execution, private network access (SSRF), or a severe sandbox breach is detected in either target URL or crawled HTML text to protect host infrastructure.
-                        </p>
-                        <div className="bg-white border border-rose-150 p-2.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto text-rose-700 leading-normal">
-                          {item.error_message}
-                        </div>
-                      </div>
-                    ) : item.error_message.startsWith("[SELF-HEALED]") ? (
-                      <div className="bg-emerald-50 border border-emerald-250 text-emerald-950 p-4 rounded-xl text-xs space-y-2 shadow-sm">
-                        <div className="flex items-center gap-2 font-bold text-emerald-800 text-sm">
-                          <span>💚 Self-Healing Resolution</span>
-                        </div>
-                        <p className="font-semibold text-slate-700 leading-relaxed">
-                          System successfully recovered! A moderate risk error (e.g., connection reset or DOM page selector timeout) was detected. The pipeline automatically initialized Self-Healing mode, delayed execution, and recovered successfully.
-                        </p>
-                        <div className="bg-white border border-emerald-150 p-2.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto text-emerald-700 leading-normal">
-                          {item.error_message}
-                        </div>
-                      </div>
-                    ) : item.error_message.startsWith("[CUA-DISCOVERY]") || item.error_message.startsWith("[CUA-DISCOVERY-FAILED]") ? (
-                      <div className="bg-indigo-50/60 border border-indigo-200 text-indigo-950 p-4 rounded-xl text-xs space-y-2 shadow-sm">
-                        <div className="flex items-center justify-between font-bold text-indigo-900 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Cpu className="w-4 h-4 text-indigo-600 animate-pulse" />
-                            <span>🧠 CUA Pre-flight Path & Selector Discovery Log</span>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${item.error_message.startsWith("[CUA-DISCOVERY]") ? "bg-emerald-100 text-emerald-800 border border-emerald-200" : "bg-amber-100 text-amber-800 border border-amber-200"}`}>
-                            {item.error_message.startsWith("[CUA-DISCOVERY]") ? "Success" : "Scraper Error Fallback"}
-                          </span>
-                        </div>
-                        <p className="font-semibold text-slate-700 leading-relaxed">
-                          This domain has no prior recorded template. An intelligent pre-flight CUA browser session was autonomously launched to inspect elements, accept cookie frames, navigate tabs, and discover DOM selectors to guide LLM code generation.
-                        </p>
-                        <div className="bg-slate-900 border border-slate-800 text-slate-200 p-3.5 rounded-lg font-mono text-[10px] select-all overflow-x-auto leading-normal whitespace-pre-wrap max-h-[300px] custom-scrollbar shadow-inner">
-                          {item.error_message.replace("[CUA-DISCOVERY] ", "").replace("[CUA-DISCOVERY-FAILED] ", "")}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs font-bold font-mono text-rose-600 bg-rose-50/50 border border-rose-100 p-3 rounded-xl max-w-full leading-relaxed select-all">
-                        🚨 {item.error_message}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Downloaded Documents ── */}
-      <div className="bg-white border border-slate-250/80 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
-          <h2 className="font-extrabold flex items-center gap-2 text-slate-800">
-            <Download className="w-4 h-4 text-indigo-650" />
-            Scraped Tender Packages &amp; PDFs
+      {/* Domain → URL → Docs tree */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+            <FolderOpen className="w-5 h-5 text-indigo-600"/>URLs by Domain
           </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{totalDocs} files</span>
-            {totalDocs > 0 && (
-              <button
-                onClick={handleDownloadZip}
-                disabled={isZipping}
-                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {isZipping ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Zipping...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3.5 h-3.5" />
-                    Download All ZIP
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+          {totalDocs>0&&(
+            <button onClick={handleZip} disabled={isZipping} className="btn-primary text-xs gap-1.5 disabled:opacity-60">
+              {isZipping?<><Loader2 className="w-3.5 h-3.5 animate-spin"/>Zipping…</>:<><Download className="w-3.5 h-3.5"/>Download All ZIP</>}
+            </button>
+          )}
         </div>
+        {domains.length===0
+          ? <div className="text-center py-12 text-slate-400 text-sm border border-slate-200 rounded-2xl bg-white">No URL items.</div>
+          : domains.map(d=>(
+            <DomainSection key={d} domain={d} items={byDomain[d]} docsByItem={docsByItem} onRetry={handleRetry} retryingId={retryingId}/>
+          ))
+        }
+      </section>
 
-        {(!documents || totalDocs === 0) ? (
-          <div className="px-6 py-12 text-center text-slate-400 text-sm font-semibold">
-            {job.status === "running" || job.status === "pending"
-              ? "Scraping in progress — documents will appear here as they are downloaded."
-              : "No documents were downloaded for this job."}
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto custom-scrollbar">
-            {documents.map((doc: any) => (
-              <div key={doc.id} className="flex items-center justify-between px-6 py-4 hover:bg-slate-50/30 transition-colors gap-4">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <span className={`text-xl p-2.5 rounded-xl border flex-shrink-0 ${fileBadgeColor(doc.filename)}`}>
-                    {fileIcon(doc.filename)}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-slate-800 truncate" title={doc.filename}>{doc.filename}</p>
-                      {(() => {
-                        const ext = doc.filename.split('.').pop()?.toLowerCase() ?? "";
-                        const isDoc = ["pdf", "zip", "docx", "xlsx", "doc", "xls", "ppt", "pptx", "rar", "7z"].includes(ext);
-                        return isDoc ? (
-                          <span title="Verified Document Archive" className="flex items-center">
-                            <BadgeCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                          </span>
-                        ) : (
-                          <span title="Unknown Extension" className="flex items-center">
-                            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <p className="text-xs font-bold text-slate-400 mt-0.5">{formatBytes(doc.size_bytes)} · version {doc.version}</p>
-                  </div>
-                </div>
-                {doc.download_url ? (
-                  <a
-                    href={api(doc.download_url)}
-                    download={doc.filename}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95 ml-4 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 text-slate-500" />
-                    Download
-                  </a>
-                ) : (
-                  <span className="text-slate-400 text-xs font-bold ml-4">Unavailable</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Per-URL Breakdown Table ── */}
-      <div className="bg-white border border-slate-250/80 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <h2 className="font-extrabold text-slate-800">Cascade Run History Breakdown</h2>
+      {/* Compact run-history table */}
+      <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+          <h2 className="font-bold text-slate-800 text-sm">Cascade Run History</h2>
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[400px] custom-scrollbar">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-500 border-b border-slate-100 sticky top-0 z-10 shadow-sm">
+        <div className="overflow-x-auto max-h-72 custom-scrollbar">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
               <tr>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">URL</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Resolved Strategy</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Iterations</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Runtime</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Documents</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Status</th>
+                {["URL","Strategy","Iters","Time","Docs","Status"].map(h=>(
+                  <th key={h} className={`px-5 py-3 font-semibold text-slate-500 uppercase tracking-wide ${h==="Status"?"text-right":h==="URL"?"text-left":"text-center"}`}>{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-150">
-              {job.items?.map((item: any) => (
-                <tr key={item.id} className="hover:bg-slate-50/30 transition-colors">
-                  <td className="px-6 py-4 max-w-xs truncate font-mono text-xs font-bold text-slate-700" title={item.url}>
-                    {item.url}
-                  </td>
-                  <td className="px-6 py-4"><StrategyBadge strategy={item.strategy} /></td>
-                  <td className="px-6 py-4 text-center text-slate-655 font-bold">{item.iterations}</td>
-                  <td className="px-6 py-4 text-center font-semibold text-slate-600">{item.runtime_seconds?.toFixed(1)}s</td>
-                  <td className="px-6 py-4 text-center font-extrabold text-slate-800">{item.document_count}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="inline-flex justify-end">
-                      <StatusBadge status={item.status} />
-                    </div>
-                  </td>
+            <tbody className="divide-y divide-slate-100">
+              {job.items?.map((item:any)=>(
+                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-5 py-3 font-mono text-[10px] text-slate-600 max-w-[24ch] truncate" title={item.url}>{item.url}</td>
+                  <td className="px-5 py-3"><StrategyPill s={item.strategy} xs/></td>
+                  <td className="px-5 py-3 text-center font-semibold text-slate-600">{item.iterations}</td>
+                  <td className="px-5 py-3 text-center font-mono text-slate-500">{item.runtime_seconds?.toFixed(1)}s</td>
+                  <td className="px-5 py-3 text-center font-bold text-slate-700">{item.document_count}</td>
+                  <td className="px-5 py-3 text-right"><StatusBadge status={item.status}/></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

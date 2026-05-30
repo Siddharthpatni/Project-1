@@ -21,14 +21,21 @@ class StrategyOutcome:
     cua_discovery_report: str | None = None
 
 
-# Order encoded once so the pipeline driver and the fallback policy stay
-# in sync. DETERMINISTIC slots between EXISTING and LLM_GENERATED: it's
-# cheaper than the LLM and produces fewer false positives than a stale
-# registry entry.
+# Canonical cascade order — pipeline.py iterates this directly and
+# next_strategy() uses it for the break-early check.
+#
+#   MANUAL      → Phase 0 reference scraper (best-effort legacy)
+#   EXISTING    → Registry lookup: cached scraper from a prior successful run
+#   DETERMINISTIC → URL-template shortcut for known portal families (DTVP etc.)
+#   LLM_GENERATED → Generate + sandbox + feedback loop
+#   CUA         → Last-resort visual agent
+#
+# DETERMINISTIC sits AFTER EXISTING because a working cached scraper is
+# preferred: it handles URL variations that the deterministic template may miss.
 CASCADE_ORDER: list[Strategy] = [
-    Strategy.DETERMINISTIC,
     Strategy.MANUAL,
     Strategy.EXISTING,
+    Strategy.DETERMINISTIC,
     Strategy.LLM_GENERATED,
     Strategy.CUA,
 ]

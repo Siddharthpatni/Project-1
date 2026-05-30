@@ -13,24 +13,100 @@ html, body {
   color: var(--fg);
 }
 
+/* ── Core component tokens ────────────────────────────────────────── */
+
 .card {
   @apply bg-white border border-slate-200 rounded-xl shadow-sm;
 }
 
 .btn {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors;
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-[0.97] cursor-pointer;
 }
 .btn-primary {
-  @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  @apply btn bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-md;
 }
 .btn-secondary {
-  @apply btn bg-white border border-slate-300 text-slate-700 hover:bg-slate-50;
+  @apply btn bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300;
 }
+.btn-danger {
+  @apply btn bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300;
+}
+
+/* Status badges */
 .badge {
-  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
 }
-.badge-success { @apply bg-emerald-100 text-emerald-700; }
-.badge-failed  { @apply bg-rose-100    text-rose-700; }
-.badge-running { @apply bg-amber-100   text-amber-700; }
-.badge-pending { @apply bg-slate-100   text-slate-600; }
-.badge-partial { @apply bg-sky-100     text-sky-700; }
+.badge-success { @apply bg-emerald-100 text-emerald-700 border border-emerald-200; }
+.badge-failed  { @apply bg-rose-100    text-rose-700    border border-rose-200; }
+.badge-running { @apply bg-amber-100   text-amber-700   border border-amber-200; }
+.badge-pending { @apply bg-slate-100   text-slate-600   border border-slate-200; }
+.badge-partial { @apply bg-sky-100     text-sky-700     border border-sky-200; }
+
+/* ── Skeleton loader ─────────────────────────────────────────────── */
+
+.skeleton {
+  @apply bg-slate-200 rounded animate-pulse;
+}
+.skeleton-text {
+  @apply skeleton h-4 w-full;
+}
+.skeleton-heading {
+  @apply skeleton h-6 w-3/5;
+}
+
+/* ── Hide scrollbar (but still scrollable) ───────────────────────── */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Custom scrollbar (Webkit) ───────────────────────────────────── */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 rounded-full;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-300;
+}
+
+/* ── Code block ──────────────────────────────────────────────────── */
+
+.code-block {
+  @apply font-mono text-xs leading-relaxed bg-slate-950 text-slate-100 p-4 rounded-xl overflow-x-auto;
+}
+
+/* ── Input & select base ─────────────────────────────────────────── */
+
+.form-input {
+  @apply w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none
+         focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500
+         transition-all shadow-sm placeholder:text-slate-400;
+}
+.form-select {
+  @apply form-input cursor-pointer bg-white;
+}
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateY(8px); }
+}
+
+.toast-enter { animation: toast-in  0.22s ease-out forwards; }
+.toast-exit  { animation: toast-out 0.18s ease-in  forwards; }

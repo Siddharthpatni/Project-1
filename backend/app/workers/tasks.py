@@ -99,6 +99,118 @@ async def _process_job_async(db, job, force_model: str | None, force_strategy):
 
 
 # --------------------------------------------------------------------
+# Smart domain-aware batch — 1 URL/domain, auto-fallback on failure
+# --------------------------------------------------------------------
+
+@celery_app.task(name="app.workers.tasks.smart_domain_batch_task", bind=True)
+def smart_domain_batch_task(
+    self,
+    primary_job_id: str,
+    backup_map: dict[str, str],        # domain → backup_url
+    submitted_by: str | None = None,
+    force_strategy: str | None = None,
+    force_model: str | None = None,
+) -> dict:
+    """
+    1. Run the primary job (one URL per domain) using the normal cascade.
+    2. After it finishes, identify domains whose URL failed.
+    3. If a backup URL exists for that domain, create a NEW job and
+       run it — so the scraper registry learned from attempt 1 is reused.
+
+    Max 2 URLs tried per domain total.
+    """
+    from app.utils.audit import INFO, WARNING, write_audit
+    from urllib.parse import urlparse
+
+    log.info("smart_domain_batch.start", primary_job_id=primary_job_id)
+
+    # ─── Step 1: run the primary job ────────────────────────────────
+    result = process_job_task(primary_job_id, force_strategy=force_strategy, force_model=force_model)
+    log.info("smart_domain_batch.primary_done", result=result)
+
+    # ─── Step 2: find failed domains that have backup URLs ──────────
+    db = SessionLocal()
+    try:
+        primary_job = db.query(Job).filter(Job.id == primary_job_id).first()
+        if not primary_job:
+            return {"error": "primary job not found"}
+
+        failed_domains: dict[str, str] = {}   # domain → backup_url
+        for item in primary_job.items:
+            if item.status != JobStatus.SUCCESS.value:
+                domain = urlparse(item.url).netloc
+                backup = backup_map.get(domain)
+                if backup:
+                    failed_domains[domain] = backup
+                    write_audit(
+                        "smart_domain_batch.fallback_queued",
+                        f"Primary failed for {domain} — queuing backup URL",
+                        level=WARNING,
+                        job_id=primary_job_id,
+                        domain=domain,
+                        url=backup,
+                    )
+
+        if not failed_domains:
+            write_audit(
+                "smart_domain_batch.complete",
+                f"All {primary_job.total_urls} primary URLs succeeded — no fallback needed",
+                level=INFO,
+                job_id=primary_job_id,
+            )
+            return {
+                "primary_job_id": primary_job_id,
+                "fallback_job_id": None,
+                "fallback_domains": 0,
+                "status": "all_primary_succeeded",
+            }
+
+        # ─── Step 3: create fallback job ─────────────────────────────
+        fallback_urls = list(failed_domains.values())
+        fallback_job = Job(
+            submitted_by=f"smart-domain-fallback:{submitted_by or 'auto'}",
+            total_urls=len(fallback_urls),
+            status=JobStatus.PENDING.value,
+        )
+        db.add(fallback_job)
+        db.flush()
+
+        for url in fallback_urls:
+            db.add(JobItem(
+                job_id=fallback_job.id,
+                url=url,
+                domain=urlparse(url).netloc,
+                status=JobStatus.PENDING.value,
+            ))
+
+        db.commit()
+        db.refresh(fallback_job)
+
+        write_audit(
+            "smart_domain_batch.fallback_job_created",
+            f"Fallback job {fallback_job.id} created for {len(failed_domains)} domain(s)",
+            level=INFO,
+            job_id=fallback_job.id,
+            metadata={"domains": list(failed_domains.keys()), "primary_job": primary_job_id},
+        )
+
+    finally:
+        db.close()
+
+    # Run fallback job synchronously in this worker
+    fallback_result = process_job_task(fallback_job.id, force_strategy=force_strategy, force_model=force_model)
+    log.info("smart_domain_batch.fallback_done", result=fallback_result)
+
+    return {
+        "primary_job_id": primary_job_id,
+        "fallback_job_id": fallback_job.id,
+        "fallback_domains": len(failed_domains),
+        "failed_domains": list(failed_domains.keys()),
+        "status": "complete",
+    }
+
+
+# --------------------------------------------------------------------
 # Phase 1 evaluation harness
 # --------------------------------------------------------------------
 
@@ -205,6 +317,90 @@ def run_cua_task(agent_name: str, url: str, max_steps: int | None = None, model_
         "downloaded": len(outcome.downloaded_files),
         "steps": outcome.steps,
     }
+
+
+# --------------------------------------------------------------------
+# Crash-recovery: rescue zombie jobs left in running/pending state
+# --------------------------------------------------------------------
+
+@celery_app.task(name="app.workers.tasks.crash_recovery_task")
+def crash_recovery_task() -> dict:
+    """
+    Runs every 10 minutes via Celery beat.
+
+    Detects jobs that have been stuck in 'running' for more than
+    30 minutes (indicating the worker crashed mid-execution) and
+    automatically re-enqueues them so they are retried without
+    operator intervention.
+
+    Items that individually failed are left alone — only whole jobs
+    stuck in 'running' are rescued.
+    """
+    import datetime
+    from app.models import JobItem
+    from app.utils.audit import CRITICAL, WARNING, write_audit
+
+    db = SessionLocal()
+    rescued = 0
+    aborted = 0
+    threshold = datetime.datetime.utcnow() - datetime.timedelta(minutes=30)
+    log.info("crash_recovery.tick")
+
+    try:
+        stuck_jobs = (
+            db.query(Job)
+            .filter(Job.status == JobStatus.RUNNING.value)
+            .filter(Job.updated_at < threshold)
+            .all()
+        )
+
+        for job in stuck_jobs:
+            log.warning("crash_recovery.stuck_job_detected", job_id=job.id)
+            write_audit(
+                event_type="crash_recovery.rescued",
+                message=f"Job {job.id} was stuck in 'running' for >30 min — re-enqueuing",
+                level=WARNING,
+                job_id=job.id,
+                metadata={"stuck_since": str(job.updated_at)},
+            )
+            # Reset the job and all pending/running items
+            job.status = JobStatus.PENDING.value
+            for item in job.items:
+                if item.status in (JobStatus.RUNNING.value, JobStatus.PENDING.value):
+                    item.status = JobStatus.PENDING.value
+                    item.error_message = "[CRASH-RECOVERY] Auto-rescued from stuck state"
+            db.commit()
+            process_job_task.delay(job.id)
+            rescued += 1
+
+        # Also mark jobs that have been PENDING for >2 hours without a worker
+        # picking them up — this indicates queue overflow or worker crash.
+        lost_threshold = datetime.datetime.utcnow() - datetime.timedelta(hours=2)
+        lost_jobs = (
+            db.query(Job)
+            .filter(Job.status == JobStatus.PENDING.value)
+            .filter(Job.updated_at < lost_threshold)
+            .all()
+        )
+        for job in lost_jobs:
+            log.error("crash_recovery.lost_job_aborted", job_id=job.id)
+            write_audit(
+                event_type="crash_recovery.lost_job",
+                message=f"Job {job.id} was pending for >2h with no worker — marked failed",
+                level=CRITICAL,
+                job_id=job.id,
+            )
+            job.status = JobStatus.FAILED.value
+            for item in job.items:
+                if item.status == JobStatus.PENDING.value:
+                    item.status = JobStatus.FAILED.value
+                    item.error_message = "[CRASH-RECOVERY] No worker picked up job in 2h"
+            db.commit()
+            aborted += 1
+
+        return {"rescued": rescued, "aborted": aborted}
+    finally:
+        db.close()
 
 
 # --------------------------------------------------------------------

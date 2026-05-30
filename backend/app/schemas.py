@@ -71,6 +71,7 @@ class JobSummary(BaseModel):
 class DocumentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    job_item_id: str | None = None   # added so frontend can group docs per URL
     filename: str
     mime_type: str
     size_bytes: int
@@ -203,3 +204,79 @@ class AgentRunRequest(BaseModel):
     url: HttpUrl
     max_steps: int | None = None
     model_name: str | None = None
+
+
+# -------- Smart Domain Batch --------
+
+class SmartDomainBatchRequest(BaseModel):
+    """
+    One primary URL per domain, with an optional backup URL that is
+    automatically tried if the primary fails.
+
+    domain_urls: {domain: [primary_url, optional_backup_url]}
+    submitted_by: label shown in the job list
+    force_strategy: pin the cascade to one strategy (for debugging)
+    force_model: pin the LLM model (for debugging)
+    """
+    domain_urls: dict[str, list[str]] = Field(
+        ...,
+        description="Map of domain → [primary_url, optional_backup_url]",
+    )
+    submitted_by: str | None = Field(default=None)
+    force_strategy: str | None = Field(default=None)
+    force_model: str | None = Field(default=None)
+
+
+class SmartDomainBatchResult(BaseModel):
+    primary_job_id: str
+    fallback_job_id: str | None = None
+    domains_total: int
+    domains_with_backup: int
+    status: str
+
+
+# -------- Audit Log --------
+
+class AuditLogRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    created_at: datetime
+    level: str
+    event_type: str
+    job_id: str | None = None
+    item_id: str | None = None
+    domain: str | None = None
+    url: str | None = None
+    strategy: str | None = None
+    message: str
+    extra: dict[str, Any] = {}
+
+    # alias so the frontend always sees "metadata" regardless of the column rename
+    @property
+    def metadata(self) -> dict[str, Any]:
+        return self.extra
+
+
+# -------- Test Runner --------
+
+class TestRunRequest(BaseModel):
+    suite: str = "all"   # "all" | "phase1" | "phase2" | "phase3" | "platform"
+
+
+class TestCaseResult(BaseModel):
+    name: str
+    status: str          # "passed" | "failed" | "error" | "skipped"
+    duration_ms: float
+    error: str | None = None
+
+
+class TestRunResult(BaseModel):
+    suite: str
+    total: int
+    passed: int
+    failed: int
+    errors: int
+    skipped: int
+    duration_seconds: float
+    cases: list[TestCaseResult]
+    raw_output: str

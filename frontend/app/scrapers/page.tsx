@@ -39,7 +39,7 @@ export default function ScrapersPage() {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <Search className="w-8 h-8 text-emerald-600 animate-pulse" />
+            <Search className="w-8 h-8 text-emerald-600" />
             Autonomous Scraper Registry
           </h1>
           <p className="text-slate-500 mt-1.5 text-sm sm:text-base font-medium">
@@ -51,7 +51,7 @@ export default function ScrapersPage() {
       {/* Route Learning Card */}
       <div className="bg-white border-2 border-emerald-100 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-br from-emerald-50/20 via-white to-white space-y-6">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-emerald-100/70 border border-emerald-250 rounded-2xl">
+          <div className="p-3 bg-emerald-100/70 border border-emerald-200 rounded-2xl">
             <Compass className="w-6 h-6 text-emerald-700 animate-spin" style={{ animationDuration: '6s' }} />
           </div>
           <div>
@@ -70,7 +70,7 @@ export default function ScrapersPage() {
                 value={learnUrl}
                 onChange={(e) => setLearnUrl(e.target.value)}
                 placeholder="https://www.evergabe-online.de/tenderdetails.html?id=..."
-                className="w-full pl-4 pr-4 py-3 border border-slate-250 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm"
+                className="w-full pl-4 pr-4 py-3 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all shadow-sm"
                 disabled={learning}
               />
             </div>
@@ -78,14 +78,14 @@ export default function ScrapersPage() {
               <select
                 value={learnModel}
                 onChange={(e) => setLearnModel(e.target.value)}
-                className="px-4 py-3 border border-slate-250 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm bg-white cursor-pointer min-w-[200px]"
+                className="px-4 py-3 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm bg-white cursor-pointer min-w-[200px]"
                 disabled={learning}
               >
                 <option value="">Default AI Learner</option>
                 <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
                 <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
                 <option value="openai/gpt-4o">GPT-4o</option>
-                <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
               </select>
 
               <button
@@ -115,7 +115,7 @@ export default function ScrapersPage() {
 
         {/* Result */}
         {learnResult && (
-          <div className="p-6 bg-slate-50/70 border border-slate-250 rounded-2xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="p-6 bg-slate-50/70 border border-slate-200 rounded-2xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex flex-wrap items-center gap-2 text-slate-800 font-extrabold">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               Scraper Generated for <span className="font-mono text-sm px-2 py-0.5 bg-white rounded border text-indigo-700">{learnResult.domain}</span>
@@ -209,9 +209,9 @@ export default function ScrapersPage() {
       </div>
 
       {/* Existing Scrapers Table */}
-      <div className="bg-white border border-slate-250/80 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5 bg-slate-50/50">
-          <Layers className="w-5 h-5 text-slate-650" />
+          <Layers className="w-5 h-5 text-slate-600" />
           <h2 className="font-bold text-slate-800">Generated Procurement Scrapers</h2>
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[600px] custom-scrollbar">
@@ -257,7 +257,7 @@ export default function ScrapersPage() {
                       </td>
                       <td className="px-6 py-4 text-center">
                         {s.route_used
-                          ? <span title="Route-guided" className="inline-flex items-center justify-center p-1 bg-emerald-50 border border-emerald-250 text-emerald-700 text-xs font-extrabold rounded-full">✓</span>
+                          ? <span title="Route-guided" className="inline-flex items-center justify-center p-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold rounded-full">✓</span>
                           : <span className="text-slate-300 font-medium">—</span>}
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -265,7 +265,7 @@ export default function ScrapersPage() {
                           {s.success_count} runs ({rate}%)
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center font-bold text-rose-650">{s.failure_count}</td>
+                      <td className="px-6 py-4 text-center font-bold text-rose-600">{s.failure_count}</td>
                       <td className="px-6 py-4 text-center font-bold text-slate-600">{s.avg_runtime?.toFixed(1)}s</td>
                       <td className="px-6 py-4 text-right text-slate-400 text-xs font-medium">
                         {new Date(s.created_at).toLocaleDateString()}
@@ -274,7 +274,7 @@ export default function ScrapersPage() {
                     {s.code && (
                       <tr className="bg-slate-50/30 border-b border-slate-100">
                         <td colSpan={8} className="px-6 py-3">
-                          <details className="text-xs group border border-slate-150 rounded-xl bg-white p-3 shadow-inner">
+                          <details className="text-xs group border border-slate-100 rounded-xl bg-white p-3 shadow-inner">
                             <summary className="cursor-pointer font-bold text-indigo-600 hover:text-indigo-700 select-none flex items-center gap-1 active:scale-95 transition-transform">
                               <span className="group-open:hidden">▶</span><span className="hidden group-open:inline">▼</span> View Template Python Code
                             </summary>
