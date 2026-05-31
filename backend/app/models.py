@@ -67,9 +67,13 @@ class JobItem(Base):
     domain:   Mapped[str]       = mapped_column(String, index=True)
     status:   Mapped[str]       = mapped_column(String, default=JobStatus.PENDING.value)
     strategy: Mapped[str]       = mapped_column(String, default=Strategy.NONE.value)
-    iterations: Mapped[int] = mapped_column(Integer, default=0)
+    iterations: Mapped[int]     = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    runtime_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    runtime_seconds: Mapped[float]    = mapped_column(Float, default=0.0)
+
+    # Full cascade attempt chain — every strategy tried, its outcome, error, and timing.
+    # Stored as JSON list of {strategy, success, downloaded, error, duration_s, ts}
+    attempts_detail: Mapped[list] = mapped_column(JSON, default=list)
 
     job: Mapped[Job] = relationship(back_populates="items")
     documents: Mapped[list["Document"]] = relationship(back_populates="job_item", cascade="all, delete-orphan")

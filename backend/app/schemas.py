@@ -40,6 +40,7 @@ class JobItemRead(BaseModel):
     runtime_seconds: float
     error_message: str | None = None
     document_count: int = 0
+    attempts_detail: list[dict[str, Any]] = []   # full per-strategy attempt trace
 
 
 class JobRead(BaseModel):

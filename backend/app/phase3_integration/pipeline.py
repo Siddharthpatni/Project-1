@@ -46,6 +46,27 @@ from app.core.security import is_url_allowed, classify_risk, detect_prompt_injec
 from app.core.storage import ObjectStorage
 from app.models import Document, JobItem, JobStatus, Strategy
 from app.utils.audit import CRITICAL, ERROR, INFO, WARNING, write_audit
+
+# Maps security.classify_error categories → plain-English reason shown in UI
+_ERROR_REASON_MAP: dict[str, str] = {
+    "timeout":          "Request timed out — portal too slow or overloaded",
+    "network":          "Network error — connection refused or reset by portal",
+    "dns":              "DNS resolution failed — domain does not exist",
+    "ssl":              "SSL/TLS error — certificate problem on portal",
+    "auth":             "Access denied (HTTP 401/403) — portal requires login",
+    "not_found":        "Page not found (HTTP 404) — URL may be expired",
+    "rate_limit":       "Rate limited (HTTP 429) — too many requests to portal",
+    "server_error":     "Portal server error (5xx) — backend issue on tender site",
+    "code_validation":  "Generated scraper failed validation — unsafe or wrong signature",
+    "sandbox":          "Sandbox resource limit exceeded — scraper used too much memory/CPU",
+    "prompt_injection": "Prompt injection pattern detected in URL or page content",
+    "no_documents":     "No downloadable documents found on the page",
+    "storage":          "File storage error — could not save to S3/MinIO",
+    "blocked_url":      "URL blocked — private network or disallowed scheme (SSRF protection)",
+    "no_strategy":      "No matching strategy — deterministic template does not apply",
+    "loop_exhausted":   "LLM feedback loop exhausted — all iterations failed to produce valid scraper",
+    "unknown":          "Unexpected error — check error_raw for details",
+}
 from app.phase0_manual.v1_reference import scrape as manual_scrape
 from app.phase1_llm_scraper.executor import (
     cleanup_output_dir,
@@ -198,11 +219,17 @@ async def process_url(
         Strategy.CUA,
     ]
 
+    from datetime import datetime as _dt
+    from app.core.security import classify_error as _classify_error
+
     last_outcome: StrategyOutcome | None = None
+    attempt_chain: list[dict] = []   # rich per-attempt record persisted to DB
+
     for strategy in strategies:
         if strategy is Strategy.CUA and not settings.enable_fallback_cua:
             continue
 
+        strategy_t0 = time.time()
         log.info("phase3.pipeline.attempt", url=url, strategy=strategy.value)
         write_audit("strategy.attempt", f"Trying {strategy.value}", level=INFO,
                     job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
@@ -210,7 +237,24 @@ async def process_url(
         outcome = await _run_strategy(
             db, strategy, url, domain, llm, scratch, result
         )
+        strategy_elapsed = round(time.time() - strategy_t0, 2)
         last_outcome = outcome
+
+        # Classify error into a human-readable reason
+        error_category = _classify_error(outcome.error) if outcome.error else None
+        error_reason   = _ERROR_REASON_MAP.get(error_category, outcome.error or "")
+
+        # Build rich attempt record
+        attempt_record = {
+            "strategy":       strategy.value,
+            "success":        outcome.success,
+            "downloaded":     outcome.downloaded,
+            "duration_s":     strategy_elapsed,
+            "timestamp":      _dt.utcnow().isoformat(),
+            "error_raw":      (outcome.error or "")[:500],
+            "error_category": error_category,
+            "error_reason":   error_reason,
+        }
 
         # --- Self-Healing and High-Risk Management Layer ---
         if not outcome.success and outcome.error:
@@ -219,32 +263,31 @@ async def process_url(
                 log.error("phase3.pipeline.high_risk_detected", strategy=strategy.value, error=outcome.error)
                 outcome.error = f"[CRITICAL] {outcome.error}"
                 result.error = outcome.error
+                attempt_record["error_reason"] = "Security block — pipeline aborted"
                 write_audit("security.high_risk_abort", outcome.error[:500], level=CRITICAL,
-                            job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
-                result.attempts.append({
-                    "strategy": strategy.value,
-                    "success": False,
-                    "downloaded": 0,
-                    "error": outcome.error,
-                })
+                            job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value,
+                            metadata={"error_category": error_category})
+                attempt_chain.append(attempt_record)
+                result.attempts.append(attempt_record)
                 break
 
             elif risk == "moderate":
                 log.info("phase3.pipeline.self_healing_triggered", strategy=strategy.value, error=outcome.error)
-                write_audit("self_heal.triggered", f"Moderate risk on {strategy.value} — retrying in 2s", level=WARNING,
-                            job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value,
-                            metadata={"error": (outcome.error or "")[:300]})
+                write_audit("self_heal.triggered",
+                            f"Moderate risk on {strategy.value} — retrying in 2s. Reason: {error_reason}",
+                            level=WARNING, job_id=item.job_id, item_id=item.id,
+                            domain=domain, url=url, strategy=strategy.value,
+                            metadata={"error_category": error_category, "error_raw": (outcome.error or "")[:300]})
                 await asyncio.sleep(2.0)
                 try:
-                    retry_outcome = await _run_strategy(
-                        db, strategy, url, domain, llm, scratch, result
-                    )
+                    retry_outcome = await _run_strategy(db, strategy, url, domain, llm, scratch, result)
                     if retry_outcome.success:
                         log.info("phase3.pipeline.self_healing_success", strategy=strategy.value)
                         write_audit("self_heal.success", f"Auto-recovered {strategy.value}", level=INFO,
                                     job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
                         outcome = retry_outcome
                         last_outcome = outcome
+                        attempt_record["healed"] = True
                         item.error_message = f"[SELF-HEALED] Automatically resolved: {retry_outcome.error}"
                     else:
                         log.warning("phase3.pipeline.self_healing_failed", strategy=strategy.value)
@@ -253,24 +296,34 @@ async def process_url(
                 except Exception as retry_err:
                     log.warning("phase3.pipeline.self_healing_exception", strategy=strategy.value, err=str(retry_err))
 
-        result.attempts.append({
-            "strategy": strategy.value,
-            "success": outcome.success,
-            "downloaded": outcome.downloaded,
-            "error": outcome.error,
-        })
+        attempt_chain.append(attempt_record)
+        result.attempts.append(attempt_record)
 
         if outcome.success:
             result.success = True
             result.strategy_used = outcome.strategy
-            write_audit("pipeline.success", f"Strategy {outcome.strategy.value} downloaded {outcome.downloaded} doc(s)", level=INFO,
-                        job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=outcome.strategy.value,
-                        metadata={"downloaded": outcome.downloaded})
+            write_audit(
+                "pipeline.success",
+                f"Strategy {outcome.strategy.value} succeeded — {outcome.downloaded} doc(s) downloaded in {strategy_elapsed}s",
+                level=INFO, job_id=item.job_id, item_id=item.id, domain=domain,
+                url=url, strategy=outcome.strategy.value,
+                metadata={"downloaded": outcome.downloaded, "duration_s": strategy_elapsed},
+            )
             break
 
-        write_audit("strategy.failed", outcome.error or "no documents", level=WARNING,
-                    job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value,
-                    metadata={"error": (outcome.error or "")[:500]})
+        # Log detailed failure reason for each strategy
+        write_audit(
+            "strategy.failed",
+            f"{strategy.value} failed — {error_reason or outcome.error or 'no documents'} ({strategy_elapsed}s)",
+            level=WARNING, job_id=item.job_id, item_id=item.id,
+            domain=domain, url=url, strategy=strategy.value,
+            metadata={
+                "error_raw":      (outcome.error or "")[:500],
+                "error_category": error_category,
+                "error_reason":   error_reason,
+                "duration_s":     strategy_elapsed,
+            },
+        )
 
         if next_strategy(strategy, outcome, settings.enable_fallback_cua) is None:
             break
@@ -298,20 +351,27 @@ async def process_url(
                     metadata={"attempts": len(result.attempts), "runtime_s": round(result.runtime_seconds, 2)})
 
     # Update item record
-    item.status = JobStatus.SUCCESS.value if result.success else JobStatus.FAILED.value
-    item.strategy = result.strategy_used.value
-    item.iterations = result.iterations
-    item.runtime_seconds = result.runtime_seconds
-    
-    # Store clean self-healed indicator or the failed error
-    if result.success and item.error_message and item.error_message.startswith("[SELF-HEALED]"):
-        pass # keep our self-healed message!
+    item.status           = JobStatus.SUCCESS.value if result.success else JobStatus.FAILED.value
+    item.strategy         = result.strategy_used.value
+    item.iterations       = result.iterations
+    item.runtime_seconds  = result.runtime_seconds
+    item.attempts_detail  = attempt_chain   # persist full strategy cascade log
+
+    # Build a clear, human-readable error summary when failed
+    if not result.success:
+        failed_summaries = [
+            f"[{a['strategy'].replace('_', ' ').upper()}] {a.get('error_reason') or a.get('error_raw') or 'failed'}"
+            for a in attempt_chain if not a.get("success")
+        ]
+        item.error_message = " → ".join(failed_summaries) or result.error
+    elif item.error_message and item.error_message.startswith("[SELF-HEALED]"):
+        pass  # keep self-healed message
     elif last_outcome and last_outcome.cua_discovery_report:
-        prefix = "[CUA-DISCOVERY]" if result.success else f"[CUA-DISCOVERY-FAILED] Scraper failed: {result.error}\n\n"
+        prefix = "[CUA-DISCOVERY]" if result.success else f"[CUA-DISCOVERY-FAILED] {result.error}\n\n"
         item.error_message = f"{prefix} {last_outcome.cua_discovery_report}"
     else:
-        item.error_message = result.error if not result.success else None
-        
+        item.error_message = None
+
     db.commit()
 
     # Clean up scratch dirs once everything is in S3.

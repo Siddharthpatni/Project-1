@@ -427,6 +427,80 @@ def retry_job_item(
     return {"status": "queued", "item_id": item_id, "job_id": job_id}
 
 
+@router.get("/{job_id}/error-report")
+def download_error_report(job_id: str, fmt: str = "json", db: Session = Depends(get_db)):
+    """
+    Download a comprehensive error report for a job.
+
+    ?fmt=json  (default) — structured JSON with full attempt chain per URL
+    ?fmt=csv            — flat CSV for import into Excel / Sheets
+    """
+    import csv, io as _io
+    from app.core.security import classify_error
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "job not found")
+
+    rows = []
+    for item in job.items:
+        # Build a summary of all strategies attempted
+        attempts = item.attempts_detail or []
+        for attempt in attempts:
+            rows.append({
+                "job_id":         job_id,
+                "item_id":        item.id,
+                "url":            item.url,
+                "domain":         item.domain,
+                "item_status":    item.status,
+                "strategy":       attempt.get("strategy", ""),
+                "attempt_success": attempt.get("success", False),
+                "documents":      attempt.get("downloaded", 0),
+                "duration_s":     attempt.get("duration_s", 0),
+                "timestamp":      attempt.get("timestamp", ""),
+                "error_category": attempt.get("error_category", ""),
+                "error_reason":   attempt.get("error_reason", ""),
+                "error_raw":      attempt.get("error_raw", ""),
+            })
+        # If no attempts were recorded (pre-cascade failure), add one row
+        if not attempts:
+            err_cat = classify_error(item.error_message)
+            rows.append({
+                "job_id":         job_id,
+                "item_id":        item.id,
+                "url":            item.url,
+                "domain":         item.domain,
+                "item_status":    item.status,
+                "strategy":       item.strategy,
+                "attempt_success": item.status == "success",
+                "documents":      len(item.documents),
+                "duration_s":     round(item.runtime_seconds, 2),
+                "timestamp":      "",
+                "error_category": err_cat,
+                "error_reason":   item.error_message or "",
+                "error_raw":      item.error_message or "",
+            })
+
+    if fmt == "csv":
+        buf = _io.StringIO()
+        if rows:
+            writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+        return Response(
+            content=buf.getvalue().encode("utf-8"),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="error-report-{job_id[:8]}.csv"'},
+        )
+
+    return {
+        "job_id": job_id,
+        "total_attempts": len(rows),
+        "failed_attempts": sum(1 for r in rows if not r["attempt_success"]),
+        "rows": rows,
+    }
+
+
 @router.post("/{job_id}/stop", status_code=200)
 def stop_job(job_id: str, db: Session = Depends(get_db)):
     """
