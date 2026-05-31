@@ -8,6 +8,7 @@ step budget is exhausted.
 """
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from pathlib import Path
@@ -18,6 +19,20 @@ from browser_use.llm.openrouter.chat import ChatOpenRouter
 
 from app.config import settings
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
+
+# Global semaphore: limit simultaneous Chromium browsers across the process.
+# Without this, 100 concurrent jobs each launching CUA will exhaust RAM/CPU
+# and cause BrowserType.launch timeouts (the actual observed failure mode).
+# Max 2 concurrent browsers per worker process; CUA worker has concurrency=2
+# so this effectively limits to 4 system-wide per worker-cua container.
+_BROWSER_SEM: asyncio.Semaphore | None = None
+
+
+def _get_browser_sem() -> asyncio.Semaphore:
+    global _BROWSER_SEM
+    if _BROWSER_SEM is None:
+        _BROWSER_SEM = asyncio.Semaphore(2)
+    return _BROWSER_SEM
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -54,8 +69,13 @@ class PlaywrightCUA(BaseAgent):
         self.llm_model = model_name or settings.llm_model_fallback or "openai/gpt-4o-mini"
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
+        # Acquire global browser semaphore BEFORE launching Chromium.
+        # Prevents resource exhaustion when many jobs run CUA simultaneously.
+        async with _get_browser_sem():
+            return await self._run_with_browser(url, max_steps)
+
+    async def _run_with_browser(self, url: str, max_steps: int) -> AgentRunOutcome:
         t0 = time.time()
-        # Isolate downloads per run so concurrent jobs never contaminate each other.
         run_id = uuid.uuid4().hex[:8]
         downloads_path = Path("/tmp") / f"vergabepilot-cua-{run_id}"
         downloads_path.mkdir(parents=True, exist_ok=True)

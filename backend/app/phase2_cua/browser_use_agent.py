@@ -6,6 +6,7 @@ name so the evaluation harness can compare them independently.
 """
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from pathlib import Path
@@ -16,6 +17,7 @@ from browser_use.llm.openrouter.chat import ChatOpenRouter
 
 from app.config import settings
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
+from app.phase2_cua.browser_agent import _get_browser_sem   # shared semaphore
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -47,6 +49,10 @@ class BrowserUseCUA(BaseAgent):
         self.llm_model = model_name or settings.llm_model_fallback or "openai/gpt-4o-mini"
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
+        async with _get_browser_sem():
+            return await self._run_with_browser(url, max_steps)
+
+    async def _run_with_browser(self, url: str, max_steps: int) -> AgentRunOutcome:
         t0 = time.time()
         run_id = uuid.uuid4().hex[:8]
         downloads_path = Path("/tmp") / f"vergabepilot-bu-{run_id}"

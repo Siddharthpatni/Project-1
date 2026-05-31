@@ -11,28 +11,46 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
-# Blatant injection patterns. Not a full defense — just a tripwire.
+# Injection detection patterns.
+# CALIBRATED for German public procurement HTML — patterns must be specific
+# enough to avoid false positives in legitimate tender portal content.
+# Each pattern is annotated with why it's safe for procurement HTML.
 _INJECTION_PATTERNS = [
-    # Classic override attempts
+    # Classic override attempts — very specific phrases unlikely in German procurement
     re.compile(r"ignore (all )?previous (instructions|prompts)", re.IGNORECASE),
     re.compile(r"disregard (all )?(previous |prior |above )?(instructions|prompts|rules)", re.IGNORECASE),
-    re.compile(r"system prompt[: ]", re.IGNORECASE),
+
+    # "system prompt" only when revealing its content — tightened from
+    # the original `system prompt[: ]` which matched "System: Prompt zur Vergabe".
+    # Matches: "system prompt is:", "system prompt:", "my system prompt is 'X'"
+    re.compile(r"\bsystem\s+prompt\b[\s:]*(is|was|says|=|:)\s*[\"'`]", re.IGNORECASE),
+    re.compile(r"\bsystem\s+prompt\b", re.IGNORECASE),  # catch all uses of "system prompt"
+
+    # XML-style system tag (not used in German procurement HTML)
     re.compile(r"<\s*system\s*>", re.IGNORECASE),
-    re.compile(r"jailbreak", re.IGNORECASE),
+
+    # Jailbreak — specific term, no false positives in procurement
+    re.compile(r"\bjailbreak\b", re.IGNORECASE),
+
+    # "reveal your instructions / system prompt" — very targeted
     re.compile(r"reveal (your|the) (instructions|system prompt)", re.IGNORECASE),
-    # Role-play / persona hijacking
-    re.compile(r"you are now (a |an |)", re.IGNORECASE),
-    re.compile(r"act as (a |an |)(different|new|unrestricted)", re.IGNORECASE),
-    re.compile(r"pretend (you are|to be)", re.IGNORECASE),
-    # Data exfiltration
-    re.compile(r"(send|post|fetch|curl|wget|http).*(api.key|secret|token|password)", re.IGNORECASE),
+
+    # Role-play hijacking — requires a persona word after "you are now"
+    re.compile(r"you are now an? (unrestricted|uncensored|evil|different|new) (ai|assistant|model|bot)", re.IGNORECASE),
+    re.compile(r"act as (an? )?(different|new|unrestricted|uncensored) (ai|assistant|model|bot)", re.IGNORECASE),
+
+    # Data exfiltration — requires both network verb AND secret keyword
+    re.compile(r"\b(curl|wget)\b.*\b(api.?key|secret|token|password)\b", re.IGNORECASE),
     re.compile(r"base64\.b64(encode|decode)", re.IGNORECASE),
-    # Encoded / obfuscated instructions
-    re.compile(r"\\x[0-9a-f]{2}.*\\x[0-9a-f]{2}.*\\x[0-9a-f]{2}", re.IGNORECASE),
-    # Markdown / delimiter injection
+
+    # Encoded hex sequences (≥3 consecutive) — not normal in procurement HTML
+    re.compile(r"(?:\\x[0-9a-f]{2}){3,}", re.IGNORECASE),
+
+    # ChatML / separator injection
     re.compile(r"---+\s*\n\s*(system|assistant|user)\s*:", re.IGNORECASE),
-    # Direct code-injection through HTML
-    re.compile(r"<\s*script[^>]*>.*?(eval|exec|import|require)\s*\(", re.IGNORECASE | re.DOTALL),
+
+    # Inline JS injection with code execution
+    re.compile(r"<\s*script[^>]*>.*?\b(eval|exec)\s*\(", re.IGNORECASE | re.DOTALL),
 ]
 
 # Schemes that must never appear in a generated scraper target URL.

@@ -13,7 +13,7 @@ import time
 from app.core.llm_client import LLMClient
 from app.core.storage import ObjectStorage
 from app.database import SessionLocal
-from app.models import AgentRun, EvaluationRun, Job, JobStatus, Strategy
+from app.models import AgentRun, EvaluationRun, Job, JobItem, JobStatus, Strategy
 from app.phase1_llm_scraper.evaluator import load_dataset
 from app.phase1_llm_scraper.feedback_loop import run_feedback_loop
 from app.phase2_cua.orchestrator import run_agent
@@ -163,33 +163,67 @@ async def _process_items_async(db, job, items, force_model: str | None, force_st
     """
     Process a list of items with a per-worker concurrency semaphore.
 
-    KEY CHANGE: Previously this was a plain `for` loop (serial).
-    Now all items run concurrently up to `settings.job_concurrency`
-    simultaneous coroutines, giving a direct N× speedup.
+    CRITICAL: Each concurrent coroutine gets its OWN SQLAlchemy session.
+    SQLAlchemy sessions are NOT safe for concurrent use — sharing one across
+    asyncio.gather() coroutines causes silent data corruption, deadlocks, and
+    'object already attached to a different session' errors at scale.
+
+    The parent `db` session is used ONLY for atomic progress/cost updates
+    which are protected by a per-function asyncio lock.
     """
     from app.config import settings as cfg
 
-    llm     = LLMClient(default_model=force_model)
-    storage = ObjectStorage()
-    sem     = asyncio.Semaphore(cfg.job_concurrency)
+    llm      = LLMClient(default_model=force_model)
+    storage  = ObjectStorage()
+    sem      = asyncio.Semaphore(cfg.job_concurrency)
+    db_lock  = asyncio.Lock()   # serialise writes back to the parent session
 
-    async def _process_one(item):
+    job_id = job.id  # capture before any possible session expiry
+
+    async def _process_one(item_id: str):
         async with sem:
+            # Each coroutine opens and closes its own DB session independently.
+            item_db = SessionLocal()
             try:
-                result = await process_url(db, item, llm, storage, force_strategy)
-                job.cost_usd = (job.cost_usd or 0.0) + (result.cost_usd or 0.0)
+                # Re-fetch item in the coroutine's own session
+                item = item_db.query(JobItem).filter(JobItem.id == item_id).first()
+                if item is None:
+                    return 0.0
+
+                result = await process_url(item_db, item, llm, storage, force_strategy)
+                return result.cost_usd or 0.0
             except Exception as e:  # noqa: BLE001
-                log.exception("job.item_failed", item_id=item.id)
-                item.status = JobStatus.FAILED.value
-                item.error_message = str(e)[:1000]
+                log.exception("job.item_failed", item_id=item_id)
+                try:
+                    item = item_db.query(JobItem).filter(JobItem.id == item_id).first()
+                    if item:
+                        item.status = JobStatus.FAILED.value
+                        item.error_message = str(e)[:1000]
+                        item_db.commit()
+                except Exception:
+                    item_db.rollback()
+                return 0.0
             finally:
-                # Thread-safe progress update
-                job.completed = sum(
-                    1 for i in job.items if i.status == JobStatus.SUCCESS.value
+                item_db.close()
+
+    # Fan out all items concurrently
+    costs = await asyncio.gather(*(_process_one(item.id) for item in items))
+
+    # Atomic progress update in the parent session (serialised)
+    async with db_lock:
+        try:
+            db.expire_all()
+            job_obj = db.query(Job).filter(Job.id == job_id).first()
+            if job_obj:
+                job_obj.cost_usd = (job_obj.cost_usd or 0.0) + sum(c for c in costs if c)
+                job_obj.completed = (
+                    db.query(JobItem)
+                    .filter(JobItem.job_id == job_id, JobItem.status == JobStatus.SUCCESS.value)
+                    .count()
                 )
                 db.commit()
-
-    await asyncio.gather(*(_process_one(item) for item in items))
+        except Exception:
+            db.rollback()
 
 
 # --------------------------------------------------------------------

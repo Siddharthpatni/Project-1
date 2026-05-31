@@ -145,41 +145,47 @@ async def process_url(
         db.commit()
         return result
 
-    # 1. Prompt Injection Tripwire Check in target URL parameter payloads
+    # 1. Prompt Injection check — only scan the URL path/query fragment, NOT
+    #    the whole URL string (which may contain % encodings that look like hex
+    #    sequences). URLs cannot inject into LLM prompts; only fetched HTML can.
+    #    Prompt injection in fetched HTML is caught in generator._fetch_snippet().
     from app.core.security import detect_prompt_injection
-    injection_hits = detect_prompt_injection(url)
+    from urllib.parse import unquote
+    url_decoded = unquote(url)
+    injection_hits = detect_prompt_injection(url_decoded)
     if injection_hits:
-        result.error = f"prompt injection detected: request blocked due to forbidden injection patterns {injection_hits}"
+        result.error = f"prompt injection in URL: {injection_hits[:2]}"
         item.status = JobStatus.FAILED.value
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
-        write_audit("security.prompt_injection", f"Patterns matched: {injection_hits[:3]}", level=CRITICAL,
+        write_audit("security.prompt_injection", f"URL patterns: {injection_hits[:3]}", level=CRITICAL,
                     job_id=item.job_id, item_id=item.id, domain=domain, url=url)
         db.commit()
         return result
 
-    # 2. Connection Pre-flight Check: verify the target portal is reachable.
-    # Try HEAD first (cheapest); fall back to a GET if the server rejects HEAD
-    # (405 or SSL error) — many German government sites do not support HEAD.
-    import httpx
+    # 2. Lightweight DNS-only pre-flight check.
+    #
+    # We ONLY abort here when the domain does not resolve in DNS — that means
+    # the URL is completely unreachable and no strategy can help. All other
+    # failures (TCP refused, SSL errors, HTTP 4xx/5xx, VPN-gated, slow servers)
+    # are handled gracefully inside the cascade strategies themselves.
+    #
+    # Previous approach tried HEAD→GET and aborted on ConnectError — this was
+    # too aggressive for bulk runs: 100 simultaneous connections to the same
+    # IP triggered rate-limiting/connection resets, appearing as ConnectError
+    # even for valid domains. DNS failures are the only truly unrecoverable case.
+    import socket as _socket
     try:
-        async with httpx.AsyncClient(timeout=8.0, verify=False, follow_redirects=True) as client:  # noqa: S501
-            try:
-                await client.head(url)
-            except (httpx.HTTPStatusError, Exception):
-                # HEAD unsupported or failed — try a lightweight GET to confirm reachability.
-                await client.get(url, headers={"Range": "bytes=0-0"})
-    except (httpx.ConnectError, httpx.TimeoutException, httpx.TooManyRedirects) as e:
-        # Only hard network failures (DNS, TCP, redirect loops) abort early.
-        result.error = f"connection failure: pre-flight check failed — {e}"
+        _socket.getaddrinfo(domain, None, proto=_socket.IPPROTO_TCP)
+    except _socket.gaierror:
+        result.error = f"dns resolution failed: {domain} does not exist"
         item.status = JobStatus.FAILED.value
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
+        write_audit("pipeline.dns_fail", f"DNS resolution failed for {domain}", level=ERROR,
+                    job_id=item.job_id, item_id=item.id, domain=domain, url=url)
         db.commit()
         return result
-    except Exception:
-        # Any other exception (e.g. SSL even with verify=False) — let the cascade try anyway.
-        pass
 
     scratch = _job_downloads_dir(item)
     result._scratch_dirs.append(str(scratch))
@@ -521,6 +527,7 @@ async def _try_llm_generated(
     #    This is critical at scale — 100 URLs from the same domain would otherwise
     #    each trigger their own LLM call (wasted cost + time).
     lock_acquired = False
+    _redis = None  # must be initialized before try so the finally block can safely reference it
     try:
         import redis as redis_lib
         _redis = redis_lib.from_url(settings.redis_url, socket_timeout=2.0)
@@ -577,7 +584,7 @@ async def _try_llm_generated(
         return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err, cua_discovery_report=report_data)
     finally:
         # Always release the domain lock after generation
-        if lock_acquired:
+        if lock_acquired and _redis is not None:
             try:
                 _redis.delete(lock_key)
             except Exception:
