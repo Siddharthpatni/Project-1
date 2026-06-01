@@ -33,6 +33,23 @@ _URL_PATTERNS: dict[str, list[str]] = {
     "netserver": [
         r"/NetServer/",
     ],
+    # eVergabe 4.9 / Cosinex deeplink API — used by kfw.de, db.de, ehealth portals etc.
+    # Path: /evergabe.bieter/api/supplier/external/deeplink/subproject/<uuid>
+    #   or: /bieter/api/supplier/external/deeplink/subproject/<uuid>
+    "evergabe_cosinex": [
+        r"/evergabe\.bieter/api/supplier/external/deeplink/",
+        r"/bieter/api/supplier/external/deeplink/",
+        r"evergabe\.bieter",
+        r"evergabe\.nrw",
+        r"evergabe\.bayern",
+        r"vergabemarktplatz\.brandenburg",
+        r"vergabe\.muenchen",
+    ],
+    # e-VA Bieterportal — bundde?data=<base64> format used by dfg.e-va.eu etc.
+    "e_va": [
+        r"e-va\.eu",
+        r"/bundde\?data=",
+    ],
     "evergabe_de": [
         r"www\.evergabe\.de",
     ],
@@ -85,6 +102,17 @@ _HTML_PATTERNS: dict[str, list[str]] = {
     "netserver": [
         "NetServer",
         "TenderingProcedureDetails",
+    ],
+    "evergabe_cosinex": [
+        "evergabe.bieter",
+        "Alle herunterladen",
+        "ng-version",   # Angular app marker
+        "cosinex",
+    ],
+    "e_va": [
+        "e-va.eu",
+        "bieterportal",
+        "bundde",
     ],
     "ted_eu": [
         "TED Tenders Electronic Daily",

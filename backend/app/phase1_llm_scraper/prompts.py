@@ -374,6 +374,40 @@ PLATFORM_HINTS: dict[str, str] = {
         `/{Satellite|VMPSatellite}/public/company/project/{PROJECT_ID}/de/documents/archive/Vergabeunterlagen_{PROJECT_ID}.zip`
         Download with requests. No Playwright needed.
     """).strip(),
+
+    "evergabe_cosinex": dedent("""
+        Platform: eVergabe 4.9 / Cosinex deeplink API (Angular app).
+        URL pattern: .../evergabe.bieter/api/supplier/external/deeplink/subproject/<uuid>
+                  or .../bieter/api/supplier/external/deeplink/subproject/<uuid>
+        The URL is a deeplink that redirects to the Angular SPA tender page.
+        Steps:
+        1. Use Playwright — Angular app, wait 6-8 seconds for JS to render after goto().
+        2. Dismiss cookie banner: click button containing 'Akzeptieren' or 'Zustimmen'.
+        3. Scroll down to find the "Alle herunterladen" button.
+        4. Click it with page.expect_download() to capture the ZIP:
+           ```python
+           page.wait_for_timeout(7000)
+           btn = page.locator('button:has-text("Alle herunterladen"), button:has-text("Download")')
+           with page.expect_download(timeout=30000) as dl:
+               btn.first.click()
+           dl.value.save_as(os.path.join(output_dir, dl.value.suggested_filename or "docs.zip"))
+           ```
+        5. If "Alle herunterladen" not found, look for "Vergabeunterlagen" tab or section first,
+           click it, wait 3s, then retry the download button.
+        6. NEVER use eval(), exec(), subprocess, or os.system in the scraper.
+    """).strip(),
+
+    "e_va": dedent("""
+        Platform: e-VA Bieterportal (bieterportal.*.e-va.eu or similar).
+        URL pattern: /bundde?data=<base64> where base64 encodes {"t":<id>,"type":<type>,"o":<org>}
+        Steps:
+        1. Use Playwright — JS-rendered portal, wait 5 seconds.
+        2. Dismiss cookie/consent banners if present.
+        3. Look for document download links or a "Vergabeunterlagen" / "Dokumente" tab.
+        4. Click any "Alle herunterladen", "ZIP herunterladen", or individual file links.
+        5. Use page.expect_download() for each download trigger.
+        6. NEVER use eval(), exec(), subprocess, or os.system.
+    """).strip(),
 }
 
 
