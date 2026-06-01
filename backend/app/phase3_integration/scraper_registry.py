@@ -174,13 +174,23 @@ def seed_from_disk(db: Session) -> int:
         if not domain:
             continue
 
-        if db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first() is not None:
-            continue  # already registered — keep existing record + stats
+        existing = db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first()
 
         try:
             code = path.read_text(encoding="utf-8")
         except Exception as e:  # noqa: BLE001
             log.warning("phase3.registry.seed_read_failed", path=str(path), error=str(e))
+            continue
+
+        if existing is not None:
+            # Overwrite only if the DB entry was LLM/CUA generated — disk scrapers are
+            # manually written and therefore more reliable than auto-generated code.
+            # Never overwrite a previously-successful "disk" or "manual" entry.
+            if existing.source not in ("disk", "manual"):
+                existing.code   = code
+                existing.source = "disk"
+                seeded += 1
+                log.info("phase3.registry.upgraded_from_disk", domain=domain, was=existing.source)
             continue
 
         tpl = ScraperTemplate(domain=domain, code=code, source="disk", platform=None, route_used=False)
