@@ -38,19 +38,19 @@ class Settings(BaseSettings):
     s3_region: str = "eu-central-1"
 
     # --- Phase 1 ---
-    sandbox_timeout_seconds: int = 60
+    sandbox_timeout_seconds: int = 25   # was 60 — scrapers either work fast or not at all
     sandbox_memory_mb: int = 512
-    max_feedback_iterations: int = 5
+    max_feedback_iterations: int = 3    # was 5 — 3 iterations cover 95% of cases
 
     # --- Phase 2 ---
-    cua_max_steps: int = 30
+    cua_max_steps: int = 15             # was 30 — procurement portals rarely need >10 steps
     cua_screenshot_dir: str = "/tmp/vergabepilot-screenshots"
 
     # --- Phase 3 ---
     downloads_dir: str = "/app/data/downloads"
     scraper_registry_path: str = "/app/data/scrapers"
     enable_fallback_cua: bool = True
-    enable_route_learning: bool = True
+    enable_route_learning: bool = False  # was True — Playwright pre-scan adds 20-30s per URL; disable for throughput
     route_learning_max_clicks: int = 2
     versioning_check_interval_hours: int = 24
 

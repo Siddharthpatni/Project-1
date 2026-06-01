@@ -49,7 +49,29 @@ def _registry_dir() -> Path:
 
 
 def get_for_domain(db: Session, domain: str) -> ScraperTemplate | None:
-    return db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first()
+    tpl = db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first()
+    if tpl is not None:
+        return tpl
+
+    # Filesystem fallback: a scraper file on disk not yet in DB (e.g. after a
+    # DB wipe or fresh container startup before seed_from_disk ran).
+    safe = _safe_domain(domain)
+    path = _registry_dir() / f"scraper_{safe}.py"
+    if not path.is_file():
+        return None
+
+    try:
+        code = path.read_text(encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.registry.fs_fallback_read_failed", domain=domain, error=str(e))
+        return None
+
+    tpl = ScraperTemplate(domain=domain, code=code, source="disk", platform=None, route_used=False)
+    db.add(tpl)
+    db.commit()
+    db.refresh(tpl)
+    log.info("phase3.registry.fs_fallback_loaded", domain=domain, path=str(path))
+    return tpl
 
 
 def upsert_from_generation(
@@ -104,3 +126,61 @@ def should_retire(tpl: ScraperTemplate) -> bool:
     if total < 10:
         return False
     return (tpl.success_count / total) < 0.2
+
+
+def store_cua_hint(db: Session, domain: str, hint: str) -> None:
+    """Persist CUA interaction knowledge for a domain.
+
+    Called after every CUA attempt (success or failure) so future LLM
+    generation passes can use the verified navigation trace as context.
+    Creates a minimal ScraperTemplate stub if none exists yet.
+    """
+    tpl = db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first()
+    if tpl is None:
+        tpl = ScraperTemplate(
+            domain=domain,
+            code="# placeholder — CUA ran before LLM generation",
+            source="cua",
+        )
+        db.add(tpl)
+    tpl.cua_hint = hint[:8000]  # cap to avoid massive DB rows
+    db.commit()
+    log.info("phase3.registry.cua_hint_stored", domain=domain, hint_len=len(hint))
+
+
+def seed_from_disk(db: Session) -> int:
+    """Load all scraper_<domain>.py files from the registry directory into the DB.
+
+    Called once at startup. Only inserts entries that are not already in the DB —
+    never overwrites existing records so live statistics are preserved.
+
+    Returns the count of newly seeded entries.
+    """
+    reg_dir = _registry_dir()
+    seeded = 0
+    for path in sorted(reg_dir.glob("scraper_*.py")):
+        # Filename is scraper_{safe_domain}.py.  Since valid domain characters
+        # ([a-zA-Z0-9.-]) are all preserved by _safe_domain(), the stem after
+        # stripping the prefix equals the original domain.
+        domain = path.stem[len("scraper_"):]
+        if not domain:
+            continue
+
+        if db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first() is not None:
+            continue  # already registered — keep existing record + stats
+
+        try:
+            code = path.read_text(encoding="utf-8")
+        except Exception as e:  # noqa: BLE001
+            log.warning("phase3.registry.seed_read_failed", path=str(path), error=str(e))
+            continue
+
+        tpl = ScraperTemplate(domain=domain, code=code, source="disk", platform=None, route_used=False)
+        db.add(tpl)
+        seeded += 1
+        log.info("phase3.registry.seeded_from_disk", domain=domain, path=str(path))
+
+    if seeded:
+        db.commit()
+
+    return seeded

@@ -30,7 +30,8 @@ const STRATEGY_LABELS: Record<string, string> = {
   computer_use_agent:     "CUA Agent",
   none:                   "Failed",
 };
-const CASCADE_ORDER = ["manual_scraper","existing_scraper","deterministic_template","llm_generated_scraper","computer_use_agent"];
+// Phase 3 cascade: EXISTING first (reuse) → DETERMINISTIC (free) → LLM → CUA → MANUAL (legacy)
+const CASCADE_ORDER = ["existing_scraper","deterministic_template","llm_generated_scraper","computer_use_agent","manual_scraper"];
 
 function fileIcon(fn: string) {
   const e = fn.split(".").pop()?.toLowerCase() ?? "";
@@ -169,17 +170,75 @@ const STRATEGY_SHORT: Record<string, string> = {
   computer_use_agent:     "CUA",
 };
 
+// Full 27-category error palette matching backend security.py classify_error()
 const ERROR_CAT_COLOR: Record<string, string> = {
-  timeout:       "bg-amber-50  text-amber-700  border-amber-200",
-  network:       "bg-orange-50 text-orange-700 border-orange-200",
-  dns:           "bg-red-50    text-red-700    border-red-200",
-  auth:          "bg-purple-50 text-purple-700 border-purple-200",
-  not_found:     "bg-slate-50  text-slate-600  border-slate-200",
-  rate_limit:    "bg-yellow-50 text-yellow-700 border-yellow-200",
-  server_error:  "bg-rose-50   text-rose-700   border-rose-200",
-  no_documents:  "bg-blue-50   text-blue-600   border-blue-200",
-  loop_exhausted:"bg-violet-50 text-violet-700 border-violet-200",
-  unknown:       "bg-slate-50  text-slate-500  border-slate-200",
+  // Infrastructure
+  timeout:               "bg-amber-50   text-amber-700   border-amber-200",
+  network:               "bg-orange-50  text-orange-700  border-orange-200",
+  dns:                   "bg-red-50     text-red-700     border-red-200",
+  ssl:                   "bg-red-50     text-red-800     border-red-300",
+  redirect_loop:         "bg-yellow-50  text-yellow-700  border-yellow-200",
+  encoding_error:        "bg-indigo-50  text-indigo-700  border-indigo-200",
+  // Security / validation
+  code_validation:       "bg-violet-50  text-violet-700  border-violet-200",
+  prompt_injection:      "bg-rose-50    text-rose-800    border-rose-300",
+  blocked_url:           "bg-rose-50    text-rose-700    border-rose-200",
+  sandbox:               "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+  // Access / auth
+  login_required:        "bg-purple-50  text-purple-700  border-purple-200",
+  registration_required: "bg-violet-50  text-violet-600  border-violet-200",
+  auth:                  "bg-purple-50  text-purple-800  border-purple-300",
+  // Bot protection
+  captcha:               "bg-orange-50  text-orange-800  border-orange-300",
+  // HTTP
+  not_found:             "bg-slate-50   text-slate-600   border-slate-200",
+  rate_limit:            "bg-yellow-50  text-yellow-700  border-yellow-200",
+  server_error:          "bg-rose-50    text-rose-700    border-rose-200",
+  // Tender lifecycle
+  expired:               "bg-slate-100  text-slate-500   border-slate-300",
+  maintenance:           "bg-yellow-50  text-yellow-600  border-yellow-200",
+  // Scraper content
+  js_required:           "bg-cyan-50    text-cyan-700    border-cyan-200",
+  empty_page:            "bg-slate-50   text-slate-400   border-slate-200",
+  scraper_crash:         "bg-red-50     text-red-700     border-red-200",
+  // Documents / storage
+  no_documents:          "bg-blue-50    text-blue-600    border-blue-200",
+  storage:               "bg-orange-50  text-orange-700  border-orange-200",
+  // Pipeline
+  no_strategy:           "bg-slate-50   text-slate-500   border-slate-200",
+  loop_exhausted:        "bg-violet-50  text-violet-700  border-violet-200",
+  unknown:               "bg-slate-50   text-slate-500   border-slate-200",
+};
+
+// Human-readable labels for each category
+const ERROR_CAT_LABEL: Record<string, string> = {
+  timeout:               "Timeout",
+  network:               "Network Error",
+  dns:                   "DNS Failure",
+  ssl:                   "SSL/TLS Error",
+  redirect_loop:         "Redirect Loop",
+  encoding_error:        "Encoding Error",
+  code_validation:       "Code Invalid",
+  prompt_injection:      "Injection Detected",
+  blocked_url:           "URL Blocked",
+  sandbox:               "Sandbox Limit",
+  login_required:        "Login Required",
+  registration_required: "Registration Required",
+  auth:                  "Auth Denied (401/403)",
+  captcha:               "CAPTCHA / Bot Block",
+  not_found:             "Not Found (404)",
+  rate_limit:            "Rate Limited (429)",
+  server_error:          "Server Error (5xx)",
+  expired:               "Tender Expired",
+  maintenance:           "Site Maintenance",
+  js_required:           "JS Required",
+  empty_page:            "Empty Page",
+  scraper_crash:         "Scraper Crashed",
+  no_documents:          "No Documents",
+  storage:               "Storage Error",
+  no_strategy:           "No Strategy",
+  loop_exhausted:        "LLM Loop Exhausted",
+  unknown:               "Unknown Error",
 };
 
 function AttemptTimeline({ attempts }: { attempts: any[] }) {
@@ -290,11 +349,20 @@ function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onR
           {/* URL */}
           <p className="font-mono text-[10px] text-indigo-700 break-all" title={item.url}>{item.url}</p>
 
-          {/* Inline failure reason (collapsed view) */}
-          {item.status === "failed" && failureSummary && !open && (
-            <p className="text-[10px] text-rose-600 mt-1 truncate font-medium" title={failureSummary}>
-              ✗ {failureSummary}
-            </p>
+          {/* failure_category badge + inline reason (collapsed view) */}
+          {item.status === "failed" && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              {item.failure_category && item.failure_category !== "unknown" && (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${ERROR_CAT_COLOR[item.failure_category] ?? ERROR_CAT_COLOR.unknown}`}>
+                  {ERROR_CAT_LABEL[item.failure_category] ?? item.failure_category.replace(/_/g, " ")}
+                </span>
+              )}
+              {failureSummary && !open && (
+                <span className="text-[10px] text-rose-500 truncate" title={failureSummary}>
+                  {failureSummary.slice(0, 100)}{failureSummary.length > 100 ? "…" : ""}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -564,6 +632,34 @@ export default function JobDetailPage() {
         </div>
       )}
 
+      {/* Failure Category Breakdown — shown when job has failed items */}
+      {(() => {
+        const failedItems = job.items?.filter((i: any) => i.status === "failed") ?? [];
+        if (failedItems.length === 0) return null;
+        const catCounts: Record<string, number> = {};
+        for (const i of failedItems) {
+          const cat = i.failure_category || "unknown";
+          catCounts[cat] = (catCounts[cat] || 0) + 1;
+        }
+        const sorted = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+        return (
+          <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+              <AlertOctagon className="w-4 h-4 text-rose-500"/>
+              <h2 className="font-bold text-slate-800 text-sm">Failure Breakdown <span className="font-normal text-slate-400">({failedItems.length} failed URL{failedItems.length !== 1 ? "s" : ""})</span></h2>
+            </div>
+            <div className="px-5 py-4 flex flex-wrap gap-2">
+              {sorted.map(([cat, count]) => (
+                <div key={cat} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-semibold text-xs ${ERROR_CAT_COLOR[cat] ?? ERROR_CAT_COLOR.unknown}`}>
+                  <span>{ERROR_CAT_LABEL[cat] ?? cat.replace(/_/g, " ")}</span>
+                  <span className="bg-white/60 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{count}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* Domain → URL → Docs tree */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
@@ -593,7 +689,7 @@ export default function JobDetailPage() {
           <table className="w-full text-xs">
             <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
               <tr>
-                {["URL","Strategy","Iters","Time","Docs","Status"].map(h=>(
+                {["URL","Strategy","Iters","Time","Docs","Failure Reason","Status"].map(h=>(
                   <th key={h} className={`px-5 py-3 font-semibold text-slate-500 uppercase tracking-wide ${h==="Status"?"text-right":h==="URL"?"text-left":"text-center"}`}>{h}</th>
                 ))}
               </tr>
@@ -606,6 +702,13 @@ export default function JobDetailPage() {
                   <td className="px-5 py-3 text-center font-semibold text-slate-600">{item.iterations}</td>
                   <td className="px-5 py-3 text-center font-mono text-slate-500">{item.runtime_seconds?.toFixed(1)}s</td>
                   <td className="px-5 py-3 text-center font-bold text-slate-700">{item.document_count}</td>
+                  <td className="px-5 py-3 text-center">
+                    {item.failure_category && item.failure_category !== "unknown"
+                      ? <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${ERROR_CAT_COLOR[item.failure_category] ?? ERROR_CAT_COLOR.unknown}`}>
+                          {ERROR_CAT_LABEL[item.failure_category] ?? item.failure_category}
+                        </span>
+                      : <span className="text-slate-300">—</span>}
+                  </td>
                   <td className="px-5 py-3 text-right"><StatusBadge status={item.status}/></td>
                 </tr>
               ))}

@@ -61,6 +61,7 @@ async def run_feedback_loop(
     route_map=None,           # phase1_llm_scraper.route_learner.RouteMap | None
     platform: str | None = None,
     html_snippet: str | None = None,
+    cua_hint: str | None = None,
 ) -> LoopResult:
     """Generate → validate → execute → evaluate → retry until success.
 
@@ -90,6 +91,7 @@ async def run_feedback_loop(
             scraper = await generator.generate(
                 url, model=model, route_map=route_map, platform=platform,
                 html_snippet=html_snippet,  # skip re-fetch if caller supplied it
+                cua_hint=cua_hint,
             )
         else:
             outcome = (

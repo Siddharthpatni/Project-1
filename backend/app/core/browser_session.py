@@ -34,7 +34,7 @@ class BrowserSession:
             links = session.get_all_links()
     """
 
-    def __init__(self, headless: bool = True, timeout: int = 20_000):
+    def __init__(self, headless: bool = True, timeout: int = 12_000):  # was 20_000
         self._headless = headless
         self._timeout = timeout
         self._pw = None
@@ -78,10 +78,8 @@ class BrowserSession:
     def goto(self, url: str, wait_until: str = "domcontentloaded") -> None:
         """Navigate to URL and wait for page load."""
         self.page.goto(url, wait_until=wait_until, timeout=self._timeout)
-        try:
-            self.page.wait_for_load_state("networkidle", timeout=10_000)
-        except Exception:
-            pass
+        # networkidle wait removed — it adds up to 10s per page load in the
+        # route learner and is not needed for link/button extraction.
         self._dismiss_cookie_banners()
 
     def _dismiss_cookie_banners(self) -> None:

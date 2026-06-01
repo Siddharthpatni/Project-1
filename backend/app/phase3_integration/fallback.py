@@ -24,20 +24,21 @@ class StrategyOutcome:
 # Canonical cascade order — pipeline.py iterates this directly and
 # next_strategy() uses it for the break-early check.
 #
-#   MANUAL      → Phase 0 reference scraper (best-effort legacy)
-#   EXISTING    → Registry lookup: cached scraper from a prior successful run
-#   DETERMINISTIC → URL-template shortcut for known portal families (DTVP etc.)
-#   LLM_GENERATED → Generate + sandbox + feedback loop
-#   CUA         → Last-resort visual agent
+#   EXISTING      → Registry lookup: reuse cached domain-specific scraper (Phase 3 primary)
+#   DETERMINISTIC → Free URL-template shortcut for DTVP/Satellite family (no LLM, no browser)
+#   LLM_GENERATED → Generate new scraper via LLM feedback loop + sandbox (Phase 1)
+#   CUA           → Last-resort visual agent; trace saved back to registry (Phase 2)
+#   MANUAL        → Phase 0 legacy reference scraper; tried only when everything else fails
 #
-# DETERMINISTIC sits AFTER EXISTING because a working cached scraper is
-# preferred: it handles URL variations that the deterministic template may miss.
+# Per the Phase 3 spec: reuse → LLM generate → CUA fallback.
+# DETERMINISTIC is inserted between EXISTING and LLM as a zero-cost fast path.
+# MANUAL is kept at the end as a last-ditch attempt for portals it still covers.
 CASCADE_ORDER: list[Strategy] = [
-    Strategy.MANUAL,
     Strategy.EXISTING,
     Strategy.DETERMINISTIC,
     Strategy.LLM_GENERATED,
     Strategy.CUA,
+    Strategy.MANUAL,
 ]
 
 
@@ -46,7 +47,7 @@ def next_strategy(current: Strategy, outcome: StrategyOutcome, enable_cua: bool)
     Return the next strategy to try, or None if the cascade is exhausted.
 
     Cascade order:
-        MANUAL → EXISTING → DETERMINISTIC → LLM_GENERATED → CUA → (stop)
+        EXISTING → DETERMINISTIC → LLM_GENERATED → CUA → MANUAL → (stop)
     """
     if outcome.success:
         return None

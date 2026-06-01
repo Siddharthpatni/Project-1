@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle, ArrowLeft, Layers, Compass, DollarSign, ListOrdered, ChevronRight, Globe, Cpu, CheckCircle } from "lucide-react";
+import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle, ArrowLeft, Layers, Compass, DollarSign, ListOrdered, ChevronRight, Globe, Cpu, CheckCircle, Eye } from "lucide-react";
 
 export default function ScrapersPage() {
   const { data: scrapers, mutate } = useSWR(api("/scrapers"), fetcher, { refreshInterval: 8000 });
@@ -222,6 +222,7 @@ export default function ScrapersPage() {
                 <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Source</th>
                 <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Platform</th>
                 <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Route Map</th>
+                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">CUA Hint</th>
                 <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Success Rate</th>
                 <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Failures</th>
                 <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Avg Runtime</th>
@@ -245,11 +246,13 @@ export default function ScrapersPage() {
                       <td className="px-6 py-4 font-mono text-xs font-bold text-slate-700">{s.domain}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
-                          s.source === 'llm' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                          s.source === 'llm'           ? 'bg-purple-50 text-purple-700 border-purple-100' :
                           s.source === 'deterministic' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                          s.source === 'disk'          ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          s.source === 'cua'           ? 'bg-rose-50 text-rose-700 border-rose-100' :
                           'bg-blue-50 text-blue-700 border-blue-100'
                         }`}>
-                          {s.source}
+                          {s.source === 'disk' ? '💾 disk' : s.source}
                         </span>
                       </td>
                       <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">
@@ -258,6 +261,13 @@ export default function ScrapersPage() {
                       <td className="px-6 py-4 text-center">
                         {s.route_used
                           ? <span title="Route-guided" className="inline-flex items-center justify-center p-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold rounded-full">✓</span>
+                          : <span className="text-slate-300 font-medium">—</span>}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {s.cua_hint
+                          ? <span title="CUA interaction trace available" className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-extrabold rounded-full">
+                              <Cpu className="w-3 h-3"/>CUA
+                            </span>
                           : <span className="text-slate-300 font-medium">—</span>}
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -271,17 +281,30 @@ export default function ScrapersPage() {
                         {new Date(s.created_at).toLocaleDateString()}
                       </td>
                     </tr>
-                    {s.code && (
+                    {(s.code || s.cua_hint) && (
                       <tr className="bg-slate-50/30 border-b border-slate-100">
-                        <td colSpan={8} className="px-6 py-3">
-                          <details className="text-xs group border border-slate-100 rounded-xl bg-white p-3 shadow-inner">
-                            <summary className="cursor-pointer font-bold text-indigo-600 hover:text-indigo-700 select-none flex items-center gap-1 active:scale-95 transition-transform">
-                              <span className="group-open:hidden">▶</span><span className="hidden group-open:inline">▼</span> View Template Python Code
-                            </summary>
-                            <div className="mt-3 p-4 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto shadow-inner border border-slate-800">
-                              <pre className="font-mono leading-relaxed text-[11px]">{s.code}</pre>
-                            </div>
-                          </details>
+                        <td colSpan={9} className="px-6 py-3 space-y-2">
+                          {s.cua_hint && (
+                            <details className="text-xs group border border-rose-100 rounded-xl bg-white p-3 shadow-inner">
+                              <summary className="cursor-pointer font-bold text-rose-600 hover:text-rose-700 select-none flex items-center gap-1.5 active:scale-95 transition-transform">
+                                <span className="group-open:hidden">▶</span><span className="hidden group-open:inline">▼</span>
+                                <Cpu className="w-3.5 h-3.5"/>CUA Interaction Trace <span className="font-normal text-rose-400 ml-1">(used to guide LLM generation)</span>
+                              </summary>
+                              <div className="mt-3 p-4 bg-slate-950 text-slate-200 rounded-xl overflow-x-auto max-h-64 custom-scrollbar shadow-inner border border-slate-800">
+                                <pre className="font-mono leading-relaxed text-[11px] whitespace-pre-wrap">{s.cua_hint}</pre>
+                              </div>
+                            </details>
+                          )}
+                          {s.code && (
+                            <details className="text-xs group border border-slate-100 rounded-xl bg-white p-3 shadow-inner">
+                              <summary className="cursor-pointer font-bold text-indigo-600 hover:text-indigo-700 select-none flex items-center gap-1 active:scale-95 transition-transform">
+                                <span className="group-open:hidden">▶</span><span className="hidden group-open:inline">▼</span> View Template Python Code
+                              </summary>
+                              <div className="mt-3 p-4 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto shadow-inner border border-slate-800">
+                                <pre className="font-mono leading-relaxed text-[11px]">{s.code}</pre>
+                              </div>
+                            </details>
+                          )}
                         </td>
                       </tr>
                     )}

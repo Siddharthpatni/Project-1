@@ -254,14 +254,30 @@ FEEDBACK_PROMPT = dedent("""
 """).strip()
 
 
+def build_cua_hint_section(cua_hint: str | None) -> str:
+    """Wrap a raw CUA trace into a clearly-labelled prompt section."""
+    if not cua_hint:
+        return ""
+    return (
+        "\n\nCUA AGENT INTERACTION TRACE (real browser run on this domain — use as ground truth):\n"
+        "```\n"
+        + cua_hint[:4000]
+        + "\n```\n"
+        "Use the above trace to understand the exact navigation steps and selectors needed.\n"
+        "Your scraper MUST follow the same click path the agent used when it was successful."
+    )
+
+
 def build_generation_prompt(
     url: str,
     domain: str,
     html_snippet: str,
     platform: str = "unknown",
+    cua_hint: str | None = None,
 ) -> str:
     hint = hint_for_platform(platform)
     platform_section = f"Platform-specific guidance ({platform}):\n{hint}" if hint else ""
+    platform_section += build_cua_hint_section(cua_hint)
     chars = len(html_snippet)
     return GENERATION_USER_PROMPT.format(
         url=url,
@@ -399,10 +415,12 @@ def build_route_guided_prompt(
     route_summary: str,
     discovered_links: list[str],
     platform: str | None = None,
+    cua_hint: str | None = None,
 ) -> str:
     platform_hint = hint_for_platform(platform or "")
     if platform_hint:
         platform_hint = f"\nPlatform-specific guidance:\n{platform_hint}\n"
+    platform_hint += build_cua_hint_section(cua_hint)
 
     link_lines = "\n".join(f"  - {l}" for l in discovered_links[:20]) or "  (none)"
     if len(discovered_links) > 20:

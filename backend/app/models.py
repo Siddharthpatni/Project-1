@@ -71,6 +71,10 @@ class JobItem(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     runtime_seconds: Mapped[float]    = mapped_column(Float, default=0.0)
 
+    # Top-level failure category from security.classify_error — populated on
+    # final failure so the UI / DB queries can group/filter by failure reason.
+    failure_category: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
     # Full cascade attempt chain — every strategy tried, its outcome, error, and timing.
     # Stored as JSON list of {strategy, success, downloaded, error, duration_s, ts}
     attempts_detail: Mapped[list] = mapped_column(JSON, default=list)
@@ -106,6 +110,10 @@ class ScraperTemplate(Base):
     source:   Mapped[str] = mapped_column(String, default="llm")  # llm | manual
     platform: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. "netserver", "dtvp"
     route_used: Mapped[bool] = mapped_column(default=False)  # was route-guided generation used?
+    # CUA interaction trace stored as a text summary. Populated whenever the
+    # CUA fallback runs for this domain (success or failure) so future LLM
+    # generation can use it as verified navigation knowledge.
+    cua_hint:      Mapped[str | None] = mapped_column(Text, nullable=True)
     success_count: Mapped[int] = mapped_column(Integer, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_runtime:   Mapped[float] = mapped_column(Float, default=0.0)

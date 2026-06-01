@@ -32,6 +32,7 @@ from app.phase1_llm_scraper.prompts import (
     build_feedback_prompt,
     build_generation_prompt,
     build_route_guided_prompt,
+    build_cua_hint_section,
 )
 from app.phase1_llm_scraper.route_learner import RouteMap
 from app.phase3_integration import platform_classifier
@@ -64,6 +65,7 @@ class ScraperGenerator:
         route_map: RouteMap | None = None,
         platform: str | None = None,
         html_snippet: str | None = None,
+        cua_hint: str | None = None,
     ) -> GeneratedScraper:
         """
         Generate a scraper. If `route_map` is provided and represents a
@@ -92,17 +94,20 @@ class ScraperGenerator:
                 route_summary=route_map.format_for_prompt(),
                 discovered_links=route_map.document_links,
                 platform=resolved_platform,
+                cua_hint=cua_hint,
             )
             log.info(
                 "phase1.generate.route_guided",
                 domain=domain, platform=resolved_platform,
                 discovered_docs=route_map.total_documents_found,
+                cua_hint_present=bool(cua_hint),
             )
         else:
             user_msg = build_generation_prompt(
                 url=url, domain=domain,
                 html_snippet=html_snippet,
                 platform=resolved_platform or "unknown",
+                cua_hint=cua_hint,
             )
 
         resp = await self.llm.chat(

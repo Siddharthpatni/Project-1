@@ -42,25 +42,44 @@ const SEVERITY_STYLES: Record<string, { bg: string; text: string; border: string
   info:     { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400" },
 };
 
-// Error category → colors for the pie chart
+// Error category → colors for the pie/bar chart — covers all 27 backend categories
 const CATEGORY_COLORS: Record<string, string> = {
-  timeout: "#f59e0b",
-  network: "#ef4444",
-  dns: "#dc2626",
-  ssl: "#b91c1c",
-  auth: "#d97706",
-  not_found: "#6b7280",
-  rate_limit: "#f97316",
-  server_error: "#dc2626",
-  code_validation: "#7c3aed",
-  sandbox: "#be123c",
-  prompt_injection: "#e11d48",
-  no_documents: "#64748b",
-  storage: "#ea580c",
-  blocked_url: "#be123c",
-  no_strategy: "#94a3b8",
-  loop_exhausted: "#ca8a04",
-  unknown: "#9ca3af",
+  // Infrastructure
+  timeout:               "#f59e0b",
+  network:               "#f97316",
+  dns:                   "#dc2626",
+  ssl:                   "#b91c1c",
+  redirect_loop:         "#fbbf24",
+  encoding_error:        "#6366f1",
+  // Security / validation
+  code_validation:       "#7c3aed",
+  prompt_injection:      "#e11d48",
+  blocked_url:           "#be123c",
+  sandbox:               "#a21caf",
+  // Access / auth
+  login_required:        "#9333ea",
+  registration_required: "#7e22ce",
+  auth:                  "#d97706",
+  // Bot protection
+  captcha:               "#ea580c",
+  // HTTP
+  not_found:             "#6b7280",
+  rate_limit:            "#f97316",
+  server_error:          "#ef4444",
+  // Tender lifecycle
+  expired:               "#94a3b8",
+  maintenance:           "#ca8a04",
+  // Scraper content
+  js_required:           "#0891b2",
+  empty_page:            "#cbd5e1",
+  scraper_crash:         "#dc2626",
+  // Documents / storage
+  no_documents:          "#64748b",
+  storage:               "#ea580c",
+  // Pipeline
+  no_strategy:           "#94a3b8",
+  loop_exhausted:        "#ca8a04",
+  unknown:               "#9ca3af",
 };
 
 export default function AdminPage() {

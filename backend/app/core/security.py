@@ -83,33 +83,78 @@ def detect_prompt_injection(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 _ERROR_CATEGORIES = [
-    (re.compile(r"timeout|timed out|deadline exceeded", re.I), "timeout"),
-    (re.compile(r"connection (refused|reset|closed|error)|ECONNREFUSED|ECONNRESET", re.I), "network"),
-    (re.compile(r"dns|name resolution|getaddrinfo", re.I), "dns"),
-    (re.compile(r"ssl|certificate|tls", re.I), "ssl"),
-    # code_validation MUST come before auth — "forbidden import" ≠ "403 forbidden"
+    # --- Infrastructure failures -------------------------------------------------
+    (re.compile(r"timeout|timed out|deadline exceeded|read timed out", re.I), "timeout"),
+    (re.compile(r"connection (refused|reset|closed|error)|ECONNREFUSED|ECONNRESET|broken pipe", re.I), "network"),
+    (re.compile(r"dns|name resolution|getaddrinfo|name or service not known", re.I), "dns"),
+    (re.compile(r"ssl|certificate|tls|handshake|self.?signed", re.I), "ssl"),
+    (re.compile(r"redirect.?(loop|limit|too many|max)|too many redirects", re.I), "redirect_loop"),
+    (re.compile(r"encod|decode|codec|unicode|charmap|utf.?8", re.I), "encoding_error"),
+
+    # --- Security / validation (must come before auth) --------------------------
     (re.compile(r"validation failed|forbidden (import|call)|missing required function", re.I), "code_validation"),
-    (re.compile(r"(401|403)\b|unauthorized|login required|access denied", re.I), "auth"),
+    (re.compile(r"prompt.?inject|injection detected", re.I), "prompt_injection"),
+    (re.compile(r"url not allowed|scheme|private network|ssrf", re.I), "blocked_url"),
+    (re.compile(r"sandbox|memory limit|killed|oom", re.I), "sandbox"),
+
+    # --- Access / auth ---------------------------------------------------------
+    # login_required: page shows a login/registration wall (not a hard 401/403)
+    (re.compile(
+        r"login.?(required|form|page|redirect)|anmeld|registrier|bitte.?(anmelden|registrieren)"
+        r"|sign.?in required|muss.*angemeldet|please log in|account required",
+        re.I), "login_required"),
+    # registration_required: must register an account to access documents
+    (re.compile(
+        r"registrierung (erforderlich|notwendig|ben.tigt)|registration required"
+        r"|konto erstellen|create.?account|nur.*(registriert|angemeld)",
+        re.I), "registration_required"),
+    (re.compile(r"(401|403)\b|unauthorized|access denied|forbidden", re.I), "auth"),
+
+    # --- CAPTCHA / bot detection -----------------------------------------------
+    (re.compile(r"captcha|recaptcha|hcaptcha|bot.?detection|cloudflare|ddos-guard|cf-ray", re.I), "captcha"),
+
+    # --- HTTP error codes -------------------------------------------------------
     (re.compile(r"404|not found|page not found", re.I), "not_found"),
     (re.compile(r"429|rate.?limit|too many requests", re.I), "rate_limit"),
-    (re.compile(r"5\d{2}|server error|internal server|502|503|504", re.I), "server_error"),
-    (re.compile(r"sandbox|memory limit|killed|oom", re.I), "sandbox"),
-    (re.compile(r"prompt.?inject|injection detected", re.I), "prompt_injection"),
+    (re.compile(r"5\d{2}|server error|internal server|502|503|504|bad gateway|service unavailable", re.I), "server_error"),
+
+    # --- Tender-specific states ------------------------------------------------
+    # expired: tender period ended, content archived/removed
+    (re.compile(
+        r"archiviert|archiv(ed|ierung)|abgelaufen|verf.?gbar|vergabeverfahren.*(beendet|abgeschlossen)"
+        r"|tender.*(expired|closed|ended)|ausschreibung.*(beendet|abgelaufen)|frist.*abgelaufen",
+        re.I), "expired"),
+    # maintenance: site under maintenance
+    (re.compile(r"wartung|maintenance|under construction|site.?down|gewartet", re.I), "maintenance"),
+
+    # --- Scraper content issues -----------------------------------------------
+    # js_required: page needs JS rendering but scraper used plain HTTP
+    (re.compile(r"js.?required|javascript.?(required|enabled|needed)|script.?error|noscript", re.I), "js_required"),
+    # empty_page: page loaded but is blank or minimal content
+    (re.compile(r"empty.?page|page is empty|no content|blank page|keine (inhalte|daten)", re.I), "empty_page"),
+    # scraper_crash: unhandled exception in generated/stored scraper
+    (re.compile(r"traceback|unhandled exception|scraper produced no result|crashed|exit code [^0]", re.I), "scraper_crash"),
+
+    # --- Documents / storage --------------------------------------------------
     (re.compile(r"no.?(files|documents|valid)|html_content|too_small", re.I), "no_documents"),
     (re.compile(r"persist failed|s3|storage|upload", re.I), "storage"),
-    (re.compile(r"url not allowed|scheme|private network|ssrf", re.I), "blocked_url"),
+
+    # --- Pipeline-level states ------------------------------------------------
     (re.compile(r"no template|not deterministic|no runner", re.I), "no_strategy"),
     (re.compile(r"loop exhausted|max.?iterations?", re.I), "loop_exhausted"),
 ]
 
 
 def classify_error(error_msg: str | None) -> str:
-    """Map a raw error message to a human-readable category.
+    """Map a raw error message to a specific failure category.
 
-    Returns one of: timeout, network, dns, ssl, auth, not_found,
-    rate_limit, server_error, code_validation, sandbox,
-    prompt_injection, no_documents, storage, blocked_url,
-    no_strategy, loop_exhausted, or 'unknown'.
+    Categories (in priority order):
+      timeout, network, dns, ssl, redirect_loop, encoding_error,
+      code_validation, prompt_injection, blocked_url, sandbox,
+      login_required, registration_required, auth,
+      captcha, not_found, rate_limit, server_error,
+      expired, maintenance, js_required, empty_page, scraper_crash,
+      no_documents, storage, no_strategy, loop_exhausted, unknown.
     """
     if not error_msg:
         return "unknown"

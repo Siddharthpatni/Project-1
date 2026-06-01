@@ -49,23 +49,42 @@ from app.utils.audit import CRITICAL, ERROR, INFO, WARNING, write_audit
 
 # Maps security.classify_error categories → plain-English reason shown in UI
 _ERROR_REASON_MAP: dict[str, str] = {
-    "timeout":          "Request timed out — portal too slow or overloaded",
-    "network":          "Network error — connection refused or reset by portal",
-    "dns":              "DNS resolution failed — domain does not exist",
-    "ssl":              "SSL/TLS error — certificate problem on portal",
-    "auth":             "Access denied (HTTP 401/403) — portal requires login",
-    "not_found":        "Page not found (HTTP 404) — URL may be expired",
-    "rate_limit":       "Rate limited (HTTP 429) — too many requests to portal",
-    "server_error":     "Portal server error (5xx) — backend issue on tender site",
-    "code_validation":  "Generated scraper failed validation — unsafe or wrong signature",
-    "sandbox":          "Sandbox resource limit exceeded — scraper used too much memory/CPU",
-    "prompt_injection": "Prompt injection pattern detected in URL or page content",
-    "no_documents":     "No downloadable documents found on the page",
-    "storage":          "File storage error — could not save to S3/MinIO",
-    "blocked_url":      "URL blocked — private network or disallowed scheme (SSRF protection)",
-    "no_strategy":      "No matching strategy — deterministic template does not apply",
-    "loop_exhausted":   "LLM feedback loop exhausted — all iterations failed to produce valid scraper",
-    "unknown":          "Unexpected error — check error_raw for details",
+    # Infrastructure
+    "timeout":               "Request timed out — portal too slow or overloaded",
+    "network":               "Network error — connection refused or reset by portal",
+    "dns":                   "DNS resolution failed — domain does not exist",
+    "ssl":                   "SSL/TLS error — certificate problem on portal",
+    "redirect_loop":         "Redirect loop detected — URL keeps redirecting indefinitely",
+    "encoding_error":        "Encoding/decode error — response could not be read (charset issue)",
+    # Security / validation
+    "code_validation":       "Generated scraper failed validation — unsafe or wrong signature",
+    "prompt_injection":      "Prompt injection pattern detected in URL or page content",
+    "blocked_url":           "URL blocked — private network or disallowed scheme (SSRF protection)",
+    "sandbox":               "Sandbox resource limit exceeded — scraper used too much memory/CPU",
+    # Access / auth
+    "login_required":        "Login required — portal shows a sign-in wall (no hard 401/403)",
+    "registration_required": "Registration required — must create an account to access documents",
+    "auth":                  "Access denied (HTTP 401/403) — portal requires authentication",
+    # Bot protection
+    "captcha":               "CAPTCHA / bot detection triggered — Cloudflare or reCAPTCHA blocked access",
+    # HTTP codes
+    "not_found":             "Page not found (HTTP 404) — URL may be expired or removed",
+    "rate_limit":            "Rate limited (HTTP 429) — too many requests to portal",
+    "server_error":          "Portal server error (5xx) — backend issue on the tender site",
+    # Tender lifecycle
+    "expired":               "Tender expired or archived — documents no longer publicly available",
+    "maintenance":           "Site under maintenance — try again later",
+    # Scraper content issues
+    "js_required":           "JavaScript required — page needs browser rendering, plain HTTP failed",
+    "empty_page":            "Empty/blank page — portal loaded but returned no usable content",
+    "scraper_crash":         "Scraper crashed — unhandled exception in generated or stored scraper code",
+    # Documents / storage
+    "no_documents":          "No downloadable documents found on the page",
+    "storage":               "File storage error — could not save to S3/MinIO",
+    # Pipeline-level
+    "no_strategy":           "No matching strategy — deterministic template does not apply",
+    "loop_exhausted":        "LLM feedback loop exhausted — all iterations failed to produce valid scraper",
+    "unknown":               "Unexpected error — check error_raw for details",
 }
 from app.phase0_manual.v1_reference import scrape as manual_scrape
 from app.phase1_llm_scraper.executor import (
@@ -184,20 +203,14 @@ async def process_url(
         db.commit()
         return result
 
-    # 2. Lightweight DNS-only pre-flight check.
+    # 2. Lightweight DNS-only pre-flight check (non-blocking).
     #
-    # We ONLY abort here when the domain does not resolve in DNS — that means
-    # the URL is completely unreachable and no strategy can help. All other
-    # failures (TCP refused, SSL errors, HTTP 4xx/5xx, VPN-gated, slow servers)
-    # are handled gracefully inside the cascade strategies themselves.
-    #
-    # Previous approach tried HEAD→GET and aborted on ConnectError — this was
-    # too aggressive for bulk runs: 100 simultaneous connections to the same
-    # IP triggered rate-limiting/connection resets, appearing as ConnectError
-    # even for valid domains. DNS failures are the only truly unrecoverable case.
+    # CRITICAL: socket.getaddrinfo is synchronous — calling it directly in an
+    # async function blocks the entire event loop and freezes all concurrent
+    # coroutines. Run it in a thread pool so other URLs keep processing.
     import socket as _socket
     try:
-        _socket.getaddrinfo(domain, None, proto=_socket.IPPROTO_TCP)
+        await asyncio.to_thread(_socket.getaddrinfo, domain, None, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
     except _socket.gaierror:
         result.error = f"dns resolution failed: {domain} does not exist"
         item.status = JobStatus.FAILED.value
@@ -212,11 +225,11 @@ async def process_url(
     result._scratch_dirs.append(str(scratch))
 
     strategies = [force_strategy] if force_strategy else [
-        Strategy.MANUAL,
         Strategy.EXISTING,
         Strategy.DETERMINISTIC,
         Strategy.LLM_GENERATED,
         Strategy.CUA,
+        Strategy.MANUAL,
     ]
 
     from datetime import datetime as _dt
@@ -278,7 +291,7 @@ async def process_url(
                             level=WARNING, job_id=item.job_id, item_id=item.id,
                             domain=domain, url=url, strategy=strategy.value,
                             metadata={"error_category": error_category, "error_raw": (outcome.error or "")[:300]})
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(0.3)  # was 2.0 — don't block all concurrent coroutines
                 try:
                     retry_outcome = await _run_strategy(db, strategy, url, domain, llm, scratch, result)
                     if retry_outcome.success:
@@ -357,6 +370,12 @@ async def process_url(
     item.runtime_seconds  = result.runtime_seconds
     item.attempts_detail  = attempt_chain   # persist full strategy cascade log
 
+    # Derive final failure category from the last recorded error for quick DB filtering.
+    if not result.success and result.error:
+        item.failure_category = _classify_error(result.error)
+    else:
+        item.failure_category = None
+
     # Build a clear, human-readable error summary when failed
     if not result.success:
         failed_summaries = [
@@ -401,7 +420,7 @@ async def _run_strategy(
     if strategy is Strategy.LLM_GENERATED:
         return await _try_llm_generated(db, url, domain, llm, scratch, result)
     if strategy is Strategy.CUA:
-        return await _try_cua(url, scratch, result)
+        return await _try_cua(db, url, domain, scratch, result)
     return StrategyOutcome(strategy=strategy, success=False, downloaded=0, error="no runner")
 
 
@@ -521,7 +540,7 @@ async def _try_llm_generated(
     try:
         import httpx
         from app.core.security import detect_prompt_injection, sanitize_web_content
-        async with httpx.AsyncClient(timeout=12, follow_redirects=True, verify=False) as client:  # noqa: S501
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as client:  # noqa: S501
             r = await client.get(url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
@@ -555,32 +574,21 @@ async def _try_llm_generated(
     resolved_platform = platform if platform != "unknown" else None
 
     # 5. Best-effort route learning (Playwright traces the click path).
+    # Only runs when explicitly enabled — disabled by default because it adds
+    # 20-30s of Playwright overhead per URL before LLM generation even starts.
+    # Enable via ENABLE_ROUTE_LEARNING=true when quality matters more than speed.
     route_map: RouteMap | None = None
     if settings.enable_route_learning:
         try:
             route_map = await asyncio.to_thread(learn_route, url)
-            log.info(
-                "phase3.route_learning",
-                url=url, learned=route_map.learned,
-                docs=route_map.total_documents_found,
-            )
+            log.info("phase3.route_learning", url=url, learned=route_map.learned,
+                     docs=route_map.total_documents_found)
         except Exception as e:  # noqa: BLE001
             log.warning("phase3.route_learning_failed", url=url, error=str(e))
             route_map = None
-
-        # Fallback to Computer-Use Agent (CUA) Pre-flight Discovery if standard learner failed
-        if route_map is None or not route_map.learned:
-            try:
-                log.info("phase3.route_learning.cua_preflight_trigger", url=url)
-                from app.phase1_llm_scraper.cua_discovery import run_cua_preflight_discovery
-                route_map = await run_cua_preflight_discovery(url, max_steps=8)
-                log.info(
-                    "phase3.route_learning.cua_preflight_complete",
-                    url=url, learned=route_map.learned,
-                    docs=route_map.total_documents_found,
-                )
-            except Exception as e:
-                log.warning("phase3.route_learning.cua_preflight_failed", url=url, error=str(e))
+        # NOTE: CUA preflight fallback intentionally removed — it adds a second
+        # full browser session (30-60s) and the stored cua_hint already provides
+        # equivalent navigation knowledge to the LLM generator.
 
     # 6. Domain-deduplication lock: if another worker is generating a scraper for
     #    this domain right now, wait for it to finish and then use the cached result.
@@ -592,13 +600,13 @@ async def _try_llm_generated(
         import redis as redis_lib
         _redis = redis_lib.from_url(settings.redis_url, socket_timeout=2.0)
         lock_key = f"vergabepilot:domain_llm_lock:{domain}"
-        # Try to acquire with a short poll loop (non-blocking)
-        for _ in range(int(settings.domain_llm_lock_ttl / 5)):
+        # Try to acquire with a short poll loop — 2s intervals, not 5s.
+        for _ in range(int(settings.domain_llm_lock_ttl / 2)):
             lock_acquired = bool(_redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl))
             if lock_acquired:
                 break
             # Another worker holds the lock — check if it already built the scraper
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)  # was 5 — poll more frequently
             refreshed = scraper_registry.get_for_domain(db, domain)
             if refreshed:
                 log.info("phase3.llm.dedup_cache_hit", domain=domain, url=url)
@@ -618,10 +626,21 @@ async def _try_llm_generated(
 
     report_data = route_map.cua_discovery_report if route_map else None
 
+    # Pull any CUA interaction knowledge stored for this domain.  If the CUA
+    # fallback already ran (in a prior job or earlier in this cascade), the
+    # recorded trace dramatically improves LLM generation success rates.
+    cua_hint: str | None = None
+    try:
+        tpl = scraper_registry.get_for_domain(db, domain)
+        if tpl and tpl.cua_hint:
+            cua_hint = tpl.cua_hint
+    except Exception:  # noqa: BLE001
+        pass
+
     try:
         # Run the LLM feedback loop (generator uses platform + route + pre-fetched HTML).
         loop = await asyncio.to_thread(
-            _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet,
+            _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet, cua_hint,
         )
         result.iterations += loop.iterations
         result.cost_usd += loop.total_cost_usd
@@ -657,6 +676,7 @@ def _run_loop_sync(
     route_map=None,
     platform: str | None = None,
     html_snippet: str | None = None,
+    cua_hint: str | None = None,
 ):
     """Run the async feedback loop from inside asyncio.to_thread().
 
@@ -664,24 +684,33 @@ def _run_loop_sync(
     to the new event loop started by asyncio.run() — not the outer loop.
     `html_snippet` is the already-sanitized page content forwarded from the
     pipeline so the generator skips its own HTTP fetch.
+    `cua_hint` is the recorded CUA interaction trace for this domain, if any.
     """
     llm = LLMClient(default_model=default_model)
     return asyncio.run(run_feedback_loop(
         url=url, llm=llm, route_map=route_map, platform=platform,
-        html_snippet=html_snippet,
+        html_snippet=html_snippet, cua_hint=cua_hint,
     ))
 
 
 async def _try_cua(
-    url: str, scratch: Path, result: PipelineResult,
+    db: Session, url: str, domain: str, scratch: Path, result: PipelineResult,
 ) -> StrategyOutcome:
     outcome = await run_agent(
         "playwright_cua", url=url, max_steps=settings.cua_max_steps,
     )
     result.cost_usd += outcome.cost_usd
+
+    # Always persist the CUA interaction trace as a domain hint, regardless of
+    # success/failure. Even a failed trace encodes which steps were tried,
+    # which selectors were found, and where the agent got stuck — this is
+    # valuable context for the next LLM generation attempt on this domain.
+    if outcome.trace:
+        hint = _format_cua_hint(url, outcome)
+        scraper_registry.store_cua_hint(db, domain, hint)
+
     if outcome.success and outcome.downloaded_files:
         moved = _move_into(scratch, outcome.downloaded_files)
-        # Clean up the agent's run-specific temp dir once files are in scratch.
         for f in outcome.downloaded_files:
             cua_dir = str(Path(f).parent)
             if cua_dir and cua_dir != str(scratch):
@@ -691,6 +720,35 @@ async def _try_cua(
             result.downloaded.extend(moved)
             return StrategyOutcome(Strategy.CUA, True, len(moved))
     return StrategyOutcome(Strategy.CUA, False, 0, outcome.error or "agent failed")
+
+
+def _format_cua_hint(url: str, outcome) -> str:
+    """Convert a CUA AgentRunOutcome trace into a concise text hint for the LLM.
+
+    Captures the step sequence (action type + description), any download
+    events, and the final outcome. Capped at 80 steps to stay prompt-friendly.
+    """
+    lines: list[str] = [
+        f"CUA agent ran on: {url}",
+        f"Outcome: {'SUCCESS' if outcome.success else 'FAILED'} — steps taken: {outcome.steps}",
+    ]
+    if outcome.error:
+        lines.append(f"Final error: {outcome.error[:300]}")
+
+    lines.append("\nStep-by-step trace:")
+    for i, step in enumerate(outcome.trace[:80], 1):
+        action = step.get("action") or step.get("type") or "step"
+        desc   = step.get("description") or step.get("text") or step.get("url") or ""
+        result = step.get("result") or step.get("outcome") or ""
+        line   = f"  {i}. [{action}] {str(desc)[:120]}"
+        if result:
+            line += f" → {str(result)[:80]}"
+        lines.append(line)
+
+    if outcome.downloaded_files:
+        lines.append(f"\nFiles downloaded: {[Path(f).name for f in outcome.downloaded_files[:10]]}")
+
+    return "\n".join(lines)
 
 
 # ---------- persistence ----------
