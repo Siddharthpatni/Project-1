@@ -107,23 +107,64 @@ class LLMClient:
             "Content-Type": "application/json",
         }
 
+        # Retry policy per HTTP status:
+        #   429 Rate-limit  → wait longer (10s, 20s, 30s) then retry same model
+        #   403 Forbidden   → switch to fallback model immediately (concurrent-call limit hit)
+        #   5xx Server error → short retry (3s, 6s)
+        #   Network error   → short retry (2s, 4s)
+        # Never retry 401 (bad key) or 400 (bad request) — they won't fix themselves.
+        _NO_RETRY_CODES = {400, 401}
+        _RATE_LIMIT_CODE = 429
+        _FORBIDDEN_CODE  = 403
+
         max_retries = 3
         last_error: Exception | None = None
         data = None
 
-        # Re-use one connection for all retry attempts.
         async with httpx.AsyncClient(timeout=120) as client:
             for attempt in range(1, max_retries + 1):
                 try:
                     r = await client.post(url, json=payload, headers=headers)
+
+                    # 403: OpenRouter concurrent-call cap or key issue.
+                    # Switch to fallback model and retry once — do NOT re-hit
+                    # the same model because it will 403 again immediately.
+                    if r.status_code == _FORBIDDEN_CODE:
+                        fallback = settings.llm_model_fallback
+                        if fallback and fallback != payload.get("model"):
+                            log.warning("llm.403_switching_to_fallback",
+                                        primary=payload.get("model"), fallback=fallback)
+                            payload = {**payload, "model": fallback}
+                            model = fallback
+                            await asyncio.sleep(2)
+                            continue
+                        # No usable fallback — raise
+                        r.raise_for_status()
+
+                    # 429: rate limit — back off much longer than network errors
+                    if r.status_code == _RATE_LIMIT_CODE:
+                        wait = 10 * attempt   # 10s, 20s, 30s
+                        log.warning("llm.rate_limited", wait_s=wait, attempt=attempt)
+                        if attempt < max_retries:
+                            await asyncio.sleep(wait)
+                            continue
+                        r.raise_for_status()
+
+                    if r.status_code in _NO_RETRY_CODES:
+                        r.raise_for_status()   # raise immediately, no retry
+
                     r.raise_for_status()
                     data = r.json()
                     break
-                except (httpx.HTTPError, httpx.RemoteProtocolError, Exception) as e:
+
+                except httpx.HTTPStatusError:
+                    raise   # already logged above; let it propagate
+                except (httpx.RemoteProtocolError, httpx.TimeoutException,
+                        httpx.ConnectError, Exception) as e:
                     last_error = e
-                    log.warning("llm.call_retry", attempt=attempt, error=str(e))
+                    log.warning("llm.call_retry", attempt=attempt, error=str(e)[:200])
                     if attempt < max_retries:
-                        await asyncio.sleep(attempt * 1.5)
+                        await asyncio.sleep(attempt * 2)   # 2s, 4s
 
         if data is None:
             log.error("llm.call_failed", error=str(last_error))

@@ -86,6 +86,19 @@ _ERROR_REASON_MAP: dict[str, str] = {
     "loop_exhausted":        "LLM feedback loop exhausted — all iterations failed to produce valid scraper",
     "unknown":               "Unexpected error — check error_raw for details",
 }
+# Global semaphore: limits concurrent LLM generation threads across all URLs
+# in the same asyncio event loop (one per Celery worker task).
+# Without this, 8 concurrent URLs each spawn a thread that calls OpenRouter
+# simultaneously — triggering 403 rate-limit on most of them.
+import asyncio as _asyncio
+_LLM_GENERATION_SEM: _asyncio.Semaphore | None = None
+
+def _get_llm_sem() -> _asyncio.Semaphore:
+    global _LLM_GENERATION_SEM
+    if _LLM_GENERATION_SEM is None:
+        _LLM_GENERATION_SEM = _asyncio.Semaphore(settings.llm_global_concurrency)
+    return _LLM_GENERATION_SEM
+
 from app.phase0_manual.v1_reference import scrape as manual_scrape
 from app.phase1_llm_scraper.executor import (
     cleanup_output_dir,
@@ -661,10 +674,14 @@ async def _try_llm_generated(
         pass
 
     try:
-        # Run the LLM feedback loop (generator uses platform + route + pre-fetched HTML).
-        loop = await asyncio.to_thread(
-            _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet, cua_hint,
-        )
+        # Acquire the global LLM semaphore before spawning the generation thread.
+        # This caps concurrent OpenRouter calls to settings.llm_global_concurrency
+        # (default 2) so simultaneous URL batches don't all fire at once and hit
+        # the 403 concurrent-call limit on the API key.
+        async with _get_llm_sem():
+            loop = await asyncio.to_thread(
+                _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet, cua_hint,
+            )
         result.iterations += loop.iterations
         result.cost_usd += loop.total_cost_usd
 

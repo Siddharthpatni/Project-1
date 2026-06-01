@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     job_concurrency: int = 8   # was 16; DB pool was exhausted with 16 concurrent sessions
 
     # Max concurrent LLM-generation tasks globally (prevents API rate-limiting).
-    # Each domain gets at most 1 LLM call at a time via Redis lock.
-    llm_global_concurrency: int = 8
+    # 2 = safe default for a single OpenRouter key; raise to 4 for paid tier keys.
+    llm_global_concurrency: int = 2
 
     # Redis TTL for per-domain LLM generation lock (seconds).
     # Set high enough to cover worst-case LLM generation time.
