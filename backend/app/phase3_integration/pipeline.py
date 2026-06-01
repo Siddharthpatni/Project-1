@@ -224,14 +224,15 @@ async def process_url(
     scratch = _job_downloads_dir(item)
     result._scratch_dirs.append(str(scratch))
 
-    # For DTVP/Satellite URLs, go straight to DETERMINISTIC — it constructs
-    # the ZIP URL in milliseconds. Running EXISTING first wastes time because
+    # For platforms with a deterministic URL template (DTVP, NetServer),
+    # go straight to DETERMINISTIC — it constructs the download URL in <1s
+    # with no LLM and no browser. Running EXISTING first wastes time because
     # the stored scraper is often the generic v1_reference Playwright scraper
-    # which crashes on these portals with "invalid state" errors.
+    # which crashes on these portals or times out.
     _quick_platform = platform_classifier.classify_url(url)
     if force_strategy:
         strategies = [force_strategy]
-    elif _quick_platform == "dtvp":
+    elif platform_classifier.is_deterministic(_quick_platform):
         strategies = [Strategy.DETERMINISTIC, Strategy.EXISTING, Strategy.LLM_GENERATED, Strategy.CUA, Strategy.MANUAL]
     else:
         strategies = [Strategy.EXISTING, Strategy.DETERMINISTIC, Strategy.LLM_GENERATED, Strategy.CUA, Strategy.MANUAL]

@@ -131,7 +131,7 @@ _HTML_PATTERNS: dict[str, list[str]] = {
 # Platforms that have a deterministic URL template — no LLM needed.
 # For these, the platform classifier can construct the document/ZIP URL
 # directly from URL components.
-DETERMINISTIC_PLATFORMS = {"dtvp"}
+DETERMINISTIC_PLATFORMS = {"dtvp", "netserver"}
 
 
 def classify_url(url: str) -> str:
@@ -218,6 +218,36 @@ def build_dtvp_zip_url(url: str) -> str | None:
     )
 
 
+def build_netserver_download_url(url: str) -> str | None:
+    """
+    Construct the _DownloadTenderDocuments URL for a NetServer portal.
+
+    Handles two URL forms:
+      1. TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-...
+         → TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID=...
+      2. PublicationControllerServlet?function=Detail&TWOID=54321-Tender-...
+         → TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID=...
+    """
+    from urllib.parse import urlsplit, parse_qs, urlencode
+
+    parts   = urlsplit(url)
+    params  = parse_qs(parts.query, keep_blank_values=True)
+    base    = f"{parts.scheme}://{parts.netloc}"
+    netpath = re.search(r"(/.*?/NetServer/)", parts.path, re.IGNORECASE)
+    ns_base = f"{base}{netpath.group(1)}" if netpath else f"{base}/NetServer/"
+
+    # Extract TenderOID — may be under TenderOID or TWOID key
+    oid = (params.get("TenderOID") or params.get("TWOID") or [None])[0]
+    if not oid:
+        # Try to find a 54321-Tender-* pattern anywhere in the URL
+        m = re.search(r"(54321-(?:Tender|PublishingProcess)-[a-f0-9\-]+)", url, re.IGNORECASE)
+        oid = m.group(1) if m else None
+    if not oid:
+        return None
+
+    return f"{ns_base}TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID={oid}"
+
+
 def build_download_url(platform: str, url: str) -> str | None:
     """
     Dispatch to the right URL builder for the given deterministic platform.
@@ -226,4 +256,6 @@ def build_download_url(platform: str, url: str) -> str | None:
     """
     if platform == "dtvp":
         return build_dtvp_zip_url(url)
+    if platform == "netserver":
+        return build_netserver_download_url(url)
     return None

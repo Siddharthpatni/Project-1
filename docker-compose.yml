@@ -18,10 +18,13 @@ x-worker-common: &worker-common
     REDIS_URL: redis://redis:6379/0
     S3_ENDPOINT: http://minio:9000
     # Tune these via .env for your hardware
-    JOB_CONCURRENCY: ${JOB_CONCURRENCY:-16}
+    JOB_CONCURRENCY: ${JOB_CONCURRENCY:-8}
     JOB_CHUNK_SIZE: ${JOB_CHUNK_SIZE:-50}
     LLM_GLOBAL_CONCURRENCY: ${LLM_GLOBAL_CONCURRENCY:-8}
     DOMAIN_LLM_LOCK_TTL: ${DOMAIN_LLM_LOCK_TTL:-360}
+    # Suppress browser-use pypi version check (fires on every CUA agent instantiation)
+    ANONYMIZED_TELEMETRY: "false"
+    BROWSER_USE_LOGGING_LEVEL: "warning"
   depends_on:
     - api
   volumes:
@@ -43,6 +46,7 @@ services:
       -c shared_buffers=256MB
       -c effective_cache_size=1GB
       -c work_mem=4MB
+      -c idle_in_transaction_session_timeout=300000
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:

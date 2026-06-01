@@ -20,9 +20,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     google_api_key: str = ""
 
-    llm_model_primary: str = "google/gemini-2.5-flash-lite"
+    llm_model_primary: str = "google/gemini-2.5-flash"  # flash-lite generated eval()/syntax errors
     llm_model_fallback: str = "openai/gpt-4o-mini"
-    llm_model_vision: str = "google/gemini-2.5-flash-lite"
+    llm_model_vision: str = "google/gemini-2.5-flash"
 
     # --- Database ---
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./vergabepilot.db")

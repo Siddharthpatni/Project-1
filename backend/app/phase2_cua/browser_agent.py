@@ -46,19 +46,23 @@ def build_agent_task(url: str) -> str:
 
         Target URL: {url}
 
+        CRITICAL RULES — read before acting:
+        - You MUST stay on the Target URL domain. NEVER navigate to any other website,
+          search engine, or unrelated page. If you are not on the original domain, stop.
+        - If the page returns a 404, "not found", "file not found", or any error page,
+          call done() IMMEDIATELY with success=False. Do not try to search or navigate elsewhere.
+        - If you cannot find download links after 3 steps, call done() with success=False.
+        - NEVER use search engines (DuckDuckGo, Google, Bing) or browse other websites.
+
         Instructions:
         1. Navigate to the Target URL.
-        2. Immediately look for a cookie consent banner. If present, click
-           "Akzeptieren", "Alle akzeptieren", or "Zustimmen".
-        3. Direct Download Execution: Check if document links, file icons, or
-           download buttons are ALREADY visible (e.g. in a table or list).
-           German portals often show PDF/ZIP download icons directly — if so,
-           click them WITHOUT navigating to tabs like "Vergabeunterlagen" first.
-        4. Tab Discovery (Fallback): If no download files are visible, look for
-           tabs or sections labelled "Vergabeunterlagen", "Dokumente", or
-           "Unterlagen" and click them to reveal the file listing.
-        5. Click all download buttons/links to initiate the downloads.
-        6. Visually verify that downloads were triggered, then conclude.
+        2. If the page shows a 404 or error — stop immediately (done, failed).
+        3. Dismiss any cookie consent banner ("Akzeptieren", "Alle akzeptieren", "Zustimmen").
+        4. Look for download buttons/links ALREADY visible (PDF/ZIP icons, "Alle herunterladen").
+           Click them directly — do NOT navigate to tabs first if files are visible.
+        5. If no downloads visible, look for tabs "Vergabeunterlagen", "Dokumente", "Unterlagen".
+           Click the tab, then download the files.
+        6. Once downloads are triggered, call done().
     """).strip()
 
 
