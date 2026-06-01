@@ -95,12 +95,20 @@ def process_job_task(
             for chunk in chunks
         )
         result = chunk_tasks.apply_async()
-        # Block this orchestrator task until all chunks finish
-        result.get(timeout=cfg.sandbox_timeout_seconds * total_urls, propagate=False)
+        # Block this orchestrator until all chunks finish.
+        # Timeout formula: chunks run in PARALLEL, so worst-case wall time is
+        # one chunk's cost (sandbox_timeout * chunk_size) × 4 safety margin.
+        # Minimum 10 min; never use total_urls*sandbox_timeout which scales
+        # linearly and explodes for large jobs (10k URLs → 69 h).
+        chunk_timeout = max(
+            600,
+            cfg.sandbox_timeout_seconds * cfg.job_chunk_size * 4,
+        )
+        result.get(timeout=chunk_timeout, propagate=False)
         db = SessionLocal()
 
-    if db is None:
-        db = SessionLocal()
+    # db is always valid here: either it was never closed (small-job path)
+    # or it was just reopened above (large-job path).
     db.expire_all()
     job = db.query(Job).filter(Job.id == job_id).first()
     n_success = sum(1 for i in job.items if i.status == JobStatus.SUCCESS.value)

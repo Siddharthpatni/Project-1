@@ -66,12 +66,20 @@ def get_for_domain(db: Session, domain: str) -> ScraperTemplate | None:
         log.warning("phase3.registry.fs_fallback_read_failed", domain=domain, error=str(e))
         return None
 
-    tpl = ScraperTemplate(domain=domain, code=code, source="disk", platform=None, route_used=False)
-    db.add(tpl)
-    db.commit()
-    db.refresh(tpl)
-    log.info("phase3.registry.fs_fallback_loaded", domain=domain, path=str(path))
-    return tpl
+    # Guard against concurrent workers both finding no DB row and both trying
+    # to INSERT — the second one gets an IntegrityError on the unique domain
+    # constraint. Handle it by re-querying instead of crashing.
+    from sqlalchemy.exc import IntegrityError
+    try:
+        tpl = ScraperTemplate(domain=domain, code=code, source="disk", platform=None, route_used=False)
+        db.add(tpl)
+        db.commit()
+        db.refresh(tpl)
+        log.info("phase3.registry.fs_fallback_loaded", domain=domain, path=str(path))
+        return tpl
+    except IntegrityError:
+        db.rollback()
+        return db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first()
 
 
 def upsert_from_generation(

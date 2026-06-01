@@ -211,11 +211,16 @@ async def process_url(
     import socket as _socket
     try:
         await asyncio.to_thread(_socket.getaddrinfo, domain, None, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
-    except _socket.gaierror:
-        result.error = f"dns resolution failed: {domain} does not exist"
+    except OSError:
+        # Catch all socket resolution failures: gaierror (NXDOMAIN), herror
+        # (SERVFAIL), and OSError (resolver timeout, network unreachable).
+        # Previously only gaierror was caught — herror/OSError escaped unhandled
+        # and left the item in PENDING state with no final DB commit.
+        result.error = f"dns resolution failed: {domain}"
         item.status = JobStatus.FAILED.value
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
+        item.failure_category = "dns"
         write_audit("pipeline.dns_fail", f"DNS resolution failed for {domain}", level=ERROR,
                     job_id=item.job_id, item_id=item.id, domain=domain, url=url)
         db.commit()
@@ -496,6 +501,13 @@ async def _try_existing(
     if not tpl:
         return StrategyOutcome(Strategy.EXISTING, success=False, downloaded=0, error="no template")
 
+    # Skip CUA-hint-only stubs — store_cua_hint() creates a ScraperTemplate
+    # with source="cua" and a comment-only placeholder code when CUA runs
+    # before a real scraper exists. Executing it would always fail, pollute
+    # failure_count, and eventually trigger should_retire() on a fake scraper.
+    if tpl.source == "cua":
+        return StrategyOutcome(Strategy.EXISTING, success=False, downloaded=0, error="no real scraper (cua hint only)")
+
     # executor is sync; run in thread pool
     ex = await asyncio.to_thread(exec_scraper, tpl.code, url)
     scraper_registry.record_outcome(db, tpl, success=ex.success, runtime=ex.runtime_seconds)
@@ -610,10 +622,13 @@ async def _try_llm_generated(
             lock_acquired = bool(_redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl))
             if lock_acquired:
                 break
-            # Another worker holds the lock — check if it already built the scraper
-            await asyncio.sleep(2)  # was 5 — poll more frequently
+            # Another worker holds the lock — check if it already built the scraper.
+            # Expire the session first so SQLAlchemy re-queries instead of
+            # returning a cached (stale) object from its identity map.
+            await asyncio.sleep(2)
+            db.expire_all()
             refreshed = scraper_registry.get_for_domain(db, domain)
-            if refreshed:
+            if refreshed and refreshed.source != "cua":
                 log.info("phase3.llm.dedup_cache_hit", domain=domain, url=url)
                 ex = await asyncio.to_thread(exec_scraper, refreshed.code, url)
                 scraper_registry.record_outcome(db, refreshed, success=ex.success, runtime=ex.runtime_seconds)
@@ -634,8 +649,11 @@ async def _try_llm_generated(
     # Pull any CUA interaction knowledge stored for this domain.  If the CUA
     # fallback already ran (in a prior job or earlier in this cascade), the
     # recorded trace dramatically improves LLM generation success rates.
+    # Expire first: a concurrent worker may have committed a cua_hint after
+    # _try_existing loaded this domain's row into the session identity map.
     cua_hint: str | None = None
     try:
+        db.expire_all()
         tpl = scraper_registry.get_for_domain(db, domain)
         if tpl and tpl.cua_hint:
             cua_hint = tpl.cua_hint

@@ -112,11 +112,29 @@ class PlaywrightCUA(BaseAgent):
             ],
         )
 
-        agent = Agent(
-            task=build_agent_task(url),
-            llm=llm,
-            browser=browser,
-        )
+        # Restrict the agent to browser-only actions — no web search.
+        # Relying solely on the task prompt to prevent search is insufficient:
+        # adversarial page content or model drift can override prompt instructions.
+        # browser-use exposes a `registered_actions` / `available_actions` param;
+        # if the current version doesn't support it the Agent falls back gracefully.
+        _ALLOWED_ACTIONS = [
+            "navigate", "go_back", "click", "input_text", "scroll",
+            "wait", "extract_content", "done", "save_file",
+        ]
+        try:
+            agent = Agent(
+                task=build_agent_task(url),
+                llm=llm,
+                browser=browser,
+                available_actions=_ALLOWED_ACTIONS,
+            )
+        except TypeError:
+            # Older browser-use versions don't accept available_actions
+            agent = Agent(
+                task=build_agent_task(url),
+                llm=llm,
+                browser=browser,
+            )
 
         try:
             log.info("phase2.playwright_cua.start", url=url)
