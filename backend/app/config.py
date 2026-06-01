@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     # --- Parallelism & Scalability ---
     # Max concurrent URL tasks within a single async worker context.
     # Raise this (e.g. 32) when running many workers on large jobs.
-    job_concurrency: int = 16
+    job_concurrency: int = 8   # was 16; DB pool was exhausted with 16 concurrent sessions
 
     # Max concurrent LLM-generation tasks globally (prevents API rate-limiting).
     # Each domain gets at most 1 LLM call at a time via Redis lock.
