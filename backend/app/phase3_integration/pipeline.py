@@ -99,6 +99,11 @@ def _get_llm_sem() -> _asyncio.Semaphore:
         _LLM_GENERATION_SEM = _asyncio.Semaphore(settings.llm_global_concurrency)
     return _LLM_GENERATION_SEM
 
+from app.core.metrics import (
+    SCRAPE_TOTAL, SCRAPE_DURATION, DOCUMENTS_DOWNLOADED,
+    ZIP_EXPANSIONS, ZIP_FILES_EXTRACTED, JOB_URLS_PROCESSED,
+)
+from app.core.zip_expander import expand_zips
 from app.phase0_manual.v1_reference import scrape as manual_scrape
 from app.phase1_llm_scraper.executor import (
     cleanup_output_dir,
@@ -144,8 +149,9 @@ def _job_downloads_dir(item: JobItem) -> Path:
 
 
 def _move_into(scratch: Path, sources: list[str]) -> list[str]:
-    """Copy `sources` into `scratch` (preserving names; deduping by name) and
-    return the new absolute paths. Skips files that don't exist."""
+    """Copy `sources` into `scratch` (preserving names; deduping by name),
+    expand any ZIPs found, and return the full list of absolute paths.
+    Skips files that don't exist."""
     moved: list[str] = []
     seen: set[str] = set()
     for src in sources:
@@ -166,6 +172,22 @@ def _move_into(scratch: Path, sources: list[str]) -> list[str]:
             moved.append(str(target))
         except Exception as e:  # noqa: BLE001
             log.warning("phase3.pipeline.copy_failed", src=src, error=str(e))
+
+    try:
+        expanded = expand_zips(moved)
+        new_files = len(expanded) - len(moved)
+        if new_files > 0:
+            log.info(
+                "phase3.pipeline.zip_expanded",
+                original=len(moved),
+                after_expansion=len(expanded),
+            )
+            ZIP_EXPANSIONS.inc()
+            ZIP_FILES_EXTRACTED.inc(new_files)
+        moved = expanded
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.pipeline.zip_expand_failed", error=str(e))
+
     return moved
 
 
@@ -335,6 +357,13 @@ async def process_url(
         attempt_chain.append(attempt_record)
         result.attempts.append(attempt_record)
 
+        # Prometheus metrics
+        SCRAPE_TOTAL.labels(
+            strategy=strategy.value,
+            status="success" if outcome.success else "failed",
+        ).inc()
+        SCRAPE_DURATION.labels(strategy=strategy.value).observe(strategy_elapsed)
+
         if outcome.success:
             result.success = True
             result.strategy_used = outcome.strategy
@@ -379,6 +408,20 @@ async def process_url(
         except Exception as e:  # noqa: BLE001
             log.exception("phase3.pipeline.persist_failed", error=str(e))
             result.error = (result.error or "") + f"; persist failed: {e}"
+
+        # Deep extraction — pure regex/structural, no LLM.
+        # Runs after successful download; failure never blocks the pipeline.
+        try:
+            from app.document_extractor.extractor import DeepExtractor
+            extractor = DeepExtractor()
+            extractor.run(
+                document_paths=result.downloaded,
+                source_url=url,
+                db=db,
+                job_item_id=item.id,
+            )
+        except Exception as _ex:  # noqa: BLE001
+            log.warning("extractor.pipeline_hook_failed", error=str(_ex))
 
     # Final outcome audit
     if not result.success:
@@ -570,19 +613,25 @@ async def _try_llm_generated(
     try:
         import httpx
         from app.core.security import detect_prompt_injection, sanitize_web_content
-        async with httpx.AsyncClient(timeout=8, follow_redirects=True, verify=False) as client:  # noqa: S501
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
             r = await client.get(url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
             })
             html_snippet = r.text
-        # Security: run injection scan on fetched HTML before handing to LLM.
         hits = detect_prompt_injection(html_snippet)
         if hits:
             log.warning("phase3.llm.prompt_injection_in_html", url=url, patterns=hits[:3])
-            html_snippet = None  # discard tainted content; generator will re-fetch safely
+            html_snippet = None
         else:
             sanitized_snippet = sanitize_web_content(html_snippet, max_length=20_000)
+    except httpx.ConnectError as e:
+        log.warning("phase3.llm.html_fetch_connect_error", url=url, error=str(e))
+    except httpx.SSLError as e:
+        # Portal has an invalid cert — log clearly and continue without HTML
+        log.warning("phase3.llm.html_fetch_ssl_error", url=url, error=str(e))
+    except httpx.TimeoutException as e:
+        log.warning("phase3.llm.html_fetch_timeout", url=url, error=str(e))
     except Exception as e:  # noqa: BLE001
         log.warning("phase3.llm.html_fetch_failed", url=url, error=str(e))
 
@@ -620,42 +669,69 @@ async def _try_llm_generated(
         # full browser session (30-60s) and the stored cua_hint already provides
         # equivalent navigation knowledge to the LLM generator.
 
-    # 6. Domain-deduplication lock: if another worker is generating a scraper for
-    #    this domain right now, wait for it to finish and then use the cached result.
-    #    This is critical at scale — 100 URLs from the same domain would otherwise
-    #    each trigger their own LLM call (wasted cost + time).
+    # 6. Domain-deduplication lock: acquire BEFORE generation starts so concurrent
+    #    workers for the same domain queue up rather than each calling the LLM.
     lock_acquired = False
-    _redis = None  # must be initialized before try so the finally block can safely reference it
+    _redis = None
+    lock_key = f"vergabepilot:domain_llm_lock:{domain}"
     try:
         import redis as redis_lib
-        _redis = redis_lib.from_url(settings.redis_url, socket_timeout=2.0)
-        lock_key = f"vergabepilot:domain_llm_lock:{domain}"
-        # Try to acquire with a short poll loop — 2s intervals, not 5s.
-        for _ in range(int(settings.domain_llm_lock_ttl / 2)):
-            lock_acquired = bool(_redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl))
-            if lock_acquired:
-                break
-            # Another worker holds the lock — check if it already built the scraper.
-            # Expire the session first so SQLAlchemy re-queries instead of
-            # returning a cached (stale) object from its identity map.
-            await asyncio.sleep(2)
-            db.expire_all()
-            refreshed = scraper_registry.get_for_domain(db, domain)
-            if refreshed and refreshed.source != "cua":
-                log.info("phase3.llm.dedup_cache_hit", domain=domain, url=url)
-                ex = await asyncio.to_thread(exec_scraper, refreshed.code, url)
-                scraper_registry.record_outcome(db, refreshed, success=ex.success, runtime=ex.runtime_seconds)
-                if ex.success and ex.downloaded_files:
-                    moved = _move_into(scratch, ex.downloaded_files)
+        _redis = redis_lib.from_url(settings.redis_url, socket_timeout=2.0, decode_responses=True)
+
+        # Attempt to acquire the lock immediately
+        lock_acquired = bool(
+            _redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl)
+        )
+
+        if not lock_acquired:
+            log.info("phase3.llm.lock_wait", domain=domain, url=url)
+            # Another worker holds the lock — poll every 2s until it releases or
+            # the lock TTL expires. The lock-holder will write the scraper to the
+            # registry on success, so check after each wait.
+            max_polls = max(1, int(settings.domain_llm_lock_ttl / 2))
+            for poll in range(max_polls):
+                await asyncio.sleep(2)
+                db.expire_all()
+                refreshed = scraper_registry.get_for_domain(db, domain)
+                if refreshed and refreshed.source not in ("cua",):
+                    log.info(
+                        "phase3.llm.dedup_cache_hit",
+                        domain=domain, url=url, polls=poll + 1,
+                    )
+                    ex = await asyncio.to_thread(exec_scraper, refreshed.code, url)
+                    scraper_registry.record_outcome(
+                        db, refreshed, success=ex.success, runtime=ex.runtime_seconds
+                    )
+                    if ex.success and ex.downloaded_files:
+                        moved = _move_into(scratch, ex.downloaded_files)
+                        cleanup_output_dir(ex.output_dir)
+                        if moved:
+                            result.downloaded.extend(moved)
+                            return StrategyOutcome(Strategy.EXISTING, True, len(moved))
                     cleanup_output_dir(ex.output_dir)
-                    if moved:
-                        result.downloaded.extend(moved)
-                        return StrategyOutcome(Strategy.EXISTING, True, len(moved))
-                cleanup_output_dir(ex.output_dir)
-                return StrategyOutcome(Strategy.EXISTING, False, 0, "dedup scraper did not return files")
-        # Timed out waiting for lock — proceed with own LLM generation
-    except Exception:  # Redis unavailable — proceed without dedup
-        pass
+                    return StrategyOutcome(
+                        Strategy.EXISTING, False, 0, "dedup scraper did not return files"
+                    )
+                # Re-try acquiring the lock (may have been released)
+                lock_acquired = bool(
+                    _redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl)
+                )
+                if lock_acquired:
+                    log.info("phase3.llm.lock_acquired_after_wait", domain=domain, polls=poll + 1)
+                    break
+
+            if not lock_acquired:
+                log.warning(
+                    "phase3.llm.lock_timeout_proceeding",
+                    domain=domain,
+                    ttl=settings.domain_llm_lock_ttl,
+                )
+        else:
+            log.debug("phase3.llm.lock_acquired", domain=domain)
+
+    except Exception as e:  # noqa: BLE001
+        # Redis unavailable — proceed without dedup protection, log so ops can investigate
+        log.warning("phase3.llm.redis_lock_unavailable", domain=domain, error=str(e))
 
     report_data = route_map.cua_discovery_report if route_map else None
 
@@ -702,12 +778,12 @@ async def _try_llm_generated(
             cleanup_output_dir(loop.final_execution.output_dir)
         return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err, cua_discovery_report=report_data)
     finally:
-        # Always release the domain lock after generation
         if lock_acquired and _redis is not None:
             try:
                 _redis.delete(lock_key)
-            except Exception:
-                pass
+                log.debug("phase3.llm.lock_released", domain=domain)
+            except Exception as e:  # noqa: BLE001
+                log.warning("phase3.llm.lock_release_failed", domain=domain, error=str(e))
 
 
 def _run_loop_sync(

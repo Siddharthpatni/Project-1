@@ -11,6 +11,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Minimum permissions — principle of least privilege
+permissions:
+  contents: read
+  security-events: write  # needed for CodeQL / trivy SARIF upload
+
 jobs:
   # ─────────────────────────────────────────────────────────────────
   # 1. Backend: install deps → run pytest
@@ -138,7 +143,6 @@ jobs:
         run: |
           cd frontend
           npx tsc --noEmit
-        continue-on-error: true   # Warn but don't block on TS errors from external libs
 
       - name: ESLint
         run: |
@@ -154,7 +158,40 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
 
   # ─────────────────────────────────────────────────────────────────
-  # 3. Docker: build all service images
+  # 3. Security: dependency vulnerability scan (pip-audit + npm audit)
+  # ─────────────────────────────────────────────────────────────────
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: pip-audit (Python dependency CVEs)
+        run: |
+          pip install pip-audit
+          cd backend
+          pip-audit -r requirements.txt --progress-spinner off || \
+          echo "::warning::pip-audit found vulnerabilities — review before production"
+        continue-on-error: true  # Report but don't block on upstream CVEs
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: npm audit (Node dependency CVEs)
+        run: |
+          cd frontend
+          npm audit --audit-level=high || \
+          echo "::warning::npm audit found high-severity vulnerabilities"
+        continue-on-error: true
+
+  # ─────────────────────────────────────────────────────────────────
+  # 4. Docker: build all service images
   # ─────────────────────────────────────────────────────────────────
   container-build:
     runs-on: ubuntu-latest

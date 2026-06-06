@@ -3,11 +3,27 @@ Centralized settings loaded from environment variables.
 
 All tunable knobs live here. Never read os.environ directly from feature
 code — import `settings` from this module instead.
-"""
-from functools import lru_cache
-import os
 
+SECRET REQUIREMENTS
+-------------------
+The following variables MUST be set in the environment (or .env file) before
+the application will start. Startup will abort with a clear error if they are
+missing or set to their insecure development defaults:
+
+  SECRET_KEY           — Flask/JWT signing key (min 32 chars)
+  MINIO_ROOT_USER      — MinIO access key
+  MINIO_ROOT_PASSWORD  — MinIO secret key (min 8 chars)
+"""
+from __future__ import annotations
+
+import os
+import sys
+from functools import lru_cache
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INSECURE_DEFAULTS = {"change-me", "changeme", "secret", "password", "admin", "minioadmin"}
 
 
 class Settings(BaseSettings):
@@ -20,8 +36,8 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     google_api_key: str = ""
 
-    llm_model_primary: str = "google/gemini-2.5-flash-lite"   # free tier on OpenRouter
-    llm_model_fallback: str = "google/gemini-2.5-flash-lite"  # same — no paid fallback needed
+    llm_model_primary: str = "google/gemini-2.5-flash-lite"
+    llm_model_fallback: str = "google/gemini-2.5-flash-lite"
     llm_model_vision: str = "google/gemini-2.5-flash-lite"
 
     # --- Database ---
@@ -32,53 +48,104 @@ class Settings(BaseSettings):
 
     # --- S3 / MinIO ---
     s3_endpoint: str = "http://localhost:9000"
-    minio_root_user: str = "minioadmin"
-    minio_root_password: str = "minioadmin"
+    minio_root_user: str = ""
+    minio_root_password: str = ""
     s3_bucket: str = "vergabepilot-documents"
     s3_region: str = "eu-central-1"
 
     # --- Phase 1 ---
-    sandbox_timeout_seconds: int = 25   # was 60 — scrapers either work fast or not at all
+    # 45s allows Angular/Cosinex portals that require 5-8s JS wait + download.
+    # The previous 25s was too tight and caused valid scrapers to be rejected.
+    sandbox_timeout_seconds: int = 45
     sandbox_memory_mb: int = 512
-    max_feedback_iterations: int = 3    # was 5 — 3 iterations cover 95% of cases
+    max_feedback_iterations: int = 3
 
     # --- Phase 2 ---
-    cua_max_steps: int = 15             # was 30 — procurement portals rarely need >10 steps
+    cua_max_steps: int = 15
     cua_screenshot_dir: str = "/tmp/vergabepilot-screenshots"
 
     # --- Phase 3 ---
     downloads_dir: str = "/app/data/downloads"
     scraper_registry_path: str = "/app/data/scrapers"
     enable_fallback_cua: bool = True
-    enable_route_learning: bool = False  # was True — Playwright pre-scan adds 20-30s per URL; disable for throughput
+    enable_route_learning: bool = False
     route_learning_max_clicks: int = 2
     versioning_check_interval_hours: int = 24
 
     # --- Parallelism & Scalability ---
-    # Max concurrent URL tasks within a single async worker context.
-    # Raise this (e.g. 32) when running many workers on large jobs.
-    job_concurrency: int = 8   # was 16; DB pool was exhausted with 16 concurrent sessions
-
-    # Max concurrent LLM-generation tasks globally (prevents API rate-limiting).
-    # 2 = safe default for a single OpenRouter key; raise to 4 for paid tier keys.
+    job_concurrency: int = 8
     llm_global_concurrency: int = 2
-
-    # Redis TTL for per-domain LLM generation lock (seconds).
-    # Set high enough to cover worst-case LLM generation time.
     domain_llm_lock_ttl: int = 360
-
-    # Job chunk size — how many URLs per Celery sub-task when fanning out.
-    # Smaller = more parallelism, larger = less queue overhead.
     job_chunk_size: int = 50
+
+    # --- Security ---
+    secret_key: str = ""
 
     # --- Misc ---
     log_level: str = "INFO"
-    secret_key: str = "change-me"
     allowed_origins: str = "http://localhost:3000"
 
     @property
     def allowed_origins_list(self) -> list[str]:
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
+
+    @model_validator(mode="after")
+    def _validate_secrets(self) -> "Settings":
+        """Abort startup when secrets are missing or insecure."""
+        errors: list[str] = []
+
+        # secret_key
+        if not self.secret_key:
+            errors.append(
+                "SECRET_KEY is not set. "
+                "Generate one with: python3 -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        elif self.secret_key.lower() in _INSECURE_DEFAULTS or len(self.secret_key) < 16:
+            errors.append(
+                f"SECRET_KEY='{self.secret_key[:8]}...' is insecure. "
+                "Set a random 32+ character value."
+            )
+
+        # MinIO credentials
+        if not self.minio_root_user:
+            errors.append("MINIO_ROOT_USER is not set.")
+        elif self.minio_root_user.lower() in _INSECURE_DEFAULTS:
+            errors.append(
+                f"MINIO_ROOT_USER='{self.minio_root_user}' is an insecure default. "
+                "Set a real username."
+            )
+
+        if not self.minio_root_password:
+            errors.append("MINIO_ROOT_PASSWORD is not set.")
+        elif self.minio_root_password.lower() in _INSECURE_DEFAULTS or len(self.minio_root_password) < 8:
+            errors.append(
+                f"MINIO_ROOT_PASSWORD is insecure or too short (min 8 chars). "
+                "Set a strong password."
+            )
+
+        if errors:
+            _env = os.getenv("VERGABEPILOT_ENV", "").lower()
+            if _env in ("production", "prod", "staging"):
+                # Hard fail in production
+                print("\n[VERGABEPILOT STARTUP ERROR] Insecure configuration:\n", file=sys.stderr)
+                for e in errors:
+                    print(f"  ✗  {e}", file=sys.stderr)
+                print(
+                    "\nSet these environment variables before starting the service.\n",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            else:
+                # Warn loudly in development but don't abort
+                import warnings
+                msg = (
+                    "[VERGABEPILOT] Insecure configuration detected — "
+                    "do NOT deploy to production with these settings:\n  "
+                    + "\n  ".join(errors)
+                )
+                warnings.warn(msg, stacklevel=2)
+
+        return self
 
 
 @lru_cache

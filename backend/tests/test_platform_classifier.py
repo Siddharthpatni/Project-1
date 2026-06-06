@@ -111,9 +111,9 @@ def test_is_deterministic_dtvp_is_true():
     assert pc.is_deterministic("dtvp") is True
 
 
-def test_is_deterministic_netserver_is_false():
-    """NetServer needs page-state extraction → not deterministic from URL alone."""
-    assert pc.is_deterministic("netserver") is False
+def test_is_deterministic_netserver_is_true():
+    """NetServer URL templates are now supported deterministically (direct ZIP download)."""
+    assert pc.is_deterministic("netserver") is True
 
 
 def test_is_deterministic_unknown_is_false():

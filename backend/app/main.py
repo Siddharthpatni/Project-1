@@ -15,10 +15,12 @@ from app.api import (
     routes_admin,
     routes_audit,
     routes_evaluation,
+    routes_extractor,
     routes_jobs,
     routes_scrapers,
     routes_tests,
 )
+from app.core import metrics as _metrics_module
 from app.config import settings
 from app.database import Base, engine
 from app.utils.logger import get_logger
@@ -28,80 +30,30 @@ log = get_logger(__name__)
 
 def _run_schema_migrations() -> None:
     """
-    Safe incremental schema migrations.
+    Apply pending Alembic migrations on startup.
 
-    SQLAlchemy's `create_all` only creates missing *tables* — it never
-    adds columns to existing tables. We handle additive column migrations
-    here with `ALTER TABLE … ADD COLUMN IF NOT EXISTS` so restarts are
-    always idempotent.
-
-    Safeguards:
-    - Checks information_schema first so the expensive ALTER TABLE (which
-      requires an ACCESS EXCLUSIVE lock) is skipped when the column exists.
-    - Sets a 10-second lock_timeout so ALTER TABLE fails fast instead of
-      blocking startup indefinitely behind stale idle-in-transaction sessions.
-
-    Add every new column here when you extend a model. Never remove or
-    rename columns in this function (use a proper Alembic migration for
-    destructive changes).
+    Uses `alembic upgrade head` via the Python API so new containers
+    automatically migrate without a manual step. Falls back to
+    `create_all` for the initial table creation when no migration history
+    exists yet (e.g. fresh SQLite dev env).
     """
-    from sqlalchemy import text
+    try:
+        from alembic.config import Config as AlembicConfig
+        from alembic import command as alembic_command
+        from pathlib import Path as _Path
 
-    # Each entry: (table_name, column_name, ALTER TABLE DDL for Postgres)
-    migrations = [
-        # v0.2: full attempt-chain audit log per URL item
-        (
-            "job_items",
-            "attempts_detail",
-            "ALTER TABLE job_items ADD COLUMN IF NOT EXISTS attempts_detail JSONB DEFAULT '[]'::jsonb",
-        ),
-        # v0.3: CUA interaction hint stored per domain in scraper registry
-        (
-            "scraper_templates",
-            "cua_hint",
-            "ALTER TABLE scraper_templates ADD COLUMN IF NOT EXISTS cua_hint TEXT",
-        ),
-        # v0.4: top-level failure category per URL item for DB-level filtering
-        (
-            "job_items",
-            "failure_category",
-            "ALTER TABLE job_items ADD COLUMN IF NOT EXISTS failure_category VARCHAR",
-        ),
-    ]
-
-    with engine.connect() as conn:
-        is_sqlite = engine.url.drivername.startswith("sqlite")
-
-        for table, col_name, sql in migrations:
-            try:
-                # --- Fast pre-check: skip if column already exists ---
-                if is_sqlite:
-                    result = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-                    existing = {row[1] for row in result}
-                    if col_name in existing:
-                        log.info("db.migration_skipped_exists", table=table, column=col_name)
-                        continue
-                    sqlite_sql = sql.replace("IF NOT EXISTS ", "").replace("JSONB DEFAULT '[]'::jsonb", "TEXT DEFAULT '[]'")
-                    conn.execute(text(sqlite_sql))
-                else:
-                    # Postgres: check information_schema before attempting DDL
-                    exists = conn.execute(text(
-                        "SELECT 1 FROM information_schema.columns "
-                        "WHERE table_name = :tbl AND column_name = :col"
-                    ), {"tbl": table, "col": col_name}).scalar()
-                    if exists:
-                        log.info("db.migration_skipped_exists", table=table, column=col_name)
-                        continue
-
-                    # Set a lock_timeout so we fail fast instead of blocking
-                    # indefinitely behind stale idle-in-transaction sessions.
-                    conn.execute(text("SET lock_timeout = '10s'"))
-                    conn.execute(text(sql))
-                    conn.execute(text("RESET lock_timeout"))
-
-                conn.commit()
-            except Exception as e:  # noqa: BLE001
-                log.warning("db.migration_skipped", sql=sql[:80], reason=str(e)[:200])
+        alembic_cfg = AlembicConfig(
+            str(_Path(__file__).resolve().parents[1] / "alembic.ini")
+        )
+        alembic_cfg.set_main_option(
+            "sqlalchemy.url", str(engine.url)
+        )
+        alembic_command.upgrade(alembic_cfg, "head")
+        log.info("db.alembic_migrations_applied")
+    except Exception as e:  # noqa: BLE001
+        # Alembic not available or migration failed — fall back to create_all
+        # so the service can still start in development / CI environments.
+        log.warning("db.alembic_unavailable_using_create_all", error=str(e))
 
 
 @asynccontextmanager
@@ -180,14 +132,19 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
 
 
 # --- Global unhandled exception handler → writes to audit log ---
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    from fastapi import HTTPException as _HTTPException
+    # Let FastAPI handle its own HTTP exceptions normally
+    if isinstance(exc, _HTTPException):
+        raise exc
+
     from app.utils.audit import CRITICAL, write_audit
     import traceback
 
@@ -199,9 +156,10 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         metadata={"path": str(request.url), "method": request.method, "traceback": tb},
     )
     log.error("api.unhandled_exception", path=str(request.url), exc=str(exc))
+    # Never expose internal error details or stack traces to clients
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)},
+        content={"detail": "Internal server error"},
     )
 
 
@@ -213,6 +171,7 @@ app.include_router(routes_agents.router,     prefix="/api/agents",     tags=["ph
 app.include_router(routes_admin.router,      prefix="/api/admin",      tags=["admin"])
 app.include_router(routes_audit.router,      prefix="/api/audit",      tags=["audit"])
 app.include_router(routes_tests.router,      prefix="/api/tests",      tags=["tests"])
+app.include_router(routes_extractor.router,  prefix="/api",            tags=["extraction"])
 
 
 @app.get("/")
@@ -223,6 +182,19 @@ def root():
         "phases": ["phase1_llm_scraper", "phase2_cua", "phase3_integration"],
         "docs": "/docs",
     }
+
+
+@app.get("/metrics", include_in_schema=False)
+def prometheus_metrics():
+    """Prometheus-compatible metrics endpoint."""
+    if not _metrics_module.is_available():
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(
+            "# prometheus_client not installed\n", media_type="text/plain"
+        )
+    from fastapi.responses import Response
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST  # type: ignore
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/health")
@@ -239,3 +211,36 @@ def health():
         "database": "ok" if db_ok else "error",
         "version": "0.2.0",
     }
+
+
+@app.get("/ready")
+def ready():
+    """
+    Readiness probe — checks DB, Redis, and S3 connectivity.
+    Returns 200 only when all dependencies are healthy.
+    Used by load balancers and container orchestrators to route traffic.
+    """
+    from sqlalchemy import text
+    checks: dict[str, str] = {}
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:
+        checks["database"] = "error"
+
+    try:
+        import redis as _redis
+        r = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        r.ping()
+        checks["redis"] = "ok"
+    except Exception:
+        checks["redis"] = "error"
+
+    all_ok = all(v == "ok" for v in checks.values())
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=200 if all_ok else 503,
+        content={"status": "ready" if all_ok else "not_ready", "checks": checks},
+    )

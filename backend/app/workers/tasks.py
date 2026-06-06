@@ -479,7 +479,7 @@ def crash_recovery_task() -> dict:
     db = SessionLocal()
     rescued = 0
     aborted = 0
-    threshold = datetime.datetime.utcnow() - datetime.timedelta(minutes=30)
+    threshold = datetime.datetime.now(timezone.utc) - datetime.timedelta(minutes=30)
     log.info("crash_recovery.tick")
 
     try:
@@ -511,7 +511,7 @@ def crash_recovery_task() -> dict:
 
         # Also mark jobs that have been PENDING for >2 hours without a worker
         # picking them up — this indicates queue overflow or worker crash.
-        lost_threshold = datetime.datetime.utcnow() - datetime.timedelta(hours=2)
+        lost_threshold = datetime.datetime.now(timezone.utc) - datetime.timedelta(hours=2)
         lost_jobs = (
             db.query(Job)
             .filter(Job.status == JobStatus.PENDING.value)

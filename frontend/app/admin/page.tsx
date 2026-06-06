@@ -33,6 +33,7 @@ import {
   Pie,
 } from "recharts";
 import { useState } from "react";
+import { useToast } from "@/components/Toast";
 
 // Severity → visual style
 const SEVERITY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -83,6 +84,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function AdminPage() {
+  const toast = useToast();
   const { data: stats, error: statsError, isLoading: statsLoading, mutate: mutateStats } = useSWR(api("/admin/stats"), fetcher, { refreshInterval: 10000 });
   const { data: errors, error: errorsError, isLoading: errorsLoading, mutate: mutateErrors } = useSWR(api("/admin/errors"), fetcher, { refreshInterval: 10000 });
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -132,10 +134,10 @@ export default function AdminPage() {
         mutateErrors();
         setTimeout(() => setResetSuccess(false), 5000);
       } else {
-        alert("Reset failed");
+        toast.error("Reset failed");
       }
     } catch (err) {
-      alert("Error during reset");
+      toast.error("Error during reset");
     } finally {
       setIsResetting(false);
     }
@@ -151,10 +153,10 @@ export default function AdminPage() {
         mutateErrors();
         setTimeout(() => setResetJobsSuccess(false), 5000);
       } else {
-        alert("Failed to reset stale jobs");
+        toast.error("Failed to reset stale jobs");
       }
     } catch (err) {
-      alert("Error resetting stale jobs");
+      toast.error("Error resetting stale jobs");
     } finally {
       setIsResettingJobs(false);
     }
@@ -796,7 +798,7 @@ export default function AdminPage() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(activeModalService.message);
-                  alert("Diagnostic payload copied to clipboard!");
+                  toast.success("Copied to clipboard");
                 }}
                 className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 cursor-pointer"
               >

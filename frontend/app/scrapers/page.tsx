@@ -3,8 +3,7 @@
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
 import { Fragment, useState } from "react";
-import Link from "next/link";
-import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle, ArrowLeft, Layers, Compass, DollarSign, ListOrdered, ChevronRight, Globe, Cpu, CheckCircle, Eye } from "lucide-react";
+import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle, Layers, Compass, DollarSign, ListOrdered, ChevronRight, Cpu, CheckCircle } from "lucide-react";
 
 export default function ScrapersPage() {
   const { data: scrapers, mutate } = useSWR(api("/scrapers"), fetcher, { refreshInterval: 8000 });
@@ -214,25 +213,32 @@ export default function ScrapersPage() {
           <Layers className="w-5 h-5 text-slate-600" />
           <h2 className="font-bold text-slate-800">Generated Procurement Scrapers</h2>
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[600px] custom-scrollbar">
-          <table className="w-full text-sm">
+        <div className="overflow-y-auto max-h-[600px] custom-scrollbar">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-[22%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+              <col className="w-[10%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[14%]" />
+            </colgroup>
             <thead className="bg-slate-50/95 backdrop-blur-sm text-left text-slate-500 border-b border-slate-100 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Domain</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Source</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Platform</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Route Map</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">CUA Hint</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Success Rate</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Failures</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-center">Avg Runtime</th>
-                <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Created</th>
+                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider">Domain</th>
+                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider">Source</th>
+                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider">Platform</th>
+                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider text-center">Flags</th>
+                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider text-center">Success Rate</th>
+                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider text-center">Runtime</th>
+                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider text-right">Created</th>
               </tr>
             </thead>
             <tbody>
               {scrapers?.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400 font-semibold">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-semibold">
                     Registry is empty. Run a compilation above to build your first template.
                   </td>
                 </tr>
@@ -243,9 +249,11 @@ export default function ScrapersPage() {
                 return (
                   <Fragment key={s.id}>
                     <tr className="border-t border-slate-100 hover:bg-slate-50/30 transition-colors">
-                      <td className="px-6 py-4 font-mono text-xs font-bold text-slate-700">{s.domain}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
+                      <td className="px-4 py-3">
+                        <span title={s.domain} className="block font-mono text-xs font-bold text-slate-700 truncate">{s.domain}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
                           s.source === 'llm'           ? 'bg-purple-50 text-purple-700 border-purple-100' :
                           s.source === 'deterministic' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                           s.source === 'disk'          ? 'bg-amber-50 text-amber-700 border-amber-200' :
@@ -255,35 +263,42 @@ export default function ScrapersPage() {
                           {s.source === 'disk' ? '💾 disk' : s.source}
                         </span>
                       </td>
-                      <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-slate-500 truncate">
                         {s.platform ?? <span className="text-slate-300">—</span>}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        {s.route_used
-                          ? <span title="Route-guided" className="inline-flex items-center justify-center p-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-extrabold rounded-full">✓</span>
-                          : <span className="text-slate-300 font-medium">—</span>}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {s.cua_hint
-                          ? <span title="CUA interaction trace available" className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-extrabold rounded-full">
-                              <Cpu className="w-3 h-3"/>CUA
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {s.route_used && (
+                            <span title="Route-guided" className="inline-flex items-center justify-center w-5 h-5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-extrabold rounded-full">✓</span>
+                          )}
+                          {s.cua_hint && (
+                            <span title="CUA interaction trace available" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-rose-50 border border-rose-200 text-rose-700 text-[10px] font-extrabold rounded-full">
+                              <Cpu className="w-2.5 h-2.5"/>CUA
                             </span>
-                          : <span className="text-slate-300 font-medium">—</span>}
+                          )}
+                          {!s.route_used && !s.cua_hint && <span className="text-slate-300 font-medium">—</span>}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-                          {s.success_count} runs ({rate}%)
-                        </span>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 whitespace-nowrap">
+                            {rate}% ({s.success_count} ok)
+                          </span>
+                          {s.failure_count > 0 && (
+                            <span className="text-[10px] font-bold text-rose-500">{s.failure_count} fail</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 text-center font-bold text-rose-600">{s.failure_count}</td>
-                      <td className="px-6 py-4 text-center font-bold text-slate-600">{s.avg_runtime?.toFixed(1)}s</td>
-                      <td className="px-6 py-4 text-right text-slate-400 text-xs font-medium">
+                      <td className="px-4 py-3 text-center font-bold text-slate-600 text-xs">
+                        {s.avg_runtime != null ? `${s.avg_runtime.toFixed(1)}s` : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-400 text-xs font-medium">
                         {new Date(s.created_at).toLocaleDateString()}
                       </td>
                     </tr>
                     {(s.code || s.cua_hint) && (
                       <tr className="bg-slate-50/30 border-b border-slate-100">
-                        <td colSpan={9} className="px-6 py-3 space-y-2">
+                        <td colSpan={7} className="px-4 py-3 space-y-2">
                           {s.cua_hint && (
                             <details className="text-xs group border border-rose-100 rounded-xl bg-white p-3 shadow-inner">
                               <summary className="cursor-pointer font-bold text-rose-600 hover:text-rose-700 select-none flex items-center gap-1.5 active:scale-95 transition-transform">

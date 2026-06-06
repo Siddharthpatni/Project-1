@@ -34,8 +34,16 @@ def test_cua_disabled():
 
 
 def test_cua_terminal():
+    # Cascade order: EXISTING → DETERMINISTIC → LLM_GENERATED → CUA → MANUAL
+    # CUA is NOT the last strategy — MANUAL (legacy phase-0 scraper) follows it.
     out = StrategyOutcome(Strategy.CUA, success=False, downloaded=0)
-    assert next_strategy(Strategy.CUA, out, enable_cua=True) is None
+    assert next_strategy(Strategy.CUA, out, enable_cua=True) is Strategy.MANUAL
+
+
+def test_manual_is_terminal():
+    # MANUAL is the last fallback — nothing follows it.
+    out = StrategyOutcome(Strategy.MANUAL, success=False, downloaded=0)
+    assert next_strategy(Strategy.MANUAL, out, enable_cua=True) is None
 
 
 # ---------- versioning ----------

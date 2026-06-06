@@ -11,8 +11,10 @@ import {
   Layers, Globe, ChevronDown, ChevronRight, RefreshCcw,
   FolderOpen, Shield, HeartPulse, ExternalLink, StopCircle,
   BarChart2, TrendingDown, AlertOctagon, FileDown, Timer,
+  ScanSearch, FileOutput, RefreshCw,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useToast } from "@/components/Toast";
 
 const STRATEGY_STYLES: Record<string, string> = {
   manual_scraper:         "bg-blue-50 text-blue-700 border-blue-200",
@@ -118,13 +120,13 @@ function ItemErrorBox({ msg }: { msg: string }) {
 function ThroughputBar({ completed, total, status }: { completed: number; total: number; status: string }) {
   const [snapshots, setSnapshots] = useState<{ t: number; c: number }[]>([]);
 
-  // Record snapshots every 5s to measure URL/min rate
-  useMemo(() => {
+  // Record snapshots whenever completed changes, to measure URL/min throughput rate.
+  // Must be useEffect (not useMemo) because setSnapshots is a side effect.
+  useEffect(() => {
     if (status !== "running" && status !== "pending") return;
     const now = Date.now();
     setSnapshots(prev => {
       const updated = [...prev, { t: now, c: completed }];
-      // Keep last 60 seconds of data
       return updated.filter(s => now - s.t < 60_000);
     });
   }, [completed, status]);
@@ -308,8 +310,127 @@ function AttemptTimeline({ attempts }: { attempts: any[] }) {
   );
 }
 
+// ── Deep Extraction result panel ────────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  vergabenummer:           "Vergabenummer",
+  ted_reference:           "TED-Referenz",
+  auftraggeber:            "Auftraggeber",
+  vergabestelle:           "Vergabestelle",
+  titel:                   "Titel",
+  vergabeverfahren:        "Vergabeverfahren",
+  auftragsart:             "Auftragsart",
+  veroeffentlichungsdatum: "Veröffentlicht",
+  abgabefrist:             "Abgabefrist",
+  bindefrist:              "Bindefrist",
+  cpv_codes:               "CPV-Code(s)",
+  nuts_codes:              "NUTS-Code(s)",
+  auftragswert:            "Auftragswert",
+  waehrung:                "Währung",
+  leistungsort:            "Leistungsort",
+  laufzeit:                "Laufzeit",
+  ansprechpartner:         "Ansprechpartner",
+  email:                   "E-Mail",
+  telefon:                 "Telefon",
+  fax:                     "Fax",
+};
+
+function ExtractionPanel({ result, itemId }: { result: any; itemId: string }) {
+  const f = result?.fields ?? {};
+  const rows = Object.entries(FIELD_LABELS)
+    .map(([key, label]) => {
+      const val = f[key];
+      if (!val || (Array.isArray(val) && val.length === 0)) return null;
+      const display = Array.isArray(val) ? val.join(", ") : String(val);
+      return { label, display };
+    })
+    .filter(Boolean) as { label: string; display: string }[];
+
+  const hasData = rows.length > 0;
+
+  return (
+    <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 overflow-hidden">
+      {/* meta bar */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-indigo-100 bg-indigo-50/60">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-500"/>
+          <span className="text-[10px] font-bold text-indigo-700">
+            {hasData ? `${rows.length} fields extracted` : "No structured fields found"}
+          </span>
+          {result.docs_parsed > 0 && (
+            <span className="text-[10px] text-indigo-400">· {result.docs_parsed} doc{result.docs_parsed !== 1 ? "s" : ""} parsed · {result.runtime_seconds}s</span>
+          )}
+        </div>
+        {/* Download buttons */}
+        <div className="flex items-center gap-1.5">
+          <a
+            href={`/api/extract/${itemId}/report?fmt=pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold rounded-lg transition-all"
+          >
+            <FileOutput className="w-3 h-3"/>PDF
+          </a>
+          <a
+            href={`/api/extract/${itemId}/report?fmt=docx`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[10px] font-bold rounded-lg transition-all"
+          >
+            <FileOutput className="w-3 h-3"/>DOCX
+          </a>
+        </div>
+      </div>
+
+      {/* field grid */}
+      {hasData && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-indigo-100/40">
+          {rows.map(({ label, display }) => (
+            <div key={label} className="flex gap-2 px-3 py-2 bg-white/80">
+              <span className="text-[10px] font-bold text-slate-400 w-28 flex-shrink-0 pt-px">{label}</span>
+              <span className="text-[10px] text-slate-700 break-all">{display}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Zuschlagskriterien */}
+      {(f.zuschlagskriterien ?? []).length > 0 && (
+        <div className="px-3 py-2 border-t border-indigo-100">
+          <p className="text-[10px] font-bold text-slate-400 mb-1">Zuschlagskriterien</p>
+          {f.zuschlagskriterien.map((c: string, i: number) => (
+            <p key={i} className="text-[10px] text-slate-600">• {c}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onRetry:(id:string)=>void; retrying:boolean }) {
   const [open, setOpen] = useState(false);
+  const [extracting,       setExtracting]       = useState(false);
+  const [extractionResult, setExtractionResult] = useState<any>(null);
+  const [extractionChecked, setExtractionChecked] = useState(false);
+
+  // Auto-load existing extraction result when row is expanded and has docs
+  useEffect(() => {
+    if (!open || docs.length === 0 || extractionChecked) return;
+    setExtractionChecked(true);
+    fetch(`/api/extract/${item.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setExtractionResult(data); })
+      .catch(() => {});
+  }, [open, docs.length, extractionChecked, item.id]);
+
+  async function handleExtract() {
+    setExtracting(true);
+    try {
+      const r = await fetch(`/api/extract/${item.id}/trigger`, { method: "POST" });
+      if (r.ok) setExtractionResult(await r.json());
+    } catch { /* silent */ }
+    finally { setExtracting(false); }
+  }
 
   // Build a short failure summary from attempts_detail if error_message is generic
   const failureSummary = useMemo(() => {
@@ -438,6 +559,46 @@ function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onR
               <p className="text-xs text-slate-400 italic">No documents downloaded for this URL.</p>
             )
           )}
+
+          {/* Deep Document Extraction */}
+          {docs.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ScanSearch className="w-3 h-3"/>Deep Document Analysis
+                </p>
+                <button
+                  onClick={handleExtract}
+                  disabled={extracting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-[10px] font-bold rounded-lg transition-all"
+                >
+                  {extracting
+                    ? <><Loader2 className="w-3 h-3 animate-spin"/>Extracting…</>
+                    : extractionResult
+                      ? <><RefreshCw className="w-3 h-3"/>Re-extract</>
+                      : <><ScanSearch className="w-3 h-3"/>Extract Fields</>
+                  }
+                </button>
+              </div>
+
+              {!extractionResult && !extracting && (
+                <p className="text-[10px] text-slate-400 italic">
+                  Click &quot;Extract Fields&quot; to deep-parse documents and generate a structured report (no AI, pure text analysis).
+                </p>
+              )}
+
+              {extracting && (
+                <div className="flex items-center gap-2 px-3 py-3 border border-indigo-100 rounded-xl bg-indigo-50/40">
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500"/>
+                  <span className="text-xs text-indigo-600 font-medium">Parsing documents and extracting procurement fields…</span>
+                </div>
+              )}
+
+              {extractionResult && !extracting && (
+                <ExtractionPanel result={extractionResult} itemId={item.id}/>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -476,6 +637,7 @@ function DomainSection({ domain, items, docsByItem, onRetry, retryingId }: {
 export default function JobDetailPage() {
   const { id }    = useParams<{ id: string }>();
   const router    = useRouter();
+  const toast     = useToast();
   const [isZipping,    setIsZipping]    = useState(false);
   const [isDeleting,   setIsDeleting]   = useState(false);
   const [isStopping,   setIsStopping]   = useState(false);
@@ -511,50 +673,92 @@ export default function JobDetailPage() {
   const totalDocs= documents?.length??0;
   const pct      = job?Math.max(4,Math.round((job.completed/Math.max(1,job.total_urls))*100)):0;
 
+  // All hooks must be declared before any conditional return (rules-of-hooks)
+  const handleZip = useCallback(async () => {
+    if (isZipping) return;
+    setIsZipping(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}/download-all`));
+      if (!r.ok) throw new Error(r.statusText);
+      const url = URL.createObjectURL(await r.blob());
+      const a   = document.createElement("a");
+      a.href     = url;
+      a.download = `job-${id?.slice(0, 8)}-docs.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast.error("ZIP download failed", e?.message);
+    } finally {
+      setIsZipping(false);
+    }
+  }, [id, isZipping, toast]);
+
+  const handleDelete = useCallback(async () => {
+    if (!window.confirm("Delete job permanently?")) return;
+    setIsDeleting(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}`), { method: "DELETE" });
+      if (!r.ok) throw new Error(r.statusText);
+      router.push("/jobs");
+    } catch (e: any) {
+      toast.error("Delete failed", e?.message);
+      setIsDeleting(false);
+    }
+  }, [id, router, toast]);
+
+  const handleStop = useCallback(async () => {
+    if (!window.confirm("Stop this job? All pending URLs will be marked as failed.")) return;
+    setIsStopping(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}/stop`), { method: "POST" });
+      if (!r.ok) throw new Error(r.statusText);
+      mutateJob();
+    } catch (e: any) {
+      toast.error("Stop failed", e?.message);
+    } finally {
+      setIsStopping(false);
+    }
+  }, [id, mutateJob, toast]);
+
+  const handleDiagnostics = useCallback(async () => {
+    setShowDiag(true);
+    setDiagLoading(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}/diagnostics`));
+      setDiag(r.ok ? await r.json() : null);
+    } catch {
+      setDiag(null);
+    } finally {
+      setDiagLoading(false);
+    }
+  }, [id]);
+
+  const handleRetry = useCallback(async (itemId: string) => {
+    setRetryingId(itemId);
+    try {
+      const r = await fetch(api(`/jobs/${id}/items/${itemId}/retry`), { method: "POST" });
+      if (!r.ok) throw new Error(r.statusText);
+      setTimeout(() => { mutateJob(); mutateDocs(); setRetryingId(null); }, 1500);
+    } catch (e: any) {
+      setRetryingId(null);
+      toast.error("Retry failed", e?.message);
+    }
+  }, [id, mutateJob, mutateDocs, toast]);
+  const copyId = useCallback(() => {
+    navigator.clipboard.writeText(job?.id ?? "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [job?.id]);
+
+  // Guard: show spinner while job data loads (placed after all hooks)
   if (!job) return (
     <div className="max-w-7xl mx-auto px-4 py-16 text-center">
       <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-3"/>
       <p className="text-slate-500 text-sm">Loading job…</p>
     </div>
   );
-
-  const handleZip = async()=>{
-    if (isZipping) return; setIsZipping(true);
-    try {
-      const r=await fetch(api(`/jobs/${id}/download-all`));
-      if(!r.ok) throw new Error();
-      const a=Object.assign(document.createElement("a"),{href:URL.createObjectURL(await r.blob()),download:`job-${id?.slice(0,8)}-docs.zip`});
-      document.body.appendChild(a);a.click();a.remove();
-    } catch { alert("ZIP download failed."); } finally { setIsZipping(false); }
-  };
-  const handleDelete=async()=>{
-    if(!confirm("Delete job permanently?")) return; setIsDeleting(true);
-    try { await fetch(api(`/jobs/${id}`),{method:"DELETE"}); router.push("/jobs"); }
-    catch { alert("Delete failed."); setIsDeleting(false); }
-  };
-  const handleStop=async()=>{
-    if(!confirm("Stop this job? All pending URLs will be marked as failed.")) return;
-    setIsStopping(true);
-    try {
-      await fetch(api(`/jobs/${id}/stop`),{method:"POST"});
-      mutateJob();
-    } catch { alert("Stop failed."); }
-    finally { setIsStopping(false); }
-  };
-  const handleDiagnostics=async()=>{
-    setShowDiag(true); setDiagLoading(true);
-    try {
-      const r=await fetch(api(`/jobs/${id}/diagnostics`));
-      setDiag(await r.json());
-    } catch { setDiag(null); }
-    finally { setDiagLoading(false); }
-  };
-  const handleRetry=async(itemId:string)=>{
-    setRetryingId(itemId);
-    try { await fetch(api(`/jobs/${id}/items/${itemId}/retry`),{method:"POST"}); setTimeout(()=>{mutateJob();mutateDocs();setRetryingId(null);},1500); }
-    catch { setRetryingId(null); alert("Retry failed."); }
-  };
-  const copyId=()=>{ navigator.clipboard.writeText(job.id); setCopied(true); setTimeout(()=>setCopied(false),1500); };
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
