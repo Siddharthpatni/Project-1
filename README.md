@@ -1,157 +1,217 @@
 # Vergabepilot.AI ⚡
-**Autonomous Agentic AI for Procurement Document Extraction & Cascade Pipeline**
 
-*SoSe 2026 · CORE Research Group · in cooperation with Ciconia Systems GmbH*  
-*Developed by: **Siddharth Patni***
+**Autonomous Agentic AI for Public Procurement Document Extraction**
 
----
-
-## Executive Project Overview
-
-Vergabepilot.AI is a highly optimized, production-ready, modular system designed to automate the scraping and download of public procurement tender documents across thousands of highly fragmented German and European Union portals. Instead of relying on brittle manual scrapers, the system features an intelligent **Agentic Cascade Pipeline** that dynamically degrades from low-cost cached strategies to highly advanced autonomous generative and visual agents.
-
-### Core Achievements & Features
-1. **Dynamic Cascade Scraper Loop**: Dynamically routes notice URLs through manual scripts, cached Python scrapers, deterministic builders, generative AI-synthesis, and visual browser fallback loops.
-2. **Phase 1 LLM Scraper Generation & Sandbox**: Uses generative LLMs (Gemini, Claude, GPT) to read a portal's structure, synthesize custom Playwright code, validate it inside a sandboxed environment, and iteratively heal the code based on stdout/stderr logs.
-3. **Phase 2 Visual Computer-Use Agents (CUA)**: Dispatches visual browser automation agents that interact with tender portals through mouse coordinates and keyboard input based on real-time screen captures—bypassing modern anti-scraping paywalls.
-4. **Global HTML Filtering & Safe-Saves**: Guarantees that only actual tender documents (PDFs, ZIPs, Word files) are persistent in storage, automatically filtering false-positive HTML downloads at the pipeline level.
-5. **Real-time Admin Monitor & Security Diagnostics**: A premium centralized ops command center showing pipeline metrics, strategy distributions, and real-time security threats (e.g., prompt injections, SSRF attempts, sandbox violations).
+*SoSe 2026 · CORE Research Group · Ciconia Systems GmbH*  
+*Developed by: Siddharth Patni*
 
 ---
 
-## 📐 System Phase Connections & Cascade Strategy
+## What is Vergabepilot.AI?
 
-The cascade system is built on a fail-safe strategy prioritizing **speed, cost-efficiency, and resilience**:
+Vergabepilot.AI is a production-ready, modular system that automates the scraping and downloading of public procurement tender documents across thousands of fragmented German and EU portals. Instead of brittle manual scrapers, it uses an intelligent **Agentic Cascade Pipeline** that degrades gracefully from fast cached strategies down to fully autonomous visual browser agents.
 
-```mermaid
-flowchart TD
-    Start([URL Submitted]) --> Existing{Exist in Scraper Registry?}
-    
-    Existing -- Yes (Fast Path) --> RunExisting[Run Cached Scraper Code]
-    RunExisting --> ValidateExist{Documents Found?}
-    
-    ValidateExist -- Yes --> Success([Success])
-    ValidateExist -- No --> Deterministic
-    Existing -- No --> Deterministic{Is DTVP/Satellite?}
-    
-    Deterministic -- Yes (Direct Path) --> RunDeterministic[Direct Download ZIP via URL Template]
-    RunDeterministic --> ValidateDet{Zip Downloaded?}
-    ValidateDet -- Yes --> Success
-    ValidateDet -- No --> Generative
-    Deterministic -- No --> Generative{LLM Generative}
-    
-    Generative --> LLMGen[LLM Scraper Generator]
-    LLMGen --> SandboxedRun[Run Sandboxed Code in PySandbox]
-    SandboxedRun --> ValidateLLM{Documents Found?}
-    ValidateLLM -- Yes --> RegisterRegistry[Register Scraper Code in Registry]
-    RegisterRegistry --> Success
-    ValidateLLM -- No (Iterate) --> Feedback[LLM Feedback Loop - max 3 retries]
-    Feedback --> SandboxedRun
-    Feedback -- Retries Exhausted --> CUA
-    
-    CUA[Phase 2: Computer Use Agent Fallback] --> VisualPlaywright[Playwright Screen Capture Visual Automation]
-    VisualPlaywright --> ValidateCUA{Documents Found?}
-    ValidateCUA -- Yes --> Success
-    ValidateCUA -- No --> Failure([Failure / None])
+```
+URL in → [ Manual → Cached → Deterministic → LLM → CUA ] → Documents out
 ```
 
-### Strategy Hierarchy & Classification
-* **Manual Scraper (`manual_scraper`)**: Pre-written, high-reliability legacy Python scripts mapped to specific high-traffic domains.
-* **Existing Scraper (`existing_scraper`)**: Automatically saved scrapers generated in previous successful LLM scraper runs.
-* **Deterministic DTVP (`deterministic_template`)**: Highly efficient URL construction for DTVP/Satellite Notice systems, constructing download URLs instantly without browser overhead or LLM costs.
-* **LLM Scraper (`llm_generated_scraper`)**: Dynamic scraping script synthesized on-the-fly inside PySandbox via an LLM agent.
-* **Computer Use Agent (`computer_use_agent`)**: The ultimate fallback. Visual agent capturing screenshots of page states and choosing visual actions.
-* **Failure / None (`none`)**: Triggered when all steps are exhausted without downloading documents.
+Each stage is only attempted if the previous one fails, minimising cost and latency while maximising coverage.
 
 ---
 
-## Stack, APIs & LLM Models Used
+## Quick Links
 
-Vergabepilot.AI supports a diverse suite of cutting-edge LLMs integrated via a standardized routing schema (`backend/app/core/llm.py`):
-
-| LLM Model | Category | Primary Use Case |
-|---|---|---|
-| **Google Gemini 2.5 Flash Lite** | Core/Fast Scraper | Low-latency script synthesis, route discovery, and fast parsing. |
-| **Google Gemini 2.5 Flash** | General Purpose | Default scraper builder and error diagnosis parser. |
-| **Google Gemini 2.5 Pro** | Highly Analytical | Visual coordinate discovery for CUA, complex portal exploration. |
-| **Anthropic Claude 3.5 Sonnet** | Premium Visual | Complex CUA screenshot-to-action reasoning loops. |
-| **Anthropic Claude 3.5 Haiku** | Fast Visual | Lightweight visual CUA tasks. |
-| **OpenAI GPT-4o** | High Capacity | Backup scraper generator and complex validation logic. |
-| **OpenAI GPT-4o Mini** | Secondary Backup | Cost-effective fallback scraper generator. |
+| Document | Description |
+|---|---|
+| [Architecture Overview](docs/ARCHITECTURE.md) | System design, component diagram, data flow |
+| [Cascade Pipeline](docs/PIPELINE.md) | All 5 pipeline stages with flow charts |
+| [API Reference](docs/API.md) | Every endpoint, request/response schema |
+| [Deployment Guide](docs/DEPLOYMENT.md) | Docker, environment variables, production checklist |
+| [Development Setup](docs/DEVELOPMENT.md) | Local dev, testing, contributing |
+| [Frontend Guide](docs/FRONTEND.md) | Component library, pages, dark mode system |
+| [Tender Extractor](docs/TENDER_EXTRACTOR.md) | Offline document field extraction module |
 
 ---
 
-## How to Start the Server
+## System at a Glance
 
-The entire stack is containerized via Docker Compose, combining a FastAPI REST service, an async Celery worker pool, PostgreSQL, Redis, MinIO (object storage), and a premium Next.js 14 frontend.
+```mermaid
+graph TB
+    subgraph Client
+        UI[Next.js Dashboard<br/>localhost:3000]
+    end
+
+    subgraph API["API Layer (FastAPI · localhost:8000)"]
+        FE[FastAPI App]
+        FE --> DB[(PostgreSQL 16)]
+        FE --> MINIO[(MinIO / S3)]
+        FE --> REDIS[(Redis 7)]
+    end
+
+    subgraph Workers["Celery Worker Pool"]
+        W1[worker-default<br/>concurrency=4]
+        W2[worker-chunks × 2<br/>concurrency=16 each]
+        W3[worker-cua<br/>concurrency=2]
+        BEAT[Celery Beat]
+    end
+
+    subgraph Pipeline["Cascade Pipeline"]
+        P0[Phase 0 — Manual Scraper]
+        P1[Phase 1 — LLM Code Gen]
+        P2[Phase 2 — CUA Visual Agent]
+        P3[Phase 3 — Orchestrator]
+    end
+
+    UI -->|HTTP /api/| FE
+    FE -->|enqueue| REDIS
+    REDIS --> W1
+    W1 -->|fan-out chunks| W2
+    W2 --> P3
+    P3 --> P0
+    P3 --> P1
+    P3 --> P2
+    W3 --> P2
+    P3 --> MINIO
+    P3 --> DB
+```
+
+---
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14, React 18, Tailwind CSS, SWR, Recharts |
+| Backend API | FastAPI 0.115, Python 3.11, Pydantic v2 |
+| Task Queue | Celery 5.4, Redis 7 |
+| Database | PostgreSQL 16, SQLAlchemy 2.0, Alembic |
+| Object Storage | MinIO (S3-compatible) |
+| Browser Automation | Playwright 1.47, browser-use |
+| LLM Provider | OpenRouter → Gemini 2.5 Flash Lite (free tier) |
+| Containerisation | Docker + Docker Compose |
+| Observability | Prometheus metrics, append-only audit log |
+
+---
+
+## Quickstart
 
 ### Prerequisites
-* Docker & Docker Compose installed.
-* Access to OpenRouter API key.
+- Docker Desktop ≥ 4.x with 8 GB RAM allocated (16 GB for CUA workers)
 
-### Setup Steps
-1. **Clone the Repository & Set Environment Variables**:
-   ```bash
-   cp .env.example .env
-   ```
-   Open the `.env` file and insert your active keys:
-   ```env
-   OPENROUTER_API_KEY=your_openrouter_api_key_here
-   S3_BUCKET=vergabepilot-documents
-   CELERY_BROKER_URL=redis://redis:6379/0
-   ```
+### 1 — Clone and configure
 
-2. **Launch the Containerized Services**:
-   ```bash
-   docker compose up --build -d
-   ```
+```bash
+git clone https://github.com/Siddharthpatni/Vergabepilot-v1.git
+cd Vergabepilot-v1
+cp .env.example .env
+# Edit .env and fill in all required values
+```
 
-3. **Verify running containers**:
-   ```bash
-   docker compose ps
-   ```
+Minimum required `.env` values:
 
-### Access Points
-* 🖥️ **Interactive Web Dashboard**: [http://localhost:3000](http://localhost:3000)
-* 📖 **FastAPI Interactive Docs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* 🗄️ **MinIO S3 Control Console**: [http://localhost:9001](http://localhost:9001) *(User: `minioadmin` / Pass: `minioadmin`)*
+```env
+# Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=<64-char hex string>
 
----
+POSTGRES_USER=vergabepilot
+POSTGRES_PASSWORD=<strong password>
 
-## Future Developer Guide: How to Extend the System
+MINIO_ROOT_USER=<your username>
+MINIO_ROOT_PASSWORD=<strong password>
 
-Developers looking to build upon Vergabepilot.AI can easily plug into our modular pipeline architecture:
+# Get a free key at https://openrouter.ai
+OPENROUTER_API_KEY=sk-or-v1-...
+```
 
-### 1. Registering a New Manual Scraper
-If you have written a high-reliability manual scraper for a specific domain (e.g., `vergabe.hessen.de`), register it as follows:
-1. Put the scraper script logic inside `backend/app/phase0_manual/v1_reference.py`.
-2. Map the domain to your script handler inside the manual scraper router in `backend/app/phase3_integration/pipeline.py`:
-   ```python
-   # Inside pipeline.py, manual scraper trigger section:
-   if domain == "vergabe.hessen.de":
-       return await run_manual_hessen_scraper(url, scratch, db)
-   ```
+### 2 — Build and start
 
-### 2. Adding a New Deterministic Platform Template (DTVP Family)
-If you discover a procurement platform family that uses fixed patterns:
-1. Open `backend/app/phase3_integration/platform_classifier.py`.
-2. Add the URL matches inside `_URL_PATTERNS` and the HTML matches in `_HTML_PATTERNS`.
-3. Add the platform to the `DETERMINISTIC_PLATFORMS` set:
-   ```python
-   DETERMINISTIC_PLATFORMS = {"dtvp", "my_new_platform"}
-   ```
-4. Define the ZIP/archive path builder inside `build_download_url`:
-   ```python
-   if platform == "my_new_platform":
-       return f"https://{domain}/download?tenderId={extract_id(url)}"
-   ```
+```bash
+docker compose build
+docker compose up -d
+```
 
-### 3. Modifying LLM Scraper Generation Prompts
-To improve the accuracy of automatically generated Python/Playwright scrapers:
-1. Open `backend/app/phase1_llm_scraper/prompts.py`.
-2. Locate `SCRAPER_GENERATION_PROMPT` or `FEEDBACK_HEALING_PROMPT`.
-3. Adjust instructions to guide how selectors are prioritized, or enforce specific waiting strategies inside the browser sandboxes.
+### 3 — Verify everything is healthy
+
+```bash
+docker compose ps
+# All services should show "healthy"
+
+curl localhost:8000/health
+# {"status":"ok","database":"ok","version":"0.2.0"}
+
+curl localhost:8000/ready
+# {"status":"ready","checks":{"database":"ok","redis":"ok"}}
+```
+
+### 4 — Open the dashboard
+
+Navigate to **[http://localhost:3000](http://localhost:3000)**, paste a procurement notice URL, and watch the cascade pipeline process it live.
 
 ---
 
-Coursework — © 2026 ATP Team Vergabepilot-AI. Designed & refined by Siddharth Patni in cooperation with Ciconia Systems GmbH.
+## Project Structure
+
+```
+vergabepilot-ai/
+├── backend/
+│   ├── app/
+│   │   ├── api/                  # FastAPI route handlers (jobs, scrapers, audit…)
+│   │   ├── core/                 # Storage, metrics, security, zip expander
+│   │   ├── document_extractor/   # Offline field extraction from downloaded docs
+│   │   ├── models.py             # SQLAlchemy ORM (Job, Document, AuditLog…)
+│   │   ├── config.py             # Centralised Pydantic settings
+│   │   ├── main.py               # FastAPI app + startup / shutdown hooks
+│   │   ├── phase0_manual/        # Pre-written Playwright domain scrapers
+│   │   ├── phase1_llm_scraper/   # LLM code generation + sandboxed execution
+│   │   ├── phase2_cua/           # Computer-use visual browser agents
+│   │   ├── phase3_integration/   # Cascade orchestrator + scraper registry
+│   │   └── workers/              # Celery task definitions
+│   ├── migrations/               # Alembic migration scripts
+│   └── tests/                    # pytest suite — 95 tests
+├── frontend/
+│   ├── app/                      # Next.js App Router pages
+│   ├── components/               # Shared UI + design system (Toast, Modal…)
+│   └── lib/                      # API client, SWR hooks, TypeScript types
+├── tender_extractor/             # Standalone offline extraction library
+├── data/scrapers/                # Auto-saved domain scraper scripts
+├── docs/                         # Full documentation (this folder)
+└── docker-compose.yml
+```
+
+---
+
+## Key Features
+
+| Feature | Detail |
+|---|---|
+| **5-Stage Cascade** | Fails gracefully through 5 strategies; one bad portal never blocks others |
+| **Gemini 2.5 Flash Lite** | Free-tier LLM for scraper code generation and document field enhancement |
+| **32 Parallel URLs** | 2 × worker-chunks replicas, each with concurrency=16 |
+| **Self-Healing Loop** | LLM feedback retries failed scrapers up to 3× with full error context |
+| **Scraper Registry** | Successful scrapers saved and reused automatically across all future jobs |
+| **Deep Field Extraction** | Regex + LLM extracts 22 structured procurement fields per document |
+| **Real-time Dashboard** | Live strategy analytics, attempt timeline, per-domain failure breakdown |
+| **ZIP Bomb Protection** | 500 MB limit, depth-3 recursive extraction, magic-byte validation |
+| **Security Guards** | SSRF protection, prompt injection detection, sandboxed code execution |
+| **Append-only Audit Log** | Every pipeline event recorded; full replay of any job's history |
+
+---
+
+## Performance
+
+| Metric | Target |
+|---|---|
+| Peak throughput | 32 URLs/min (scale `worker-chunks` replicas for more) |
+| API read latency | < 200 ms p95 |
+| LLM cost per URL | ~$0.00001 (Gemini free tier) |
+| Document extraction | < 5 s/doc (regex only) · 10–30 s (with LLM enhancement) |
+
+---
+
+## Contributing
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for environment setup, running tests, and coding guidelines.
+
+---
+
+*Vergabepilot.AI · SoSe 2026 · CORE Research Group*
