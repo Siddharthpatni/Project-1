@@ -76,30 +76,49 @@ def process_job_task(
             db.close()
             return {"error": str(e), "job_id": job_id}
     else:
-        # ── Large job: fan out in chunks ────────────────────────────────
+        # ── Large job: intelligent fan-out in priority-sorted chunks ───────
+        # For 10,000+ URL runs we sort URLs by expected success before chunking:
+        #   Tier 1 — SATELLITE + NETSERVER_PUB (fast, deterministic, free)
+        #   Tier 2 — UNKNOWN + EVERGABE_WEB + SUBREPORT (moderate cost, ~35-50%)
+        #   Tier 3 — NETSERVER_AUTH + EVERGABE_DEEP (login-gated, low success, skip LLM)
+        # This means workers fill up on easy wins first, saving LLM budget.
+        from app.phase3_integration.url_intelligence import classify_url_type, UrlType, URL_TYPE_SUCCESS_RATE
+        from app.models import JobItem as _JobItem
+
         db.close()
         db = None
+
+        # Load (item_id, url) pairs for sorting without loading all relationships
+        _db = SessionLocal()
+        try:
+            _pairs = _db.query(_JobItem.id, _JobItem.url).filter(_JobItem.job_id == job_id).all()
+        finally:
+            _db.close()
+
+        # Sort: highest expected success rate first
+        def _priority(pair) -> float:
+            url_type = classify_url_type(pair[1])
+            return -URL_TYPE_SUCCESS_RATE.get(url_type, 0.35)  # negative = ascending sort by rate
+
+        sorted_ids = [p[0] for p in sorted(_pairs, key=_priority)]
+
         chunks = [
-            item_ids[i : i + cfg.job_chunk_size]
-            for i in range(0, len(item_ids), cfg.job_chunk_size)
+            sorted_ids[i : i + cfg.job_chunk_size]
+            for i in range(0, len(sorted_ids), cfg.job_chunk_size)
         ]
         log.info(
-            "job.fanout", job_id=job_id,
+            "job.fanout_intelligent", job_id=job_id,
             total_urls=total_urls, chunks=len(chunks),
             chunk_size=cfg.job_chunk_size,
         )
-        # Dispatch chunk tasks and wait for all to complete
         from celery import group as celery_group
         chunk_tasks = celery_group(
             process_chunk_task.s(job_id, chunk, force_strategy, force_model)
             for chunk in chunks
         )
         result = chunk_tasks.apply_async()
-        # Block this orchestrator until all chunks finish.
-        # Timeout formula: chunks run in PARALLEL, so worst-case wall time is
-        # one chunk's cost (sandbox_timeout * chunk_size) × 4 safety margin.
-        # Minimum 10 min; never use total_urls*sandbox_timeout which scales
-        # linearly and explodes for large jobs (10k URLs → 69 h).
+        # Timeout: chunks run in PARALLEL. Worst case = one chunk cost × 4 safety.
+        # Minimum 10 min. Never scale linearly by total_urls (explodes at 10K).
         chunk_timeout = max(
             600,
             cfg.sandbox_timeout_seconds * cfg.job_chunk_size * 4,
@@ -137,20 +156,44 @@ def process_chunk_task(
 
     Multiple workers can each be handling a different chunk simultaneously,
     giving horizontal scale-out for large jobs.
+
+    Resumability: items already in SUCCESS state are skipped so re-running
+    a crashed job only processes the remaining URLs — critical for 10K+ runs.
     """
     db = SessionLocal()
+
+    # Direct SQL query — never load job.items (O(total_urls) join) for large jobs.
+    # Also filter out already-succeeded items for job resumability.
+    item_id_set = set(item_ids)
+    items = (
+        db.query(JobItem)
+        .filter(
+            JobItem.job_id == job_id,
+            JobItem.id.in_(item_id_set),
+            JobItem.status != JobStatus.SUCCESS.value,   # skip completed
+        )
+        .all()
+    )
+
+    if not items:
+        db.close()
+        return {"job_id": job_id, "chunk_size": 0, "skipped": len(item_ids)}
+
     job: Job | None = db.query(Job).filter(Job.id == job_id).first()
     if job is None:
         db.close()
         return {"error": "job not found"}
 
-    items = [i for i in job.items if i.id in set(item_ids)]
     force = None
     if force_strategy:
         try:
             force = Strategy(force_strategy)
         except ValueError:
             pass
+
+    skipped = len(item_ids) - len(items)
+    if skipped:
+        log.info("chunk.resuming", job_id=job_id, total=len(item_ids), skipped=skipped, remaining=len(items))
 
     try:
         asyncio.run(_process_items_async(db, job, items, force_model, force))
@@ -159,7 +202,7 @@ def process_chunk_task(
     finally:
         db.close()
 
-    return {"job_id": job_id, "chunk_size": len(item_ids)}
+    return {"job_id": job_id, "chunk_size": len(item_ids), "processed": len(items), "skipped": skipped}
 
 
 async def _process_job_async(db, job, force_model: str | None, force_strategy):
@@ -178,6 +221,11 @@ async def _process_items_async(db, job, items, force_model: str | None, force_st
 
     The parent `db` session is used ONLY for atomic progress/cost updates
     which are protected by a per-function asyncio lock.
+
+    Scale note (10K+ URLs): cfg.job_concurrency controls how many URLs are
+    processed simultaneously per worker. Each Playwright browser consumes
+    ~200 MB RAM, so the product of (workers × job_concurrency) must stay
+    within available memory. Default: 8 concurrent per worker.
     """
     from app.config import settings as cfg
 
@@ -198,6 +246,11 @@ async def _process_items_async(db, job, items, force_model: str | None, force_st
                 if item is None:
                     return 0.0
 
+                # Double-check: skip if another worker already completed this item
+                # (race condition in fan-out when the same item_id appears in two chunks)
+                if item.status == JobStatus.SUCCESS.value:
+                    return 0.0
+
                 result = await process_url(item_db, item, llm, storage, force_strategy)
                 return result.cost_usd or 0.0
             except Exception as e:  # noqa: BLE001
@@ -214,7 +267,7 @@ async def _process_items_async(db, job, items, force_model: str | None, force_st
             finally:
                 item_db.close()
 
-    # Fan out all items concurrently
+    # Fan out all items concurrently (bounded by sem)
     costs = await asyncio.gather(*(_process_one(item.id) for item in items))
 
     # Atomic progress update in the parent session (serialised)
@@ -537,6 +590,61 @@ def crash_recovery_task() -> dict:
         return {"rescued": rescued, "aborted": aborted}
     finally:
         db.close()
+
+
+# --------------------------------------------------------------------
+# Disk cleanup — critical for 10K+ URL production runs
+# --------------------------------------------------------------------
+
+@celery_app.task(name="app.workers.tasks.cleanup_stale_downloads_task")
+def cleanup_stale_downloads_task(max_age_hours: int = 24) -> dict:
+    """
+    Delete download directories older than `max_age_hours`.
+
+    Without cleanup, a 10K-URL job producing 50 MB of documents per URL
+    would consume ~500 GB. This task runs hourly via Celery beat and
+    removes stale scratch dirs. Files already uploaded to S3 are safe to delete.
+
+    Skips any directory touched in the last `max_age_hours` so in-flight
+    jobs are never interrupted.
+    """
+    import shutil
+    import datetime
+    from pathlib import Path
+    from app.config import settings
+    base = Path(settings.downloads_dir)
+    if not base.exists():
+        return {"deleted": 0, "freed_mb": 0}
+
+    cutoff = datetime.datetime.now().timestamp() - max_age_hours * 3600
+    deleted = 0
+    freed_bytes = 0
+
+    for entry in base.iterdir():
+        if not entry.is_dir():
+            continue
+        try:
+            mtime = entry.stat().st_mtime
+            if mtime > cutoff:
+                continue
+            size = sum(f.stat().st_size for f in entry.rglob("*") if f.is_file())
+            shutil.rmtree(entry, ignore_errors=True)
+            freed_bytes += size
+            deleted += 1
+        except Exception as e:  # noqa: BLE001
+            log.warning("cleanup.skip_error", path=str(entry), error=str(e))
+
+    from app.utils.audit import INFO, write_audit
+
+    freed_mb = round(freed_bytes / 1_048_576, 1)
+    if deleted:
+        write_audit(
+            "cleanup.downloads",
+            f"Removed {deleted} stale download dirs, freed {freed_mb} MB",
+            level=INFO,
+        )
+    log.info("cleanup.done", deleted=deleted, freed_mb=freed_mb)
+    return {"deleted": deleted, "freed_mb": freed_mb}
 
 
 # --------------------------------------------------------------------

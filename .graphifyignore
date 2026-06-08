@@ -1,0 +1,38 @@
+# Exclude non-code files so graphify runs without an LLM API key
+# (code-only corpus needs no semantic extraction key)
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.mp4
+*.mp3
+*.wav
+*.md
+*.rst
+*.txt
+*.csv
+*.json
+*.yaml
+*.yml
+*.toml
+*.lock
+*.log
+*.env
+*.env.*
+# Data / downloads
+data/downloads/
+publications_*.csv
+verified_urls.json
+celerybeat-schedule
+# Node / build artifacts
+node_modules/
+__pycache__/
+*.pyc
+.git/
+dist/
+build/
+.venv/
+venv/

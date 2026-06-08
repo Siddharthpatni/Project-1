@@ -32,18 +32,22 @@ def list_extractions(
         .limit(limit)
         .all()
     )
-    return [
-        {
+    result = []
+    for r in records:
+        try:
+            fields = json.loads(r.fields_json or "{}")
+        except Exception:
+            fields = {}
+        result.append({
             "id": r.id,
             "job_item_id": r.job_item_id,
-            "source_url": r.source_url,
-            "docs_parsed": r.docs_parsed,
-            "runtime_seconds": r.runtime_seconds,
-            "created_at": r.created_at.isoformat(),
-            "fields": json.loads(r.fields_json or "{}"),
-        }
-        for r in records
-    ]
+            "source_url": r.source_url or "",
+            "docs_parsed": r.docs_parsed or 0,
+            "runtime_seconds": r.runtime_seconds or 0.0,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+            "fields": fields,
+        })
+    return result
 
 
 @router.get("/{job_item_id}")
@@ -87,19 +91,17 @@ def download_report(
     if item is None:
         raise HTTPException(status_code=404, detail="Job item not found")
 
-    # Rebuild fields object
+    # Rebuild fields object — only pass known fields to handle schema evolution
     from app.document_extractor.field_extractor import TenderFields
     from dataclasses import fields as dc_fields
 
     fields_dict = json.loads(record.fields_json or "{}")
-    tf = TenderFields(**{
-        k: fields_dict.get(k)
-        for k in {f.name for f in dc_fields(TenderFields)}
-        if k in fields_dict
-    })
-    # Ensure list fields are lists
-    for list_field in ("cpv_codes", "nuts_codes", "zuschlagskriterien", "eignungskriterien", "lose", "additional_notes"):
-        val = getattr(tf, list_field)
+    known = {f.name for f in dc_fields(TenderFields)}
+    tf = TenderFields(**{k: fields_dict[k] for k in known if k in fields_dict})
+    # Ensure list fields are lists (guards against null stored in DB)
+    for list_field in ("cpv_codes", "nuts_codes", "zuschlagskriterien", "eignungskriterien",
+                       "lose", "additional_notes", "kernpunkte"):
+        val = getattr(tf, list_field, None)
         if val is None:
             setattr(tf, list_field, [])
 
@@ -128,7 +130,13 @@ def download_report(
         except Exception:
             parsed_docs.append(ParsedDocument(filename=doc.filename, text=""))
 
-    report_bytes, mime = build_report(tf, parsed_docs, record.source_url, fmt)
+    try:
+        report_bytes, mime = build_report(tf, parsed_docs, record.source_url, fmt)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {e}")
+
     ext = "pdf" if fmt == "pdf" else "docx"
     filename = f"vergabepilot_extraction_{job_item_id[:8]}.{ext}"
 

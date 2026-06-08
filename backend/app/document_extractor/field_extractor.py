@@ -24,7 +24,7 @@ class TenderFields:
 
     # Tender description
     titel: Optional[str] = None
-    leistungsbeschreibung: Optional[str] = None
+    leistungsbeschreibung: Optional[str] = None  # brief description of services
     vergabeverfahren: Optional[str] = None
     auftragsart: Optional[str] = None
 
@@ -61,6 +61,10 @@ class TenderFields:
 
     # Raw sentences that couldn't be classified
     additional_notes: list[str] = field(default_factory=list)
+
+    # Generated summary (filled by llm_enhancer)
+    zusammenfassung: Optional[str] = None        # executive summary paragraph
+    kernpunkte: list[str] = field(default_factory=list)  # key bullet points
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +127,20 @@ def _extract_auftraggeber(text: str) -> Optional[str]:
         r"Beschaffungsstelle\s*[:\n]\s*(.+?)(?:\n|$)",
         r"Auftraggeber\s*:\s*\n?\s*([A-ZÄÖÜ][^\n]{5,80})",
     ]))
+
+
+def _extract_leistungsbeschreibung(text: str) -> Optional[str]:
+    val = _clean(_first(text, [
+        r"[Ll]eistungsbeschreibung\s*[:\n]\s*(.{20,500}?)(?:\n\n|\n[A-Z0-9]|$)",
+        r"[Bb]eschreibung\s+(?:der\s+)?[Ll]eistung\s*[:\n]\s*(.{20,500}?)(?:\n\n|\n[A-Z0-9]|$)",
+        r"[Gg]egenstand\s+(?:der|des)\s+(?:Auftrags?|Leistung)\s*[:\n]\s*(.{20,500}?)(?:\n\n|\n[A-Z0-9]|$)",
+        r"[Kk]urzbeschreibung\s*[:\n]\s*(.{20,500}?)(?:\n\n|\n[A-Z0-9]|$)",
+        r"[Ii]nformation\s+(?:über\s+)?(?:den\s+)?Auftragsgegenstand\s*[:\n]\s*(.{20,500}?)(?:\n\n|$)",
+    ], re.IGNORECASE | re.DOTALL))
+    if val:
+        # Collapse whitespace and cap to 400 chars
+        val = re.sub(r"\s+", " ", val).strip()[:400]
+    return val
 
 
 def _extract_titel(text: str) -> Optional[str]:
@@ -302,6 +320,7 @@ def extract_fields(text: str) -> TenderFields:
     f.ted_reference        = _extract_ted_reference(text)
     f.auftraggeber         = _extract_auftraggeber(text)
     f.titel                = _extract_titel(text)
+    f.leistungsbeschreibung = _extract_leistungsbeschreibung(text)
     f.vergabeverfahren     = _extract_vergabeverfahren(text)
     f.auftragsart          = _extract_auftragsart(text)
     f.cpv_codes            = _extract_cpv(text)

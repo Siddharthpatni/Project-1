@@ -1,235 +1,150 @@
 """
-Phase 0 Manual Scraper — V1 Reference Implementation.
-Ported from https://github.com/Siddharthpatni/Vergabepilot-v1.git
+www.kvb.de — KVB (Kassenärztliche Vereinigung Bayern) procurement portal.
 
-This scraper handles complex German procurement portals with:
-- URL recovery (Vergabe24/Tender24)
-- Cookie banner dismissal
-- Multi-pass document identification and downloading
+KVB uses an embedded iframe or redirect to their procurement module.
+The URL in the dataset is usually the procurement module URL itself.
+Strategy:
+  1. Try direct HTTP download for any ZIP/PDF in the URL path.
+  2. Navigate with Playwright, find document section, extract links.
 """
-
 import os
 import re
-import time
 import requests
-import hashlib
 from pathlib import Path
-from urllib.parse import urlparse, urljoin, quote, quote_plus, unquote
-from playwright.sync_api import sync_playwright
+from urllib.parse import urljoin, urlparse, parse_qs
+from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
-# ---------- Configuration & Keywords ----------
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+DOC_EXTS = {".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".gaeb", ".x81", ".rar", ".7z"}
+MAX_BYTES = 200 * 1024 * 1024
 
-DOCUMENT_EXTENSIONS = {
-    ".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".rar", ".7z",
-    ".odt", ".ods", ".p7s", ".gaeb", ".x81", ".x83", ".d83", ".d84",
-}
 
-DOC_TEXT_KEYWORDS = [
-    "unterlag", "leistungsverzeichnis", "leistungsbeschreibung",
-    "ausschreibung", "vergabeunterlag", "angebotsunterlag",
-    "gaeb", "download", "dokument", "alle dokumente",
-    "bekanntmachung", "eigenerklärung", "fragen", "antworten",
-    "questions", "answers", "catalog", "katalog"
-]
+def _http_dl(url: str, output_dir: str, session=None) -> str | None:
+    try:
+        getter = session.get if session else requests.get
+        r = getter(url, stream=True, timeout=20,
+                   headers={"User-Agent": UA, "Accept-Language": "de-DE,de;q=0.9"},
+                   allow_redirects=True)
+        if r.status_code >= 400:
+            return None
+        ct = r.headers.get("content-type", "").lower()
+        if "html" in ct:
+            return None
+        fname = Path(urlparse(url).path).name.split("?")[0] or "document.pdf"
+        dest = Path(output_dir) / fname
+        size = 0
+        with open(dest, "wb") as f:
+            for chunk in r.iter_content(65536):
+                size += len(chunk)
+                if size > MAX_BYTES:
+                    dest.unlink(missing_ok=True)
+                    return None
+                f.write(chunk)
+        return str(dest) if dest.stat().st_size > 0 else None
+    except Exception as e:
+        print(f"[kvb] http dl failed: {e}")
+        return None
 
-DOC_SKIP_TEXT = ["agb", "datenschutz", "impressum", "login", "registrierung"]
 
-NETSERVER_URL_TEMPLATES = [
-    "https://www.vergabe24.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID={tid}",
-    "https://www.vergabe24.de/NetServer/PublicationControllerServlet?function=Detail&TWOID={tid}&PublicationType=0",
-    "https://www.tender24.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID={tid}",
-]
+def scrape(url: str, output_dir: str) -> dict:
+    os.makedirs(output_dir, exist_ok=True)
+    downloaded = []
+    parsed = urlparse(url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
 
-BROWSER_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Accept-Language": "de-DE,de;q=0.9",
-}
+    # Check if URL already points to a direct document
+    ext = Path(parsed.path).suffix.lower()
+    if ext in DOC_EXTS:
+        p = _http_dl(url, output_dir)
+        if p:
+            return {"downloaded_files": [p]}
 
-# ---------- URL Recovery Logic ----------
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            ctx = browser.new_context(accept_downloads=True, locale="de-DE", user_agent=UA)
+            page = ctx.new_page()
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_timeout(3000)
 
-def extract_tender_id(url):
-    match = re.search(r"(54321-(?:Tender|PublishingProcess)-[a-f0-9][a-f0-9\-]+)", url, re.IGNORECASE)
-    return match.group(1) if match else None
+                # Follow any iframe redirect to the actual content
+                frames = page.frames
+                target_page = page
+                for frame in frames:
+                    if frame != page.main_frame and "vergabe" in (frame.url or "").lower():
+                        try:
+                            frame_url = frame.url
+                            target_page = ctx.new_page()
+                            target_page.goto(frame_url, wait_until="domcontentloaded", timeout=20000)
+                            page.wait_for_timeout(2000)
+                            break
+                        except Exception:
+                            target_page = page
 
-def recover_url(original_url):
-    tid = extract_tender_id(original_url)
-    if not tid:
-        return original_url
-    
-    for template in NETSERVER_URL_TEMPLATES:
-        url = template.format(tid=tid)
-        try:
-            resp = requests.get(url, headers=BROWSER_HEADERS, timeout=5)
-            if resp.status_code == 200 and len(resp.text) > 1000:
-                return url
-        except:
-            continue
-    return original_url
-
-# ---------- Helper Functions ----------
-
-def dismiss_cookies(page):
-    selectors = [
-        "xpath=//button[contains(.,'Akzeptieren')]",
-        "xpath=//button[contains(.,'Alle akzeptieren')]",
-        "xpath=//button[contains(.,'Annehmen')]",
-        "text=Einverstanden",
-    ]
-    for sel in selectors:
-        try:
-            if page.is_visible(sel, timeout=500):
-                page.click(sel)
-                return True
-        except:
-            pass
-    return False
-
-def score_link(href, text, domain):
-    low_href = href.lower()
-    low_text = (text or "").lower()
-    
-    if any(k in low_href for k in ["/agb", "/login"]): return 0
-    if any(k in low_text for k in DOC_SKIP_TEXT): return 0
-    
-    score = 0
-    ext = Path(urlparse(href).path).suffix.lower()
-    if ext in DOCUMENT_EXTENSIONS: score += 1
-    
-    if any(e in low_text for e in DOCUMENT_EXTENSIONS): score += 1
-        
-    if any(k in low_text for k in DOC_TEXT_KEYWORDS): score += 2
-    
-    return score
-
-# ---------- Core Scraper ----------
-
-def scrape(url: str, output_dir: str) -> list[str]:
-    """
-    Main entry point for the manual scraper.
-    """
-    downloaded_paths = []
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(accept_downloads=True, user_agent=BROWSER_HEADERS["User-Agent"])
-        page = context.new_page()
-        
-        # 1. Recovery & Initial Load
-        final_url = recover_url(url)
-        try:
-            page.goto(final_url, wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_timeout(2000)
-            dismiss_cookies(page)
-            
-            # 1.5 Expand any tree grids (e.g. RIB / iTWO Tender)
-            # We click 'plus' icons repeatedly until no new ones appear/expand.
-            for _ in range(10):
-                # Many tree grids use images containing 'plus' for collapsed nodes
-                pluses = page.query_selector_all("img[src*='plus.gif']")
-                clicked_any = False
-                for p in pluses:
+                # Cookie consent
+                for sel in ["button:has-text('Akzeptieren')", "button:has-text('Alle akzeptieren')",
+                             "[id*='cookie'] button"]:
                     try:
-                        if p.is_visible():
-                            p.click(force=True)
-                            clicked_any = True
-                    except:
+                        btn = target_page.locator(sel).first
+                        if btn.is_visible():
+                            btn.click()
+                            target_page.wait_for_timeout(600)
+                            break
+                    except Exception:
                         pass
-                if not clicked_any:
-                    break
-                page.wait_for_timeout(1500)
-                
-        except Exception as e:
-            browser.close()
-            return []
 
-        # 2. Identify candidate links
-        page_domain = urlparse(page.url).netloc.lower()
-        links = page.query_selector_all("a[href]")
-        candidates = []
-        for link in links:
-            try:
-                href = link.get_attribute("href")
-                text = link.inner_text()
-                if not href or href.startswith("#"): continue
-                
-                full_url = urljoin(page.url, href)
-                score = score_link(full_url, text, page_domain)
-                if score > 0:
-                    candidates.append((full_url, score, link))
-            except:
-                continue
+                # Navigate to documents section
+                for tab_sel in ["a:has-text('Unterlagen')", "a:has-text('Dokumente')",
+                                 "a:has-text('Ausschreibungsunterlagen')", "[id*='dokument']"]:
+                    try:
+                        el = target_page.locator(tab_sel).first
+                        if el.is_visible():
+                            el.click()
+                            target_page.wait_for_timeout(1500)
+                            break
+                    except Exception:
+                        pass
 
-        # Sort by score (best first)
-        candidates.sort(key=lambda x: -x[1])
-
-        # 3. Download Strategy
-        content_hashes = set()
-        for i, (doc_url, score, element) in enumerate(candidates):
-            if i >= 100: break # Safety cap increased for large tenders
-            
-            try:
-                # Use Playwright's download handler
-                with page.expect_download(timeout=10000) as download_info:
-                    element.click(force=True)
-                
-                download = download_info.value
-                suggested_name = download.suggested_filename
-                
-                # Deduplicate by name and extension
-                ext = Path(suggested_name).suffix.lower()
-                if not ext: ext = ".pdf"
-                
-                save_path = os.path.join(output_dir, suggested_name)
-                download.save_as(save_path)
-                downloaded_paths.append(save_path)
-                
-            except Exception:
-                # Fallback to direct requests if click fails
-                try:
-                    r = requests.get(doc_url, headers=BROWSER_HEADERS, timeout=10)
-                    if r.status_code != 200 or len(r.content) < 100:
+                # Try download buttons
+                for btn_sel in ["a:has-text('Alle herunterladen')", "button:has-text('Alle herunterladen')",
+                                 "a:has-text('ZIP herunterladen')", "a[href*='.zip']"]:
+                    try:
+                        btn = target_page.locator(btn_sel).first
+                        if btn.is_visible():
+                            btn.scroll_into_view_if_needed()
+                            with target_page.expect_download(timeout=25000) as dl:
+                                btn.click()
+                            d = dl.value
+                            dest = Path(output_dir) / (d.suggested_filename or "documents.zip")
+                            d.save_as(str(dest))
+                            downloaded.append(str(dest))
+                            break
+                    except Exception:
                         continue
 
-                    content_type = r.headers.get("content-type", "").lower()
-                    # Skip HTML responses — those are web pages, not documents
-                    if "html" in content_type:
-                        continue
-                    if b"<html" in r.content[:500].lower():
-                        continue
+                if not downloaded:
+                    session = requests.Session()
+                    for c in ctx.cookies():
+                        session.cookies.set(c["name"], c["value"], domain=c.get("domain"))
 
-                    h = hashlib.md5(r.content[:4096]).hexdigest()
-                    if h in content_hashes:
-                        continue
-                    content_hashes.add(h)
+                    page_base = f"{urlparse(target_page.url).scheme}://{urlparse(target_page.url).netloc}"
+                    for el in target_page.locator("a[href]").all():
+                        try:
+                            href = el.get_attribute("href") or ""
+                            if any(href.lower().endswith(ext) for ext in DOC_EXTS):
+                                p = _http_dl(urljoin(page_base, href), output_dir, session)
+                                if p:
+                                    downloaded.append(p)
+                        except Exception:
+                            continue
 
-                    # Determine extension from content-type or magic bytes
-                    if "zip" in content_type or r.content.startswith(b"PK"):
-                        ext = ".zip"
-                    elif "xml" in content_type:
-                        ext = ".xml"
-                    elif r.content.startswith(b"%PDF"):
-                        ext = ".pdf"
-                    else:
-                        url_ext = Path(urlparse(doc_url).path).suffix.lower()
-                        ext = url_ext if url_ext in DOCUMENT_EXTENSIONS else ".bin"
+            except Exception as e:
+                print(f"[kvb] playwright error: {e}")
+            finally:
+                ctx.close()
+                browser.close()
+    except Exception as e:
+        print(f"[kvb] browser launch error: {e}")
 
-                    name = f"doc_{i}_{h[:6]}{ext}"
-                    save_path = os.path.join(output_dir, name)
-                    with open(save_path, "wb") as f:
-                        f.write(r.content)
-                    downloaded_paths.append(save_path)
-                except Exception:
-                    continue
-
-        browser.close()
-    
-    return downloaded_paths
-
-if __name__ == "__main__":
-    # Test locally
-    import sys
-    test_url = sys.argv[1] if len(sys.argv) > 1 else "https://www.evergabe-online.de/tenderdetails.html?id=example1"
-    out = "./test_downloads"
-    os.makedirs(out, exist_ok=True)
-    files = scrape(test_url, out)
-    print(f"Downloaded: {files}")
+    return {"downloaded_files": downloaded}

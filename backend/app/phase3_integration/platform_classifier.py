@@ -29,6 +29,8 @@ _URL_PATTERNS: dict[str, list[str]] = {
         r"/VMPSatellite/public/company/project/",
         r"/Satellite/notice/",
         r"/VMPSatellite/notice/",
+        r"/Vergabe/notice/",          # blb.nrw and similar Satellite variants
+        r"/Vergabe/public/company/project/",
     ],
     "netserver": [
         r"/NetServer/",
@@ -174,17 +176,25 @@ def is_deterministic(platform: str) -> bool:
 def extract_project_id(url: str) -> str | None:
     """
     Extract DTVP-style project ID from URL path.
-    Handles both forms:
+    Handles forms:
       /project/CXXX/de/...   (documents/overview URLs)
       /notice/CXXX            (notice listing URLs — the form used in CSVs)
+    Also handles IDs that contain lowercase or hyphens (some portals use these).
     """
-    m = re.search(r"/(?:project|notice)/([A-Z0-9]+)(?:/|$)", url, re.IGNORECASE)
+    m = re.search(r"/(?:project|notice)/([A-Z0-9a-z]+)(?:/|$)", url, re.IGNORECASE)
     return m.group(1) if m else None
 
 
 def _dtvp_prefix(url: str) -> str:
-    """Return 'VMPSatellite' or 'Satellite' based on URL path."""
-    return "VMPSatellite" if "/VMPSatellite/" in url else "Satellite"
+    """
+    Return the correct path prefix for this Satellite-family portal.
+    Handles VMPSatellite (NRW-style), standard Satellite, and Vergabe variants.
+    """
+    if "/VMPSatellite/" in url:
+        return "VMPSatellite"
+    if "/Vergabe/" in url:
+        return "Vergabe"
+    return "Satellite"
 
 
 def build_dtvp_documents_url(url: str) -> str | None:
@@ -203,7 +213,7 @@ def build_dtvp_documents_url(url: str) -> str | None:
 def build_dtvp_zip_url(url: str) -> str | None:
     """
     Construct the ZIP URL for a DTVP-family project URL using the known template.
-    Works for both Satellite (BW) and VMPSatellite (NRW) prefixes,
+    Works for Satellite, VMPSatellite (NRW), and Vergabe prefix variants,
     and from both /notice/ID and /project/ID/... URL forms.
     """
     parts = urlsplit(url)
@@ -246,6 +256,42 @@ def build_netserver_download_url(url: str) -> str | None:
         return None
 
     return f"{ns_base}TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID={oid}"
+
+
+def build_netserver_fallback_urls(url: str) -> list[str]:
+    """
+    Additional NetServer download URL patterns to try when the primary
+    _DownloadTenderDocuments endpoint returns an empty body (common on portals
+    that gate document access by session, or use a different endpoint path).
+
+    Tries in order:
+      1. PublicationControllerServlet GetDocumentFile (some portals serve
+         documents here without a session when the publication is public)
+      2. _DownloadPublicationDocuments (alternative NetServer function name)
+      3. _DownloadTenderDocuments with explicit DocumentType param
+    """
+    from urllib.parse import urlsplit, parse_qs
+
+    parts  = urlsplit(url)
+    params = parse_qs(parts.query, keep_blank_values=True)
+    base   = f"{parts.scheme}://{parts.netloc}"
+    netpath = re.search(r"(/.*?/NetServer/)", parts.path, re.IGNORECASE)
+    ns_base = f"{base}{netpath.group(1)}" if netpath else f"{base}/NetServer/"
+
+    oid = (params.get("TenderOID") or params.get("TWOID") or [None])[0]
+    if not oid:
+        m = re.search(r"(54321-(?:Tender|PublishingProcess)-[a-f0-9\-]+)", url, re.IGNORECASE)
+        oid = m.group(1) if m else None
+    if not oid:
+        return []
+
+    return [
+        # Alternate NetServer function names
+        f"{ns_base}TenderingProcedureDetails?function=_DownloadPublicationDocuments&TenderOID={oid}",
+        f"{ns_base}PublicationControllerServlet?function=GetDocumentFile&TWOID={oid}",
+        f"{ns_base}TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID={oid}&DocumentType=0",
+        f"{ns_base}TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID={oid}&DocumentType=1",
+    ]
 
 
 def build_download_url(platform: str, url: str) -> str | None:

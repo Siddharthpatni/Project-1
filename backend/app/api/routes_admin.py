@@ -303,3 +303,148 @@ def system_check(db: Session = Depends(get_db)):
     return results
 
 
+@router.get("/circuit-breakers")
+def get_circuit_breakers():
+    """
+    Return the current state of all per-domain circuit breakers.
+    Open circuits mean the domain has exceeded the failure threshold and
+    requests are being fast-failed to save worker capacity.
+    """
+    from app.phase3_integration.url_intelligence import circuit_breaker
+    stats = circuit_breaker.get_stats()
+    open_circuits   = {d: v for d, v in stats.items() if v["state"] == "open"}
+    half_open       = {d: v for d, v in stats.items() if v["state"] == "half_open"}
+    return {
+        "total_tracked": len(stats),
+        "open":          len(open_circuits),
+        "half_open":     len(half_open),
+        "circuits":      stats,
+    }
+
+
+@router.delete("/circuit-breakers/{domain}")
+def reset_circuit_breaker(domain: str):
+    """Manually reset a domain's circuit breaker to CLOSED (allow requests again)."""
+    from app.phase3_integration.url_intelligence import circuit_breaker
+    circuit_breaker.record_success(domain)
+    return {"domain": domain, "state": "closed", "message": "Circuit reset — domain will be attempted again."}
+
+
+@router.get("/verified-urls")
+def get_verified_urls():
+    """
+    Return the pre-verified URL database — best known working URL per domain
+    with ZIP availability confirmed via HEAD request.
+    Built from publications_28_05_2026.xlsx and refreshed periodically.
+    """
+    import json
+    from pathlib import Path
+    vf = Path("/app/data/verified_urls.json")
+    if not vf.exists():
+        vf = Path("data/verified_urls.json")
+    if not vf.exists():
+        return {"error": "verified_urls.json not found — run the URL verification script"}
+    data = json.loads(vf.read_text())
+    return data
+
+
+@router.get("/url-intelligence")
+def analyze_url(url: str):
+    """
+    Classify a single URL — returns predicted type, strategy order, and expected
+    success rate. Useful for debugging individual URLs.
+    """
+    from app.phase3_integration.url_intelligence import classify_url_type, get_strategy_order, URL_TYPE_SUCCESS_RATE
+    from app.phase3_integration.platform_classifier import classify_url as clf_platform
+    url_type   = classify_url_type(url)
+    platform   = clf_platform(url)
+    strategies = get_strategy_order(url_type, platform)
+    return {
+        "url":              url,
+        "url_type":         url_type.value,
+        "platform":         platform,
+        "expected_success": URL_TYPE_SUCCESS_RATE.get(url_type, 0.35),
+        "strategy_order":   [s.value for s in strategies],
+        "will_use_llm":     any(s.value == "llm_generated_scraper" for s in strategies),
+        "will_use_cua":     any(s.value == "computer_use_agent" for s in strategies),
+    }
+
+
+@router.post("/url-intelligence/batch")
+def analyze_url_batch(body: dict):
+    """
+    Pre-classify a batch of URLs before submitting a job.
+
+    Returns per-URL intelligence: type, platform, expected success rate,
+    strategy order, and a warning for auth-gated URLs that will likely fail.
+
+    Body: {"urls": ["https://...", ...]}
+
+    Use this before submitting 10K-URL jobs to:
+    - Know in advance how many URLs will succeed (~35% UNKNOWN, ~93% SATELLITE)
+    - Surface auth-gated URLs (NETSERVER_AUTH, EVERGABE_DEEP) that waste budget
+    - Get a breakdown of URL types in the batch
+    """
+    from collections import Counter
+    from app.phase3_integration.url_intelligence import (
+        classify_url_type, get_strategy_order,
+        URL_TYPE_SUCCESS_RATE, UrlType,
+    )
+    from app.phase3_integration.platform_classifier import classify_url as clf_platform
+
+    urls: list[str] = body.get("urls", [])
+    if not urls:
+        return {"error": "provide a non-empty 'urls' list"}
+    if len(urls) > 50_000:
+        return {"error": "batch limit is 50,000 URLs per request"}
+
+    results = {}
+    seen: set[str] = set()
+    type_counts: Counter = Counter()
+
+    for url in urls:
+        if url in seen:
+            results[url] = {"duplicate": True}
+            continue
+        seen.add(url)
+
+        url_type   = classify_url_type(url)
+        platform   = clf_platform(url)
+        strategies = get_strategy_order(url_type, platform)
+        success_p  = URL_TYPE_SUCCESS_RATE.get(url_type, 0.35)
+        type_counts[url_type.value] += 1
+
+        warning = None
+        if url_type in (UrlType.NETSERVER_AUTH, UrlType.EVERGABE_DEEP, UrlType.EVA_PORTAL):
+            warning = (
+                f"Auth-gated portal ({url_type.value}) — expect ~5% success. "
+                "Only CUA (visual login) has any chance; LLM generation is skipped."
+            )
+
+        results[url] = {
+            "url_type":         url_type.value,
+            "platform":         platform,
+            "expected_success": success_p,
+            "strategy_order":   [s.value for s in strategies],
+            "will_use_llm":     any(s.value == "llm_generated_scraper" for s in strategies),
+            "will_use_cua":     any(s.value == "computer_use_agent" for s in strategies),
+            "warning":          warning,
+        }
+
+    unique = len(seen)
+    expected_successes = sum(
+        URL_TYPE_SUCCESS_RATE.get(classify_url_type(u), 0.35)
+        for u in seen
+    )
+
+    return {
+        "total":              len(urls),
+        "unique":             unique,
+        "duplicates":         len(urls) - unique,
+        "type_breakdown":     dict(type_counts),
+        "estimated_successes": round(expected_successes),
+        "estimated_success_rate": round(expected_successes / unique, 3) if unique else 0.0,
+        "results":            results,
+    }
+
+

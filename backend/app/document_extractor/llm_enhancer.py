@@ -11,6 +11,9 @@ Design:
   - Completely optional: if the LLM call fails for any reason, the regex
     baseline is used unchanged
   - Uses the existing LLMClient so no new API keys are needed
+
+Note: summary generation (zusammenfassung/kernpunkte) is handled by the
+deterministic summarizer.py — no LLM needed for that.
 """
 from __future__ import annotations
 
@@ -23,8 +26,8 @@ from app.utils.logger import get_logger
 
 log = get_logger(__name__)
 
-_MAX_TEXT_CHARS = 80_000   # fits comfortably in Gemini Flash 1M context
-_MODEL = "google/gemini-2.5-flash-lite"   # free tier on OpenRouter
+_MAX_TEXT_CHARS = 80_000
+_MODEL = "google/gemini-2.5-flash-lite"
 
 _SYSTEM = """You are a procurement document analyst specialising in German and EU public tender notices.
 Extract structured data from the document text provided.
@@ -41,6 +44,7 @@ FIELDS TO EXTRACT:
 - auftraggeber: Contracting authority full name
 - vergabestelle: Procurement office (if different from authority)
 - titel: Tender title / subject of contract
+- leistungsbeschreibung: Brief description of services/goods (max 3 sentences)
 - vergabeverfahren: Procurement procedure type (e.g. Offenes Verfahren, Verhandlungsverfahren)
 - auftragsart: Contract type (Bauauftrag, Lieferauftrag, Dienstleistungsauftrag)
 - veroeffentlichungsdatum: Publication date
@@ -70,6 +74,7 @@ Return JSON only:
   "auftraggeber": null,
   "vergabestelle": null,
   "titel": null,
+  "leistungsbeschreibung": null,
   "vergabeverfahren": null,
   "auftragsart": null,
   "veroeffentlichungsdatum": null,
@@ -99,7 +104,6 @@ def enhance_with_llm(text: str, regex_fields: TenderFields) -> TenderFields:
     if not text.strip():
         return regex_fields
 
-    # Truncate to model-safe length
     chunk = text[:_MAX_TEXT_CHARS]
 
     try:
@@ -138,42 +142,40 @@ def enhance_with_llm(text: str, regex_fields: TenderFields) -> TenderFields:
         log.warning("llm_enhancer.llm_call_failed", error=str(e))
         return regex_fields
 
-    # Parse JSON response
     try:
-        # Strip markdown fences if model included them despite instructions
         clean = re.sub(r"```(?:json)?\s*|\s*```", "", raw).strip()
         data: dict = json.loads(clean)
     except Exception as e:  # noqa: BLE001
         log.warning("llm_enhancer.json_parse_failed", error=str(e), raw=raw[:200])
         return regex_fields
 
-    # Merge: LLM values override regex where they are non-null/non-empty
     merged = TenderFields(**asdict(regex_fields))
+
     _str_fields = [
         "vergabenummer", "ted_reference", "auftraggeber", "vergabestelle",
-        "titel", "vergabeverfahren", "auftragsart", "veroeffentlichungsdatum",
-        "abgabefrist", "bindefrist", "auftragswert", "waehrung",
-        "leistungsort", "laufzeit", "ansprechpartner", "email", "telefon", "fax",
+        "titel", "leistungsbeschreibung", "vergabeverfahren", "auftragsart",
+        "veroeffentlichungsdatum", "abgabefrist", "bindefrist",
+        "auftragswert", "waehrung", "leistungsort", "laufzeit",
+        "ansprechpartner", "email", "telefon", "fax",
     ]
     _list_fields = ["cpv_codes", "nuts_codes", "zuschlagskriterien", "eignungskriterien", "lose"]
 
-    for field in _str_fields:
-        llm_val = data.get(field)
+    for f in _str_fields:
+        llm_val = data.get(f)
         if llm_val and isinstance(llm_val, str) and llm_val.strip():
-            setattr(merged, field, llm_val.strip())
+            setattr(merged, f, llm_val.strip())
 
-    for field in _list_fields:
-        llm_val = data.get(field)
+    for f in _list_fields:
+        llm_val = data.get(f)
         if isinstance(llm_val, list) and llm_val:
-            # Merge: prefer LLM list if it has more items
-            existing = getattr(merged, field) or []
+            existing = getattr(merged, f) or []
             if len(llm_val) >= len(existing):
-                setattr(merged, field, [str(v).strip() for v in llm_val if v])
+                setattr(merged, f, [str(v).strip() for v in llm_val if v])
 
     log.info(
         "llm_enhancer.done",
         vergabenummer=merged.vergabenummer,
         titel=merged.titel[:40] if merged.titel else None,
-        fields_filled=sum(1 for f in _str_fields if getattr(merged, f)),
+        fields_filled=sum(1 for fld in _str_fields if getattr(merged, fld)),
     )
     return merged

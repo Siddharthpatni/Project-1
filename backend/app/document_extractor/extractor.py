@@ -20,6 +20,7 @@ from app.document_extractor.field_extractor import TenderFields, extract_fields,
 from app.document_extractor.llm_enhancer import enhance_with_llm
 from app.document_extractor.parsers import ParsedDocument, parse_file
 from app.document_extractor.report_builder import build_report
+from app.document_extractor.summarizer import generate_summary
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -66,6 +67,12 @@ class DeepExtractor:
         except Exception as _llm_err:  # noqa: BLE001
             log.warning("extractor.llm_enhance_failed", error=str(_llm_err))
             merged = regex_fields
+
+        # Step 3: deterministic summary — offline, no API, no cost
+        try:
+            merged = generate_summary(merged)
+        except Exception as _sum_err:  # noqa: BLE001
+            log.warning("extractor.summarizer_failed", error=str(_sum_err))
 
         result = ExtractionResult(
             id=str(uuid.uuid4()),

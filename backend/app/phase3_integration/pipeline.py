@@ -115,6 +115,9 @@ from app.phase2_cua.orchestrator import run_agent
 from app.phase3_integration import platform_classifier, scraper_registry
 from app.phase3_integration.deterministic import try_deterministic
 from app.phase3_integration.fallback import StrategyOutcome, next_strategy
+from app.phase3_integration.url_intelligence import (
+    classify_url_type, get_strategy_order, circuit_breaker, rate_limiter, UrlType,
+)
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -264,18 +267,48 @@ async def process_url(
     scratch = _job_downloads_dir(item)
     result._scratch_dirs.append(str(scratch))
 
-    # For platforms with a deterministic URL template (DTVP, NetServer),
-    # go straight to DETERMINISTIC — it constructs the download URL in <1s
-    # with no LLM and no browser. Running EXISTING first wastes time because
-    # the stored scraper is often the generic v1_reference Playwright scraper
-    # which crashes on these portals or times out.
+    # ── Intelligent URL pre-classification ───────────────────────────────────
+    # Classify URL type BEFORE the cascade to select the optimal strategy order.
+    # This is the single biggest reliability improvement for 10K+ URL runs:
+    #   - Auth-gated URLs skip LLM (saves ~90s + API cost per URL)
+    #   - Satellite URLs go straight to deterministic (saves Playwright startup)
+    #   - All types get a strategy list tuned to their expected success pattern
     _quick_platform = platform_classifier.classify_url(url)
+    _url_type       = classify_url_type(url)
+
+    # ── Circuit breaker check ─────────────────────────────────────────────────
+    # If this domain has failed too many times recently, skip it immediately.
+    # The circuit re-opens after reset_timeout (30 min) to allow recovery probes.
+    if not circuit_breaker.allow_request(domain):
+        result.error = f"circuit breaker open for {domain} — too many recent failures"
+        item.status = JobStatus.FAILED.value
+        item.strategy = Strategy.NONE.value
+        item.error_message = result.error
+        item.failure_category = "circuit_open"
+        write_audit("circuit_breaker.rejected", f"Domain {domain} circuit is open — skipping",
+                    level=WARNING, job_id=item.job_id, item_id=item.id, domain=domain, url=url)
+        db.commit()
+        return result
+
+    # ── Domain rate limiter ───────────────────────────────────────────────────
+    # Prevent hammering the same portal from multiple concurrent workers.
+    # If we can't acquire a slot, back off briefly and try one more time.
+    if not rate_limiter.acquire(domain):
+        await asyncio.sleep(5)
+        if not rate_limiter.acquire(domain):
+            write_audit("rate_limiter.backoff", f"Rate limit hit for {domain}",
+                        level=WARNING, job_id=item.job_id, item_id=item.id, domain=domain)
+
+    # ── Strategy order selection ──────────────────────────────────────────────
     if force_strategy:
         strategies = [force_strategy]
-    elif platform_classifier.is_deterministic(_quick_platform):
-        strategies = [Strategy.DETERMINISTIC, Strategy.EXISTING, Strategy.LLM_GENERATED, Strategy.CUA, Strategy.MANUAL]
     else:
-        strategies = [Strategy.EXISTING, Strategy.DETERMINISTIC, Strategy.LLM_GENERATED, Strategy.CUA, Strategy.MANUAL]
+        strategies = get_strategy_order(_url_type, _quick_platform)
+
+    # Log the pre-classification result for analytics
+    write_audit("pipeline.url_classified",
+                f"URL type={_url_type.value} platform={_quick_platform} strategies={[s.value for s in strategies]}",
+                level=INFO, job_id=item.job_id, item_id=item.id, domain=domain, url=url)
 
     from datetime import datetime as _dt
     from app.core.security import classify_error as _classify_error
@@ -367,6 +400,9 @@ async def process_url(
         if outcome.success:
             result.success = True
             result.strategy_used = outcome.strategy
+            # Feed success back to circuit breaker and rate limiter
+            circuit_breaker.record_success(domain)
+            rate_limiter.release(domain)
             write_audit(
                 "pipeline.success",
                 f"Strategy {outcome.strategy.value} succeeded — {outcome.downloaded} doc(s) downloaded in {strategy_elapsed}s",
@@ -422,6 +458,12 @@ async def process_url(
             )
         except Exception as _ex:  # noqa: BLE001
             log.warning("extractor.pipeline_hook_failed", error=str(_ex))
+
+    # Feed failure back to circuit breaker — trips after threshold
+    if not result.success:
+        final_error_category = _classify_error(result.error) if result.error else "unknown"
+        circuit_breaker.record_failure(domain, final_error_category)
+        rate_limiter.release(domain)
 
     # Final outcome audit
     if not result.success:

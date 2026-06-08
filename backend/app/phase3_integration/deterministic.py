@@ -164,6 +164,18 @@ def try_deterministic(url: str) -> DeterministicResult:
     log.info("deterministic.attempt", platform=platform, url=download_url)
     out = _make_output_dir()
     saved = _download(download_url, out)
+
+    # NetServer fallback: try alternate URL patterns when primary returns empty.
+    # _DownloadTenderDocuments often returns 200 with empty body on portals that
+    # gate document access by session. Try the DTVP ZIP endpoint style as well.
+    if not saved and platform == "netserver":
+        alt_urls = platform_classifier.build_netserver_fallback_urls(url)
+        for alt in alt_urls:
+            log.info("deterministic.netserver_fallback", alt_url=alt)
+            saved = _download(alt, out)
+            if saved:
+                break
+
     if not saved:
         return DeterministicResult(
             success=False, platform=platform, downloaded_files=[],

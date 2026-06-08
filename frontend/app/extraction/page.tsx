@@ -12,24 +12,27 @@ import {
 // ── Helpers ──────────────────────────────────────────────────────────
 
 const FIELD_LABELS: Record<string, string> = {
-  vergabenummer:           "Vergabenummer",
-  ted_reference:           "TED-Referenz",
-  auftraggeber:            "Auftraggeber",
-  titel:                   "Titel",
-  vergabeverfahren:        "Vergabeverfahren",
-  auftragsart:             "Auftragsart",
-  veroeffentlichungsdatum: "Veröffentlicht",
-  abgabefrist:             "Abgabefrist",
-  bindefrist:              "Bindefrist",
-  cpv_codes:               "CPV-Code(s)",
-  nuts_codes:              "NUTS-Code(s)",
-  auftragswert:            "Auftragswert",
-  leistungsort:            "Leistungsort",
-  laufzeit:                "Laufzeit",
-  ansprechpartner:         "Ansprechpartner",
-  email:                   "E-Mail",
-  telefon:                 "Telefon",
-  fax:                     "Fax",
+  vergabenummer:            "Vergabenummer",
+  ted_reference:            "TED-Referenz",
+  auftraggeber:             "Auftraggeber",
+  vergabestelle:            "Vergabestelle",
+  titel:                    "Titel",
+  leistungsbeschreibung:    "Leistungsbeschreibung",
+  vergabeverfahren:         "Vergabeverfahren",
+  auftragsart:              "Auftragsart",
+  veroeffentlichungsdatum:  "Veröffentlicht",
+  abgabefrist:              "Abgabefrist",
+  bindefrist:               "Bindefrist",
+  cpv_codes:                "CPV-Code(s)",
+  nuts_codes:               "NUTS-Code(s)",
+  auftragswert:             "Auftragswert",
+  waehrung:                 "Währung",
+  leistungsort:             "Leistungsort",
+  laufzeit:                 "Laufzeit",
+  ansprechpartner:          "Ansprechpartner",
+  email:                    "E-Mail",
+  telefon:                  "Telefon",
+  fax:                      "Fax",
 };
 
 function fieldCount(fields: Record<string, any>): number {
@@ -136,8 +139,28 @@ function ExtractionCard({ record, onReExtract }: { record: any; onReExtract: (id
 
       {/* Expanded fields */}
       {open && (
-        <div className="px-5 pb-5 border-t border-slate-100">
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+        <div className="px-5 pb-5 border-t border-slate-100 space-y-4">
+
+          {/* Executive summary */}
+          {fields.zusammenfassung && (
+            <div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl space-y-3">
+              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Kurzzusammenfassung</p>
+              <p className="text-xs text-slate-700 leading-relaxed">{fields.zusammenfassung}</p>
+              {(fields.kernpunkte ?? []).length > 0 && (
+                <ul className="space-y-1 mt-2">
+                  {fields.kernpunkte.map((pt: string, i: number) => (
+                    <li key={i} className="flex gap-1.5 text-[10px] text-slate-600">
+                      <span className="text-indigo-400 flex-shrink-0">•</span>
+                      <span>{pt}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Structured fields grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
             {Object.entries(FIELD_LABELS).map(([key, label]) => {
               const val = fields[key];
               if (!val || (Array.isArray(val) && val.length === 0)) return null;
@@ -153,9 +176,19 @@ function ExtractionCard({ record, onReExtract }: { record: any; onReExtract: (id
 
           {/* Zuschlagskriterien */}
           {(fields.zuschlagskriterien ?? []).length > 0 && (
-            <div className="mt-3 space-y-1">
+            <div className="space-y-1">
               <p className="text-[10px] font-bold text-slate-400 uppercase">Zuschlagskriterien</p>
               {fields.zuschlagskriterien.map((c: string, i: number) => (
+                <p key={i} className="text-[10px] text-slate-600">• {c}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Eignungskriterien */}
+          {(fields.eignungskriterien ?? []).length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Eignungskriterien</p>
+              {fields.eignungskriterien.map((c: string, i: number) => (
                 <p key={i} className="text-[10px] text-slate-600">• {c}</p>
               ))}
             </div>
@@ -334,7 +367,7 @@ function TriggerPanel({ onDone }: { onDone: () => void }) {
             <div className="flex gap-2 pt-1">
               {result.results.filter((r: any) => !r.error).map((r: any) => (
                 <a key={r.job_item_id}
-                   href={`/api/backend/extract/${r.job_item_id}/report?fmt=pdf`}
+                   href={api(`/extract/${r.job_item_id}/report?fmt=pdf`)}
                    target="_blank" rel="noopener noreferrer"
                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg"
                 >
