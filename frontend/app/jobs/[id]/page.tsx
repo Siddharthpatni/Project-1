@@ -310,97 +310,191 @@ function AttemptTimeline({ attempts }: { attempts: any[] }) {
   );
 }
 
-// ── Deep Extraction result panel ────────────────────────────────────
+// ── Deep Extraction result panel — vergabepilot.ai tender card style ──
 
-const FIELD_LABELS: Record<string, string> = {
-  vergabenummer:           "Vergabenummer",
-  ted_reference:           "TED-Referenz",
-  auftraggeber:            "Auftraggeber",
-  vergabestelle:           "Vergabestelle",
-  titel:                   "Titel",
-  vergabeverfahren:        "Vergabeverfahren",
-  auftragsart:             "Auftragsart",
-  veroeffentlichungsdatum: "Veröffentlicht",
-  abgabefrist:             "Abgabefrist",
-  bindefrist:              "Bindefrist",
-  cpv_codes:               "CPV-Code(s)",
-  nuts_codes:              "NUTS-Code(s)",
-  auftragswert:            "Auftragswert",
-  waehrung:                "Währung",
-  leistungsort:            "Leistungsort",
-  laufzeit:                "Laufzeit",
-  ansprechpartner:         "Ansprechpartner",
-  email:                   "E-Mail",
-  telefon:                 "Telefon",
-  fax:                     "Fax",
-};
+function fmtDate(s: string | null | undefined): string | null {
+  if (!s) return null;
+  return s.replace(/(\d{4})-(\d{2})-(\d{2}).*/, "$3.$2.$1") || s;
+}
 
 function ExtractionPanel({ result, itemId }: { result: any; itemId: string }) {
+  const [showAll, setShowAll] = useState(false);
   const f = result?.fields ?? {};
-  const rows = Object.entries(FIELD_LABELS)
-    .map(([key, label]) => {
-      const val = f[key];
-      if (!val || (Array.isArray(val) && val.length === 0)) return null;
-      const display = Array.isArray(val) ? val.join(", ") : String(val);
-      return { label, display };
-    })
-    .filter(Boolean) as { label: string; display: string }[];
 
-  const hasData = rows.length > 0;
+  const titel       = f.titel || f.vergabenummer || null;
+  const authority   = f.auftraggeber || f.vergabestelle || null;
+  const pubDate     = fmtDate(f.veroeffentlichungsdatum);
+  const deadline    = fmtDate(f.abgabefrist);
+  const summary     = f.zusammenfassung || f.leistungsbeschreibung || null;
+  const bullets     = (f.kernpunkte ?? []) as string[];
+  const value       = f.auftragswert ? `${f.auftragswert}${f.waehrung ? " " + f.waehrung : " EUR"}` : null;
+  const procedure   = f.vergabeverfahren || null;
+  const contractType= f.auftragsart || null;
+  const location    = f.leistungsort || null;
+  const cpv         = (f.cpv_codes ?? []).slice(0, 3) as string[];
+  const criteria    = (f.zuschlagskriterien ?? []) as string[];
+  const eligibility = (f.eignungskriterien ?? []) as string[];
+
+  const isDeadlineUrgent = (() => {
+    if (!f.abgabefrist) return false;
+    const d = new Date(f.abgabefrist.split(".").reverse().join("-"));
+    const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    return !isNaN(diff) && diff >= 0 && diff <= 14;
+  })();
 
   return (
-    <div className="rounded-xl border border-indigo-100 bg-indigo-50/30 overflow-hidden">
-      {/* meta bar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-indigo-100 bg-indigo-50/60">
-        <div className="flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-500"/>
-          <span className="text-[10px] font-bold text-indigo-700">
-            {hasData ? `${rows.length} fields extracted` : "No structured fields found"}
-          </span>
-          {result.docs_parsed > 0 && (
-            <span className="text-[10px] text-indigo-400">· {result.docs_parsed} doc{result.docs_parsed !== 1 ? "s" : ""} parsed · {result.runtime_seconds}s</span>
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+
+      {/* Tender card body */}
+      <div className="p-4 space-y-2.5">
+
+        {/* Title */}
+        {titel && (
+          <h4 className="text-sm font-bold text-slate-900 leading-snug">{titel}</h4>
+        )}
+
+        {/* Authority */}
+        {authority && (
+          <p className="text-xs text-slate-600 flex items-center gap-1">
+            <span className="text-slate-400">🏛</span> {authority}
+          </p>
+        )}
+
+        {/* Dates — vergabepilot.ai inline style */}
+        {(pubDate || deadline) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+            {pubDate && (
+              <span>Veröffentlicht: <span className="font-semibold text-slate-700">{pubDate}</span></span>
+            )}
+            {pubDate && deadline && <span className="text-slate-300">|</span>}
+            {deadline && (
+              <span>
+                Angebotsfrist:{" "}
+                <span className={`font-semibold ${isDeadlineUrgent ? "text-rose-600" : "text-slate-700"}`}>
+                  {deadline}
+                </span>
+                {isDeadlineUrgent && (
+                  <span className="ml-1 text-[9px] font-bold text-white bg-rose-500 rounded px-1 py-0.5">Bald</span>
+                )}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Summary */}
+        {summary && (
+          <p className="text-xs text-slate-600 leading-relaxed border-l-2 border-indigo-200 pl-3">
+            {summary}
+          </p>
+        )}
+
+        {/* Key bullets (top 3) */}
+        {bullets.length > 0 && !summary && (
+          <ul className="space-y-0.5">
+            {bullets.slice(0, 3).map((b, i) => (
+              <li key={i} className="flex gap-1.5 text-xs text-slate-600">
+                <span className="text-indigo-400 flex-shrink-0">•</span><span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {procedure && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">{procedure}</span>
           )}
-        </div>
-        {/* Download buttons */}
-        <div className="flex items-center gap-1.5">
-          <a
-            href={`/api/extract/${itemId}/report?fmt=pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 px-2 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold rounded-lg transition-all"
-          >
-            <FileOutput className="w-3 h-3"/>PDF
-          </a>
-          <a
-            href={`/api/extract/${itemId}/report?fmt=docx`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 px-2 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[10px] font-bold rounded-lg transition-all"
-          >
-            <FileOutput className="w-3 h-3"/>DOCX
-          </a>
+          {contractType && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-slate-100 text-slate-600 border border-slate-200">{contractType}</span>
+          )}
+          {value && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">€ {value}</span>
+          )}
+          {location && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">📍 {location}</span>
+          )}
+          {cpv.map(c => (
+            <span key={c} className="px-2 py-0.5 text-[10px] font-mono rounded-full bg-slate-50 text-slate-500 border border-slate-200">{c}</span>
+          ))}
         </div>
       </div>
 
-      {/* field grid */}
-      {hasData && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-indigo-100/40">
-          {rows.map(({ label, display }) => (
-            <div key={label} className="flex gap-2 px-3 py-2 bg-white/80">
-              <span className="text-[10px] font-bold text-slate-400 w-28 flex-shrink-0 pt-px">{label}</span>
-              <span className="text-[10px] text-slate-700 break-all">{display}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Action bar */}
+      <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-2">
+        <a href={api(`/extract/${itemId}/report?fmt=pdf`)} target="_blank" rel="noopener noreferrer"
+           className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold rounded-lg transition-all">
+          <FileOutput className="w-3 h-3"/>PDF
+        </a>
+        <a href={api(`/extract/${itemId}/report?fmt=docx`)} target="_blank" rel="noopener noreferrer"
+           className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[10px] font-bold rounded-lg transition-all">
+          <FileOutput className="w-3 h-3"/>DOCX
+        </a>
+        <button onClick={() => setShowAll(v => !v)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-semibold rounded-lg hover:bg-slate-100 transition-all ml-auto">
+          {showAll ? <ChevronDown className="w-3 h-3"/> : <ChevronRight className="w-3 h-3"/>}
+          Alle Felder
+        </button>
+        <span className="text-[10px] text-slate-400 font-mono">
+          {result.docs_parsed} Dok. · {result.runtime_seconds}s
+        </span>
+      </div>
 
-      {/* Zuschlagskriterien */}
-      {(f.zuschlagskriterien ?? []).length > 0 && (
-        <div className="px-3 py-2 border-t border-indigo-100">
-          <p className="text-[10px] font-bold text-slate-400 mb-1">Zuschlagskriterien</p>
-          {f.zuschlagskriterien.map((c: string, i: number) => (
-            <p key={i} className="text-[10px] text-slate-600">• {c}</p>
-          ))}
+      {/* Expanded full fields */}
+      {showAll && (
+        <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-3">
+          {/* Full bullets */}
+          {bullets.length > 0 && (
+            <ul className="space-y-0.5">
+              {bullets.map((b, i) => (
+                <li key={i} className="flex gap-1.5 text-[10px] text-slate-600">
+                  <span className="text-indigo-400 flex-shrink-0">•</span><span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* Field grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+            {([
+              ["Vergabenummer", f.vergabenummer],
+              ["TED-Referenz", f.ted_reference],
+              ["Auftraggeber", f.auftraggeber],
+              ["Vergabestelle", f.vergabestelle],
+              ["Vergabeverfahren", f.vergabeverfahren],
+              ["Auftragsart", f.auftragsart],
+              ["Veröffentlicht", fmtDate(f.veroeffentlichungsdatum)],
+              ["Abgabefrist", fmtDate(f.abgabefrist)],
+              ["Bindefrist", f.bindefrist],
+              ["Auftragswert", f.auftragswert ? `${f.auftragswert} ${f.waehrung || "EUR"}` : null],
+              ["Leistungsort", f.leistungsort],
+              ["Laufzeit", f.laufzeit],
+              ["CPV-Code(s)", (f.cpv_codes ?? []).join(", ")],
+              ["NUTS-Code(s)", (f.nuts_codes ?? []).join(", ")],
+              ["Ansprechpartner", f.ansprechpartner],
+              ["E-Mail", f.email],
+              ["Telefon", f.telefon],
+            ] as [string, string | null][]).map(([label, val]) => {
+              if (!val) return null;
+              return (
+                <div key={label} className="flex gap-2 px-3 py-2 bg-white">
+                  <span className="text-[10px] font-bold text-slate-400 w-28 flex-shrink-0 pt-px">{label}</span>
+                  <span className="text-[10px] text-slate-700 break-all">{val}</span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Criteria */}
+          {criteria.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Zuschlagskriterien</p>
+              {criteria.map((c, i) => <p key={i} className="text-[10px] text-slate-600">• {c}</p>)}
+            </div>
+          )}
+          {eligibility.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Eignungskriterien</p>
+              {eligibility.map((c, i) => <p key={i} className="text-[10px] text-slate-600">• {c}</p>)}
+            </div>
+          )}
         </div>
       )}
     </div>
