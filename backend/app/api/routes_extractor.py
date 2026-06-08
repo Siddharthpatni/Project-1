@@ -105,30 +105,16 @@ def download_report(
         if val is None:
             setattr(tf, list_field, [])
 
-    # Re-parse source documents for full text
-    from pathlib import Path
-    from app.document_extractor.parsers import parse_file, ParsedDocument
+    # Use filenames only — re-downloading from S3 is too slow for a synchronous
+    # HTTP response and causes the Next.js proxy to ECONNRESET. The extracted
+    # fields already contain all the structured data; full-text excerpts are omitted.
+    from app.document_extractor.parsers import ParsedDocument
     from app.document_extractor.report_builder import build_report
 
-    parsed_docs: list[ParsedDocument] = []
     docs = db.query(Document).filter(Document.job_item_id == job_item_id).all()
-    from app.core.storage import ObjectStorage
-    storage = ObjectStorage()
-    for doc in docs:
-        try:
-            data = storage.get(doc.s3_key)
-            import io, tempfile
-            suffix = Path(doc.filename).suffix.lower()
-            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-                tmp.write(data)
-                tmp_path = Path(tmp.name)
-            parts = parse_file(tmp_path)
-            for p in parts:
-                p.filename = doc.filename
-            parsed_docs.extend(parts)
-            tmp_path.unlink(missing_ok=True)
-        except Exception:
-            parsed_docs.append(ParsedDocument(filename=doc.filename, text=""))
+    parsed_docs: list[ParsedDocument] = [
+        ParsedDocument(filename=doc.filename, text="") for doc in docs
+    ]
 
     try:
         report_bytes, mime = build_report(tf, parsed_docs, record.source_url, fmt)
@@ -150,112 +136,29 @@ def download_report(
 @router.post("/job/{job_id}")
 def trigger_job_extraction(job_id: str, db: Session = Depends(get_db)):
     """
-    Trigger deep extraction for all items in a job.
-
-    Works in two modes:
-    - S3 mode: retrieves previously stored documents from MinIO/S3
-    - Live mode: downloads documents directly from the source URL when S3
-      has nothing (fallback for jobs where scraping failed or files were deleted)
+    Dispatch deep extraction for all items in a job as a background Celery task.
+    Returns immediately with a task_id the client can poll via GET /extract/task/{task_id}.
     """
     job = db.query(Job).filter(Job.id == job_id).first()
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Include ALL items (not just success) so live fetch can rescue failed scrapes
-    items = (
-        db.query(JobItem)
-        .filter(JobItem.job_id == job_id)
-        .all()
-    )
+    from app.workers.tasks import extract_job_task
+    task = extract_job_task.delay(job_id)
+    return {"task_id": task.id, "status": "queued", "job_id": job_id}
 
-    from app.core.storage import ObjectStorage
-    from app.document_extractor.extractor import DeepExtractor
-    from app.document_extractor.live_fetcher import fetch_documents
-    from dataclasses import asdict as _asdict
-    from pathlib import Path
-    import tempfile
 
-    storage  = ObjectStorage()
-    extractor = DeepExtractor()
-    results: list[dict] = []
-
-    for item in items:
-        tmp_paths: list[str] = []
-        source   = "s3"
-        try:
-            # ── 1. Try S3 first ─────────────────────────────────────
-            docs = db.query(Document).filter(Document.job_item_id == item.id).all()
-            for doc in docs:
-                try:
-                    data = storage.get(doc.s3_key)
-                    suffix = Path(doc.filename).suffix.lower()
-                    tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-                    tmp.write(data)
-                    tmp.close()
-                    tmp_paths.append(tmp.name)
-                except Exception:  # noqa: BLE001
-                    pass  # S3 retrieval failed for this doc, try next
-
-            # ── 2. Live fetch fallback when S3 returned nothing ──────
-            if not tmp_paths:
-                source = "live"
-                tmp_paths = fetch_documents(item.url)
-
-            if not tmp_paths:
-                results.append({
-                    "job_item_id": item.id,
-                    "url": item.url,
-                    "error": (
-                        "no documents found — S3 empty and live fetch returned nothing. "
-                        "The portal may require authentication or the tender may be expired."
-                    ),
-                })
-                continue
-
-            # ── 3. Extract fields from whatever we got ───────────────
-            result = extractor.run(
-                document_paths=tmp_paths,
-                source_url=item.url,
-                db=db,
-                job_item_id=item.id,
-            )
-            fields_dict  = _asdict(result.fields)
-            fields_found = sum(
-                1 for v in fields_dict.values()
-                if v and (not isinstance(v, list) or len(v) > 0)
-            )
-            results.append({
-                "job_item_id":    item.id,
-                "url":            item.url,
-                "source":         source,
-                "docs_parsed":    len(result.parsed_docs),
-                "fields_found":   fields_found,
-                "runtime_seconds": result.runtime_seconds,
-            })
-
-        except Exception as e:  # noqa: BLE001
-            results.append({
-                "job_item_id": item.id,
-                "url":         item.url,
-                "error":       f"{type(e).__name__}: {e}",
-            })
-        finally:
-            # Only clean up live-fetched temp files; S3 temps are cleaned above
-            if source == "live":
-                for p in tmp_paths:
-                    Path(p).unlink(missing_ok=True)
-
-    successful = [r for r in results if "error" not in r]
-    failed     = [r for r in results if "error" in r]
-    live_fetched = [r for r in successful if r.get("source") == "live"]
-
-    return {
-        "job_id":      job_id,
-        "extracted":   len(successful),
-        "failed":      len(failed),
-        "live_fetched": len(live_fetched),
-        "results":     results,
-    }
+@router.get("/task/{task_id}")
+def get_task_status(task_id: str):
+    """Poll the status of a background extraction task."""
+    from app.workers.celery_app import celery_app as _celery
+    result = _celery.AsyncResult(task_id)
+    state = result.state.lower()
+    if result.ready():
+        if result.successful():
+            return {"status": "done", "result": result.get()}
+        return {"status": "failed", "error": str(result.result)}
+    return {"status": state}
 
 
 @router.post("/{job_item_id}/trigger")

@@ -341,11 +341,27 @@ function TriggerPanel({ onDone }: { onDone: () => void }) {
     if (!selectedJobId) return;
     setRunning(true); setError(null); setResult(null);
     try {
+      // Dispatch background task — returns immediately with task_id
       const r = await fetch(api(`/extract/job/${selectedJobId}`), { method: "POST" });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body?.detail ?? `HTTP ${r.status}`);
-      setResult(body);
-      onDone();
+
+      const taskId: string = body.task_id;
+      // Poll until done (every 3s, no browser timeout issues)
+      while (true) {
+        await new Promise(res => setTimeout(res, 3000));
+        const poll = await fetch(api(`/extract/task/${taskId}`));
+        const status = await poll.json().catch(() => ({}));
+        if (status.status === "done") {
+          setResult(status.result);
+          onDone();
+          break;
+        }
+        if (status.status === "failed") {
+          throw new Error(status.error ?? "Extraction task failed");
+        }
+        // still running / pending — keep polling
+      }
     } catch (e: any) {
       setError(e?.message ?? "Unknown error");
     } finally {

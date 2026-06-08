@@ -54,6 +54,7 @@ celery_app.conf.update(
         "app.workers.tasks.crash_recovery_task":           {"queue": "beat"},
         "app.workers.tasks.check_document_versions_task":  {"queue": "beat"},
         "app.workers.tasks.cleanup_stale_downloads_task":  {"queue": "beat"},
+        "app.workers.tasks.extract_job_task":              {"queue": "default"},
     },
 
     # Timezone

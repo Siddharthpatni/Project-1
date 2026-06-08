@@ -511,7 +511,7 @@ function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onR
   useEffect(() => {
     if (!open || docs.length === 0 || extractionChecked) return;
     setExtractionChecked(true);
-    fetch(`/api/extract/${item.id}`)
+    fetch(api(`/extract/${item.id}`))
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setExtractionResult(data); })
       .catch(() => {});
@@ -520,7 +520,7 @@ function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onR
   async function handleExtract() {
     setExtracting(true);
     try {
-      const r = await fetch(`/api/extract/${item.id}/trigger`, { method: "POST" });
+      const r = await fetch(api(`/extract/${item.id}/trigger`), { method: "POST" });
       if (r.ok) setExtractionResult(await r.json());
     } catch { /* silent */ }
     finally { setExtracting(false); }
@@ -740,9 +740,6 @@ export default function JobDetailPage() {
   const [showDiag,     setShowDiag]     = useState(false);
   const [diag,         setDiag]         = useState<any|null>(null);
   const [diagLoading,  setDiagLoading]  = useState(false);
-  // Throughput tracking
-  const [startCompleted, setStartCompleted] = useState<number|null>(null);
-  const [startTime,      setStartTime]      = useState<number|null>(null);
 
   const { data: job, mutate: mutateJob } = useSWR(id?api(`/jobs/${id}`):null, fetcher, {
     refreshInterval: d=>(!d||d.status==="pending"||d.status==="running")?2000:0,

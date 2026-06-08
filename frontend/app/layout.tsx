@@ -23,8 +23,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang="de" translate="no" suppressHydrationWarning>
       <head>
+        <meta name="google" content="notranslate" />
         {/* Prevent dark mode flash */}
         <script
           dangerouslySetInnerHTML={{

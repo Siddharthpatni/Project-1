@@ -678,3 +678,103 @@ def check_document_versions_task() -> dict:
         return {"checked": domains_checked, "updated": 0}
     finally:
         db.close()
+
+
+# --------------------------------------------------------------------
+# Deep extraction task — runs extraction for all items in a job.
+# Dispatched as a background task so the HTTP request returns immediately.
+# --------------------------------------------------------------------
+
+@celery_app.task(name="app.workers.tasks.extract_job_task")
+def extract_job_task(job_id: str) -> dict:
+    from dataclasses import asdict as _asdict
+    from pathlib import Path
+    import tempfile
+
+    from app.core.storage import ObjectStorage
+    from app.document_extractor.extractor import DeepExtractor
+    from app.document_extractor.live_fetcher import fetch_documents
+    from app.models import Document, Job, JobItem
+
+    db = SessionLocal()
+    try:
+        job = db.query(Job).filter(Job.id == job_id).first()
+        if job is None:
+            return {"error": "job not found", "job_id": job_id}
+
+        items = db.query(JobItem).filter(JobItem.job_id == job_id).all()
+        storage = ObjectStorage()
+        extractor = DeepExtractor()
+        results: list[dict] = []
+
+        for item in items:
+            tmp_paths: list[str] = []
+            source = "s3"
+            try:
+                docs = db.query(Document).filter(Document.job_item_id == item.id).all()
+                for doc in docs:
+                    try:
+                        data = storage.get(doc.s3_key)
+                        suffix = Path(doc.filename).suffix.lower()
+                        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+                        tmp.write(data)
+                        tmp.close()
+                        tmp_paths.append(tmp.name)
+                    except Exception:
+                        pass
+
+                if not tmp_paths:
+                    source = "live"
+                    tmp_paths = fetch_documents(item.url)
+
+                if not tmp_paths:
+                    results.append({
+                        "job_item_id": item.id,
+                        "url": item.url,
+                        "error": (
+                            "no documents found — S3 empty and live fetch returned nothing. "
+                            "The portal may require authentication or the tender may be expired."
+                        ),
+                    })
+                    continue
+
+                result = extractor.run(
+                    document_paths=tmp_paths,
+                    source_url=item.url,
+                    db=db,
+                    job_item_id=item.id,
+                )
+                fields_dict = _asdict(result.fields)
+                fields_found = sum(
+                    1 for v in fields_dict.values()
+                    if v and (not isinstance(v, list) or len(v) > 0)
+                )
+                results.append({
+                    "job_item_id": item.id,
+                    "url": item.url,
+                    "source": source,
+                    "docs_parsed": len(result.parsed_docs),
+                    "fields_found": fields_found,
+                    "runtime_seconds": result.runtime_seconds,
+                })
+
+            except Exception as e:
+                results.append({"job_item_id": item.id, "url": item.url, "error": f"{type(e).__name__}: {e}"})
+            finally:
+                if source == "live":
+                    for p in tmp_paths:
+                        Path(p).unlink(missing_ok=True)
+
+        successful = [r for r in results if "error" not in r]
+        failed = [r for r in results if "error" in r]
+        live_fetched = [r for r in successful if r.get("source") == "live"]
+
+        return {
+            "job_id": job_id,
+            "extracted": len(successful),
+            "failed": len(failed),
+            "live_fetched": len(live_fetched),
+            "results": results,
+        }
+    finally:
+        db.close()
