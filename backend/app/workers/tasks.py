@@ -687,12 +687,21 @@ def check_document_versions_task() -> dict:
 
 
 # --------------------------------------------------------------------
-# Deep extraction task — runs extraction for all items in a job.
-# Dispatched as a background task so the HTTP request returns immediately.
+# Deep extraction — parallelised across chunk workers for scale.
+#
+# extract_job_task   : orchestrator — fans out to extract_chunk_task
+# extract_chunk_task : processes a fixed-size slice of item IDs in parallel
+#
+# Small jobs (<= EXTRACT_CHUNK_SIZE): processed inline, no fan-out overhead.
+# Large jobs (1000+ URLs): split into chunks and dispatched in parallel across
+# the existing worker-chunks pool, same pattern as process_job_task.
 # --------------------------------------------------------------------
 
-@celery_app.task(name="app.workers.tasks.extract_job_task")
-def extract_job_task(job_id: str) -> dict:
+_EXTRACT_CHUNK_SIZE = 20   # items per extraction chunk
+
+
+def _extract_items(item_ids: list[str], job_id: str) -> dict:
+    """Core extraction loop — shared by both inline and chunked paths."""
     from dataclasses import asdict as _asdict
     from pathlib import Path
     import tempfile
@@ -700,20 +709,18 @@ def extract_job_task(job_id: str) -> dict:
     from app.core.storage import ObjectStorage
     from app.document_extractor.extractor import DeepExtractor
     from app.document_extractor.live_fetcher import fetch_documents
-    from app.models import Document, Job, JobItem
+    from app.models import Document, JobItem
 
     db = SessionLocal()
     try:
-        job = db.query(Job).filter(Job.id == job_id).first()
-        if job is None:
-            return {"error": "job not found", "job_id": job_id}
-
-        items = db.query(JobItem).filter(JobItem.job_id == job_id).all()
         storage = ObjectStorage()
         extractor = DeepExtractor()
         results: list[dict] = []
 
-        for item in items:
+        for item_id in item_ids:
+            item = db.query(JobItem).filter(JobItem.id == item_id).first()
+            if item is None:
+                continue
             tmp_paths: list[str] = []
             source = "s3"
             try:
@@ -772,9 +779,8 @@ def extract_job_task(job_id: str) -> dict:
                         Path(p).unlink(missing_ok=True)
 
         successful = [r for r in results if "error" not in r]
-        failed = [r for r in results if "error" in r]
+        failed     = [r for r in results if "error" in r]
         live_fetched = [r for r in successful if r.get("source") == "live"]
-
         return {
             "job_id": job_id,
             "extracted": len(successful),
@@ -784,3 +790,66 @@ def extract_job_task(job_id: str) -> dict:
         }
     finally:
         db.close()
+
+
+@celery_app.task(name="app.workers.tasks.extract_chunk_task", queue="chunks")
+def extract_chunk_task(item_ids: list[str], job_id: str) -> dict:
+    """Extract a single chunk of items — runs in parallel on worker-chunks."""
+    return _extract_items(item_ids, job_id)
+
+
+@celery_app.task(name="app.workers.tasks.extract_job_task")
+def extract_job_task(job_id: str) -> dict:
+    """
+    Orchestrate deep extraction for all items in a job.
+
+    Small jobs (<= _EXTRACT_CHUNK_SIZE): run inline.
+    Large jobs: fan out to extract_chunk_task across worker-chunks pool,
+    then aggregate results — mirrors the process_job_task pattern.
+    """
+    from app.models import Job, JobItem
+
+    db = SessionLocal()
+    try:
+        job = db.query(Job).filter(Job.id == job_id).first()
+        if job is None:
+            return {"error": "job not found", "job_id": job_id}
+        item_ids = [item.id for item in db.query(JobItem).filter(JobItem.job_id == job_id).all()]
+    finally:
+        db.close()
+
+    if not item_ids:
+        return {"job_id": job_id, "extracted": 0, "failed": 0, "live_fetched": 0, "results": []}
+
+    if len(item_ids) <= _EXTRACT_CHUNK_SIZE:
+        return _extract_items(item_ids, job_id)
+
+    # Fan out: split into chunks and run in parallel on worker-chunks
+    from celery import group as celery_group
+    chunks = [
+        item_ids[i: i + _EXTRACT_CHUNK_SIZE]
+        for i in range(0, len(item_ids), _EXTRACT_CHUNK_SIZE)
+    ]
+    log.info("extract_job_task.fan_out", job_id=job_id, items=len(item_ids), chunks=len(chunks))
+    chunk_group = celery_group(extract_chunk_task.s(chunk, job_id) for chunk in chunks)
+    chunk_results = chunk_group.apply_async().get(
+        timeout=7200,   # 2h hard limit — same as task_time_limit
+        propagate=False,
+    )
+
+    # Aggregate results from all chunks
+    all_results: list[dict] = []
+    for r in (chunk_results or []):
+        if isinstance(r, dict):
+            all_results.extend(r.get("results", []))
+
+    successful   = [r for r in all_results if "error" not in r]
+    failed       = [r for r in all_results if "error" in r]
+    live_fetched = [r for r in successful if r.get("source") == "live"]
+    return {
+        "job_id": job_id,
+        "extracted": len(successful),
+        "failed": len(failed),
+        "live_fetched": len(live_fetched),
+        "results": all_results,
+    }

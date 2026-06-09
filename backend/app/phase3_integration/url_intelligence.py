@@ -43,6 +43,7 @@ log = get_logger(__name__)
 
 class UrlType(str, Enum):
     """Predicted scrapeability of a URL — derived from URL structure alone."""
+    # ── German / DTVP family ──────────────────────────────────────────────────
     SATELLITE     = "satellite"       # DTVP/VMPSatellite — deterministic ZIP, ~95% success
     NETSERVER_PUB = "netserver_pub"   # NetServer publication page — public docs, ~70% success
     NETSERVER_AUTH= "netserver_auth"  # NetServer procedure — login required, ~5% success
@@ -50,11 +51,23 @@ class UrlType(str, Enum):
     EVA_PORTAL    = "eva_portal"      # e-VA bieter portal — auth required, ~5% success
     SUBREPORT     = "subreport"       # subreport ELViS — subscription service, ~40% success
     EVERGABE_WEB  = "evergabe_web"    # evergabe-online.de Wicket — ~50% success
+    # ── EU / International ────────────────────────────────────────────────────
+    TED_EUROPA    = "ted_europa"      # TED Europa (EU Official Journal) — ~85% success
+    UK_TENDER     = "uk_tender"       # UK Find a Tender / Contracts Finder — ~80% success
+    FR_PLACE      = "fr_place"        # French PLACE / BOAMP / marchés publics — ~70% success
+    PL_MINIPORTAL = "pl_miniportal"   # Polish miniPortal / BZP — ~70% success
+    ES_PLACE      = "es_place"        # Spanish PLACE / contratación del estado — ~70% success
+    PT_BASE       = "pt_base"         # Portuguese BASE / IncaFE — ~70% success
+    NL_TENDERNED  = "nl_tenderned"    # Dutch TenderNed — ~80% success
+    BE_EPROCURE   = "be_eprocure"     # Belgian e-Procurement — ~75% success
+    AT_AUSSCHREIB = "at_ausschreib"   # Austrian ausschreibungen.at — ~70% success
+    CH_SIMAP      = "ch_simap"        # Swiss SIMAP / Bund procurement — ~75% success
     UNKNOWN       = "unknown"         # Needs full cascade
 
 
 # Patterns evaluated in order — first match wins
 _URL_TYPE_PATTERNS: list[tuple[UrlType, list[str]]] = [
+    # ── German / DTVP family (checked first — most common in current dataset) ──
     (UrlType.SATELLITE, [
         r"/Satellite/notice/",
         r"/Satellite/public/company/project/",
@@ -67,9 +80,6 @@ _URL_TYPE_PATTERNS: list[tuple[UrlType, list[str]]] = [
         r"/evergabe\.bieter/api/supplier/external/deeplink/",
         r"/bieter/api/supplier/external/deeplink/",
         r"evergabe\.bieter",
-        # evergabe.nrw: only flag as EVERGABE_DEEP when it is NOT a VMPSatellite URL.
-        # VMPSatellite paths are caught by the SATELLITE pattern above (first match wins).
-        # This pattern matches the Angular/Cosinex deeplink path on evergabe.nrw.de.
         r"evergabe\.nrw\.de/evergabe\.bieter",
         r"evergabe\.nrw\.de/bieter",
         r"evergabe\.bayern",
@@ -84,13 +94,11 @@ _URL_TYPE_PATTERNS: list[tuple[UrlType, list[str]]] = [
     (UrlType.NETSERVER_AUTH, [
         r"/NetServer/TenderingProcedureDetails\?function=_Details",
         r"/NetServer/TenderingProcedureDetails\?function=_Tender",
-        # Specific auth-only NetServer portals (no public document access)
         r"beschaffungen\.barmer\.de",
     ]),
     (UrlType.NETSERVER_PUB, [
         r"/NetServer/PublicationControllerServlet\?function=Detail",
         r"/NetServer/PublicationControllerServlet\?function=GetDocumentFile",
-        # vergabe24 and tender24 use the same NetServer publication path
         r"vergabe24\.de/NetServer/",
         r"tender24\.de/NetServer/",
     ]),
@@ -101,6 +109,77 @@ _URL_TYPE_PATTERNS: list[tuple[UrlType, list[str]]] = [
     (UrlType.EVERGABE_WEB, [
         r"evergabe-online\.de",
         r"evergabe\.de/",
+    ]),
+    # ── EU / International portals ────────────────────────────────────────────
+    (UrlType.TED_EUROPA, [
+        r"ted\.europa\.eu",
+        r"etendering\.ted\.europa\.eu",
+        r"simap\.ted\.europa\.eu",
+        r"eprocurement\.ted\.europa\.eu",
+        r"enotices\.ted\.europa\.eu",
+        r"enotices2\.ted\.europa\.eu",
+    ]),
+    (UrlType.UK_TENDER, [
+        r"find-tender\.service\.gov\.uk",
+        r"contractsfinder\.service\.gov\.uk",
+        r"procurementjourney\.scotland\.gov\.uk",
+        r"sell2wales\.gov\.wales",
+        r"etenderwales\.bravosolution\.co\.uk",
+        r"procontract\.due-north\.com",
+    ]),
+    (UrlType.FR_PLACE, [
+        r"marches-publics\.info",
+        r"place\.gouv\.fr",
+        r"boamp\.fr",
+        r"aws\.achatpublic\.com",
+        r"achatpublic\.com",
+        r"megalis\.bretagne\.fr",
+        r"klekoon\.com",
+        r"atexo\.fr.*marche",
+    ]),
+    (UrlType.PL_MINIPORTAL, [
+        r"miniportal\.uzp\.gov\.pl",
+        r"ezamowienia\.gov\.pl",
+        r"przetargi\.pl",
+        r"bzp\.uzp\.gov\.pl",
+    ]),
+    (UrlType.ES_PLACE, [
+        r"contrataciondelestado\.es",
+        r"contratacion\.gob\.es",
+        r"licitacion\.es",
+        r"perfiles\.contratosdelsector\.es",
+    ]),
+    (UrlType.PT_BASE, [
+        r"base\.gov\.pt",
+        r"acingov\.pt",
+        r"ancp\.gov\.pt",
+        r"vortal\.pt",
+        r"sapoempresas\.pt.*concurso",
+    ]),
+    (UrlType.NL_TENDERNED, [
+        r"tenderned\.nl",
+        r"tenderned\.com",
+        r"negometrix\.com",
+        r"aanbestedingskalender\.nl",
+    ]),
+    (UrlType.BE_EPROCURE, [
+        r"eten\.be",
+        r"publicprocurement\.be",
+        r"jepp\.be",
+        r"e-procurement\.be",
+        r"bda-online\.be",
+    ]),
+    (UrlType.AT_AUSSCHREIB, [
+        r"ausschreibungen\.at",
+        r"bieterportal\.at",
+        r"beschaffung\.gv\.at",
+        r"bbg\.gv\.at",
+    ]),
+    (UrlType.CH_SIMAP, [
+        r"simap\.ch",
+        r"beschaffung\.admin\.ch",
+        r"ausschreibungen\.admin\.ch",
+        r"bkb\.admin\.ch",
     ]),
 ]
 
@@ -121,6 +200,7 @@ def classify_url_type(url: str) -> UrlType:
 
 # Expected success rate per URL type — used for analytics and priority queuing
 URL_TYPE_SUCCESS_RATE: dict[UrlType, float] = {
+    # German / DTVP family
     UrlType.SATELLITE:      0.93,
     UrlType.NETSERVER_PUB:  0.65,
     UrlType.NETSERVER_AUTH: 0.05,
@@ -128,7 +208,18 @@ URL_TYPE_SUCCESS_RATE: dict[UrlType, float] = {
     UrlType.EVA_PORTAL:     0.05,
     UrlType.SUBREPORT:      0.40,
     UrlType.EVERGABE_WEB:   0.50,
-    UrlType.UNKNOWN:        0.35,
+    # International
+    UrlType.TED_EUROPA:    0.85,
+    UrlType.UK_TENDER:     0.80,
+    UrlType.FR_PLACE:      0.70,
+    UrlType.PL_MINIPORTAL: 0.70,
+    UrlType.ES_PLACE:      0.70,
+    UrlType.PT_BASE:       0.70,
+    UrlType.NL_TENDERNED:  0.80,
+    UrlType.BE_EPROCURE:   0.75,
+    UrlType.AT_AUSSCHREIB: 0.70,
+    UrlType.CH_SIMAP:      0.75,
+    UrlType.UNKNOWN:       0.35,
 }
 
 
@@ -183,7 +274,23 @@ def get_strategy_order(url_type: UrlType, platform: str, force: Strategy | None 
         return [Strategy.EXISTING, Strategy.MANUAL, Strategy.LLM_GENERATED]
 
     if url_type == UrlType.EVERGABE_WEB:
-        # evergabe-online.de (Wicket): has disk scraper, try it. LLM sometimes helps.
+        return [Strategy.EXISTING, Strategy.MANUAL, Strategy.LLM_GENERATED, Strategy.CUA]
+
+    # ── International portals: try existing scraper first, then LLM (no CUA unless needed)
+    if url_type == UrlType.TED_EUROPA:
+        # TED has a well-documented REST API — LLM can generate a clean scraper quickly.
+        return [Strategy.EXISTING, Strategy.LLM_GENERATED, Strategy.MANUAL, Strategy.CUA]
+
+    if url_type in (
+        UrlType.UK_TENDER, UrlType.NL_TENDERNED, UrlType.BE_EPROCURE,
+        UrlType.CH_SIMAP, UrlType.AT_AUSSCHREIB,
+    ):
+        # Well-structured public portals — LLM-generated scraper works reliably.
+        return [Strategy.EXISTING, Strategy.LLM_GENERATED, Strategy.MANUAL, Strategy.CUA]
+
+    if url_type in (UrlType.FR_PLACE, UrlType.PL_MINIPORTAL, UrlType.ES_PLACE,
+                    UrlType.PT_BASE):
+        # Moderately complex portals — try manual reference first, then LLM.
         return [Strategy.EXISTING, Strategy.MANUAL, Strategy.LLM_GENERATED, Strategy.CUA]
 
     # UNKNOWN: full cascade in default order
