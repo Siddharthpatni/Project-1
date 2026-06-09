@@ -29,39 +29,40 @@ log = get_logger(__name__)
 _MAX_TEXT_CHARS = 80_000
 _MODEL = "google/gemini-2.5-flash-lite"
 
-_SYSTEM = """You are a procurement document analyst specialising in German and EU public tender notices.
-Extract structured data from the document text provided.
+_SYSTEM = """You are a procurement document analyst specialising in public tender notices from any country and in any language.
+Extract structured data from the document text provided, regardless of the source language (German, English, French, Spanish, Portuguese, Polish, Italian, Dutch, etc.).
 Respond ONLY with a valid JSON object — no markdown, no explanation, no code fences.
 If a field is not present in the document, use null.
-All monetary values should include the currency symbol.
-All dates should be in DD.MM.YYYY format where possible."""
+All monetary values: number only (no currency symbol) in the auftragswert field, currency code in the waehrung field.
+All dates: preserve the original format found in the document."""
 
-_PROMPT_TEMPLATE = """Extract the following fields from this tender document text.
+_PROMPT_TEMPLATE = """Extract the following procurement fields from the document text below.
+The document may be in any language — extract the actual values regardless of language.
 
 FIELDS TO EXTRACT:
-- vergabenummer: Reference/tender number (Vergabenummer, Az., Aktenzeichen)
-- ted_reference: TED/OJEU reference number if present
-- auftraggeber: Contracting authority full name
-- vergabestelle: Procurement office (if different from authority)
+- vergabenummer: Tender/reference number (Vergabenummer, reference number, numéro de marché, número de licitación, numer postępowania, etc.)
+- ted_reference: TED/OJEU/SIMAP reference number if present
+- auftraggeber: Contracting authority / awarding body full name
+- vergabestelle: Procurement office (if different from contracting authority)
 - titel: Tender title / subject of contract
-- leistungsbeschreibung: Brief description of services/goods (max 3 sentences)
-- vergabeverfahren: Procurement procedure type (e.g. Offenes Verfahren, Verhandlungsverfahren)
-- auftragsart: Contract type (Bauauftrag, Lieferauftrag, Dienstleistungsauftrag)
-- veroeffentlichungsdatum: Publication date
-- abgabefrist: Submission deadline (date + time if available)
-- bindefrist: Offer binding period
-- cpv_codes: List of CPV codes (8-digit numbers)
-- nuts_codes: List of NUTS region codes
-- auftragswert: Estimated contract value (number only, no currency)
-- waehrung: Currency (EUR/CHF/USD)
-- leistungsort: Place of performance
-- laufzeit: Contract duration
+- leistungsbeschreibung: Brief description of services/goods/works (max 3 sentences)
+- vergabeverfahren: Procurement procedure type (open procedure, restricted, negotiated, competitive dialogue, etc.)
+- auftragsart: Contract type (works, supplies, services / Bauauftrag, Lieferauftrag, Dienstleistungsauftrag)
+- veroeffentlichungsdatum: Publication/dispatch date
+- abgabefrist: Submission/tender deadline (date + time if available)
+- bindefrist: Tender validity / binding period
+- cpv_codes: List of CPV codes (8-digit numbers only)
+- nuts_codes: List of NUTS region codes (e.g. DE, FR, PT, PL)
+- auftragswert: Estimated contract value — number only, no currency
+- waehrung: Currency code (EUR, GBP, USD, CHF, PLN, CZK, etc.)
+- leistungsort: Place of performance / delivery address
+- laufzeit: Contract duration / period of performance
 - ansprechpartner: Contact person name
 - email: Contact email address
 - telefon: Contact phone number
 - fax: Contact fax number
-- zuschlagskriterien: List of award criteria (strings)
-- eignungskriterien: List of eligibility criteria (strings)
+- zuschlagskriterien: List of award criteria (price, quality, etc.)
+- eignungskriterien: List of eligibility / qualification criteria
 - lose: List of lots with brief descriptions
 
 DOCUMENT TEXT:

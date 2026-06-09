@@ -140,6 +140,12 @@ def process_job_task(
     job.completed = n_success
     db.commit()
     db.close()
+
+    # Auto-trigger deep extraction for every successfully scraped item
+    if n_success > 0:
+        extract_job_task.delay(job_id)
+        log.info("job.auto_extraction_queued", job_id=job_id, items=n_success)
+
     return {"job_id": job_id, "success": n_success, "total": total_urls}
 
 
