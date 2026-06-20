@@ -1,3 +1,26 @@
+/**
+ * Job Detail Page — real-time view of a single scraping job.
+ *
+ * This is the most information-dense page in the app. It shows:
+ *   - Job-level KPIs (total URLs, success count, cost, runtime)
+ *   - Per-item table with strategy used, iteration count, error reason
+ *   - Cascade trail visualization — which strategies were tried in order
+ *   - Per-item document list with download links
+ *   - Error report download (JSON or CSV)
+ *   - Deep extraction trigger and result view
+ *   - Job diagnostics panel (audit trail + domain breakdown)
+ *
+ * Data flow:
+ *   SWR polls GET /api/jobs/{id} every 4s while job is running.
+ *   Each JobItem contains `attempts_detail` — the full per-strategy attempt
+ *   history that powers the CascadeTrail visualization.
+ *
+ * Key components defined in this file:
+ *   CascadeTrail  — shows which strategies were tried (with visual pills)
+ *   StrategyPill  — color-coded badge for each strategy key
+ *   ItemRow       — expandable row showing one URL's status + documents
+ *   DiagnosticsPanel — collapsible audit trail + domain failure breakdown
+ */
 "use client";
 
 import useSWR from "swr";
@@ -20,7 +43,9 @@ const STRATEGY_STYLES: Record<string, string> = {
   manual_scraper:         "bg-blue-50 text-blue-700 border-blue-200",
   existing_scraper:       "bg-purple-50 text-purple-700 border-purple-200",
   deterministic_template: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  adaptive_universal:     "bg-sky-50 text-sky-700 border-sky-200",
   llm_generated_scraper:  "bg-amber-50 text-amber-700 border-amber-200",
+  learned_route:          "bg-teal-50 text-teal-700 border-teal-200",
   computer_use_agent:     "bg-rose-50 text-rose-700 border-rose-200",
   none:                   "bg-slate-50 text-slate-600 border-slate-200",
 };
@@ -28,12 +53,14 @@ const STRATEGY_LABELS: Record<string, string> = {
   manual_scraper:         "Manual",
   existing_scraper:       "Cached",
   deterministic_template: "Deterministic",
+  adaptive_universal:     "Universal Adaptive",
   llm_generated_scraper:  "LLM Generated",
+  learned_route:          "Learned Route",
   computer_use_agent:     "CUA Agent",
   none:                   "Failed",
 };
-// Phase 3 cascade: EXISTING first (reuse) → DETERMINISTIC (free) → LLM → CUA → MANUAL (legacy)
-const CASCADE_ORDER = ["existing_scraper","deterministic_template","llm_generated_scraper","computer_use_agent","manual_scraper"];
+// Phase 3 cascade: EXISTING first (reuse) → DETERMINISTIC (free) → LLM → LEARNED_ROUTE (replay) → CUA → MANUAL (legacy)
+const CASCADE_ORDER = ["existing_scraper","deterministic_template","adaptive_universal","llm_generated_scraper","learned_route","computer_use_agent","manual_scraper"];
 
 function fileIcon(fn: string) {
   const e = fn.split(".").pop()?.toLowerCase() ?? "";
@@ -845,14 +872,14 @@ export default function JobDetailPage() {
 
   // Guard: show spinner while job data loads (placed after all hooks)
   if (!job) return (
-    <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+    <div className="py-16 text-center">
       <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-3"/>
       <p className="text-slate-500 text-sm">Loading job…</p>
     </div>
   );
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="space-y-8">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
         <Link href="/" className="hover:text-indigo-600">Dashboard</Link><span>/</span>
@@ -864,7 +891,7 @@ export default function JobDetailPage() {
       <header className="space-y-3 border-b border-slate-100 pb-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <code className="font-mono text-sm bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-slate-700">{job.id}</code>
+            <code className="font-mono text-xs sm:text-sm bg-slate-100 border border-slate-200 px-3 sm:px-4 py-2 rounded-xl text-slate-700 break-all max-w-full">{job.id}</code>
             <button onClick={copyId} className="btn-secondary text-xs gap-1.5"><Copy className="w-3.5 h-3.5"/>{copied?"Copied!":"Copy"}</button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

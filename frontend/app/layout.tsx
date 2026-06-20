@@ -1,7 +1,21 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import { Providers } from "@/components/Providers";
+
+// Inter for UI text, JetBrains Mono for code/figures — a clean, professional
+// pairing exposed as CSS variables and mapped to Tailwind's font-sans/mono.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -23,7 +37,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" translate="no" suppressHydrationWarning>
+    <html lang="de" translate="no" suppressHydrationWarning className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <meta name="google" content="notranslate" />
         {/* Prevent dark mode flash */}
@@ -37,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="flex flex-col min-h-screen">
             <Navbar />
-            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <main className="flex-1 w-full max-w-7xl 2xl:max-w-[88rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
               {children}
             </main>
             <footer className="py-4 text-center text-xs" style={{ color: "var(--fg-subtle)", borderTop: "1px solid var(--border)" }}>

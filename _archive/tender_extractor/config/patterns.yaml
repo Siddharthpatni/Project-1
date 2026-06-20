@@ -1,0 +1,368 @@
+# ============================================================
+# Tender Extractor — Field Patterns & Configuration
+# ALL regex and label strings live here. Zero hardcoding in .py files.
+# Patterns support both English and German tender documents.
+# ============================================================
+
+# Global extraction settings
+settings:
+  search_window: 5          # lines to look ahead after label match
+  min_confidence: 0.2       # discard results below this
+  ocr_dpi: 200              # DPI for pdf2image OCR fallback
+  ocr_lang: "deu+eng"       # tesseract language pack
+  max_section_lines: 40     # max lines to extract per section body
+
+# ============================================================
+# FIELD DEFINITIONS
+# Each field has:
+#   labels       : list of label text variants (case-insensitive match)
+#   value_regex  : regex the extracted value must match for confidence=1.0
+#   search_window: (optional) override global
+# ============================================================
+
+fields:
+
+  tender_id:
+    labels:
+      - "tender no"
+      - "tender number"
+      - "tender id"
+      - "reference no"
+      - "reference number"
+      - "ref no"
+      - "rfp no"
+      - "rfp number"
+      - "rfq no"
+      - "bid no"
+      - "bid number"
+      - "notice no"
+      - "notice number"
+      - "vergabenummer"
+      - "vergabe-nr"
+      - "vergabe nr"
+      - "aktenzeichen"
+      - "az"
+      - "ausschreibungs-nr"
+      - "ausschreibungsnummer"
+      - "bekanntmachungsnummer"
+      - "vergabe-id"
+      - "vn"
+      - "procurement no"
+      - "contract no"
+    value_regex: '[\w][\w\-\/\.\_]{2,40}'
+    search_window: 3
+
+  tender_title:
+    labels:
+      - "subject"
+      - "subject of procurement"
+      - "title"
+      - "tender title"
+      - "name of work"
+      - "description"
+      - "project title"
+      - "works"
+      - "services"
+      - "supply"
+      - "procurement of"
+      - "purchase of"
+      - "auftragsgegenstand"
+      - "auftragsbezeichnung"
+      - "bezeichnung"
+      - "leistungsbeschreibung"
+      - "gegenstand"
+      - "betreff"
+      - "maßnahme"
+      - "gegenstand der ausschreibung"
+    value_regex: '.{5,200}'
+    search_window: 4
+
+  issuing_authority:
+    labels:
+      - "issued by"
+      - "issuing authority"
+      - "procuring entity"
+      - "contracting authority"
+      - "contracting entity"
+      - "buyer"
+      - "client"
+      - "department"
+      - "ministry"
+      - "authority"
+      - "organization"
+      - "organisation"
+      - "auftraggeber"
+      - "vergabestelle"
+      - "beschaffungsstelle"
+      - "öffentlicher auftraggeber"
+      - "auftraggeber name"
+      - "behörde"
+      - "amt"
+      - "institution"
+    value_regex: '.{3,150}'
+    search_window: 4
+
+  publication_date:
+    labels:
+      - "published"
+      - "publication date"
+      - "issue date"
+      - "date of issue"
+      - "release date"
+      - "date of publication"
+      - "published on"
+      - "issued on"
+      - "veröffentlichungsdatum"
+      - "veröffentlicht am"
+      - "bekanntmachungsdatum"
+      - "datum der veröffentlichung"
+      - "ausgabedatum"
+      - "ausgestellt am"
+    value_regex: '\d{1,2}[\.\-\/]\d{1,2}[\.\-\/]\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Za-z]+ \d{1,2},? \d{4}'
+    search_window: 3
+
+  submission_deadline:
+    labels:
+      - "submission deadline"
+      - "closing date"
+      - "last date"
+      - "due date"
+      - "bid submission"
+      - "deadline for submission"
+      - "tender closing"
+      - "response due"
+      - "submission date"
+      - "bid due date"
+      - "closing time"
+      - "offers due"
+      - "abgabefrist"
+      - "angebotsfrist"
+      - "einreichungsfrist"
+      - "schlusstermin"
+      - "fristende"
+      - "abgabetermin"
+      - "einreichungstermin"
+      - "angebotsabgabe"
+      - "submission"
+      - "deadline"
+      - "frist"
+    value_regex: '\d{1,2}[\.\-\/]\d{1,2}[\.\-\/]\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Za-z]+ \d{1,2},? \d{4}'
+    search_window: 4
+
+  tender_value:
+    labels:
+      - "estimated value"
+      - "estimated cost"
+      - "tender value"
+      - "contract value"
+      - "budget"
+      - "estimated budget"
+      - "value of contract"
+      - "approximate value"
+      - "total value"
+      - "project cost"
+      - "package value"
+      - "auftragswert"
+      - "schätzwert"
+      - "geschätzter auftragswert"
+      - "geschätzter wert"
+      - "auftragsvolumen"
+      - "gesamtwert"
+      - "gesamtvolumen"
+      - "auftragssumme"
+      - "finanzvolumen"
+    value_regex: '[\€\$\£\₹\¥]?\s*[\d\.,]+\s*(million|mn|billion|lakh|crore|k|m|M|EUR|USD|GBP|INR|CHF)?'
+    search_window: 4
+
+  contact_name:
+    labels:
+      - "contact person"
+      - "contact name"
+      - "contact officer"
+      - "point of contact"
+      - "poc"
+      - "for queries contact"
+      - "attention"
+      - "attn"
+      - "ansprechpartner"
+      - "kontaktperson"
+      - "bearbeiter"
+      - "sachbearbeiter"
+      - "zuständig"
+      - "kontakt"
+      - "ansprechpartner/in"
+    value_regex: '[A-Z][a-z]+ [A-Z][a-z]+'
+    search_window: 3
+
+  contact_email:
+    labels:
+      - "email"
+      - "e-mail"
+      - "email address"
+      - "electronic mail"
+      - "contact email"
+      - "send to"
+      - "send bids to"
+      - "e-mail-adresse"
+      - "e-mail adresse"
+      - "mailadresse"
+      - "mail"
+    value_regex: '[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}'
+    search_window: 3
+
+  contact_phone:
+    labels:
+      - "phone"
+      - "telephone"
+      - "tel"
+      - "tel."
+      - "mobile"
+      - "contact number"
+      - "phone number"
+      - "fax"
+      - "telefon"
+      - "telefonnummer"
+      - "durchwahl"
+      - "faxnummer"
+      - "telefax"
+    value_regex: '[\+\(]?[\d\s\-\(\)\.]{7,20}'
+    search_window: 3
+
+  cpv_codes:
+    labels:
+      - "cpv"
+      - "cpv code"
+      - "cpv codes"
+      - "common procurement vocabulary"
+      - "cpv-code"
+      - "cpv code(s)"
+    value_regex: '\d{8}(?:-\d)?'
+    search_window: 4
+    is_list: true
+
+  scope_of_work:
+    section_keywords:
+      - "scope of work"
+      - "scope of services"
+      - "scope"
+      - "description of works"
+      - "description of services"
+      - "work description"
+      - "services description"
+      - "leistungsbeschreibung"
+      - "leistungsumfang"
+      - "projektbeschreibung"
+      - "aufgabenbeschreibung"
+      - "leistungen"
+      - "gegenstand"
+    max_lines: 40
+
+  eligibility:
+    section_keywords:
+      - "eligibility"
+      - "eligibility criteria"
+      - "qualification"
+      - "qualification criteria"
+      - "minimum requirements"
+      - "technical requirements"
+      - "pre-qualification"
+      - "bidder requirements"
+      - "eignungskriterien"
+      - "eignungsanforderungen"
+      - "mindestanforderungen"
+      - "anforderungen an bieter"
+      - "qualifikationsanforderungen"
+      - "eignung"
+      - "befähigung"
+    max_lines: 35
+
+# ============================================================
+# TENDER TYPE KEYWORDS
+# ============================================================
+
+tender_types:
+  open:
+    keywords:
+      - "open tender"
+      - "open bidding"
+      - "public tender"
+      - "international competitive bidding"
+      - "icb"
+      - "open competition"
+      - "offenes verfahren"
+      - "öffentliche ausschreibung"
+      - "national competitive bidding"
+      - "ncb"
+  restricted:
+    keywords:
+      - "restricted tender"
+      - "limited bidding"
+      - "selective tender"
+      - "beschränktes verfahren"
+      - "beschränkte ausschreibung"
+      - "nichtoffenes verfahren"
+  rfp:
+    keywords:
+      - "request for proposal"
+      - "rfp"
+      - "proposals invited"
+      - "expression of interest"
+  rfq:
+    keywords:
+      - "request for quotation"
+      - "rfq"
+      - "quotation invited"
+      - "request for quote"
+  negotiated:
+    keywords:
+      - "negotiated procedure"
+      - "direct award"
+      - "verhandlungsverfahren"
+      - "freihändige vergabe"
+      - "direktauftrag"
+  eoi:
+    keywords:
+      - "expression of interest"
+      - "eoi"
+      - "pre-qualification"
+      - "prequalification"
+
+# ============================================================
+# STANDALONE REGEX — for confidence=0.5 matches without a label
+# ============================================================
+
+standalone_patterns:
+  email: '[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}'
+  cpv_code: '\b\d{8}(?:-\d)?\b'
+  phone: '(?:Tel|Fax|Phone|Telefon)[.:\s]+[\+\(]?[\d\s\-\(\)\.]{7,25}'
+  tender_id_standalone: '\b(?:RFP|RFQ|IFB|ITT|EOI|NIT|VN|VB|AZ|LOT)[-\s]?[\d\-\/\.A-Z]{3,20}\b'
+
+# ============================================================
+# SECTION HEADER DETECTION
+# ============================================================
+
+section_detection:
+  all_caps_min_words: 2
+  numbered_pattern: '^\d+(\.\d+)*[\s\.]'
+  short_colon_max_chars: 60
+  known_headers:
+    - "introduction"
+    - "background"
+    - "scope"
+    - "eligibility"
+    - "evaluation"
+    - "submission"
+    - "instructions"
+    - "terms"
+    - "schedule"
+    - "annexure"
+    - "appendix"
+    - "einleitung"
+    - "hintergrund"
+    - "leistungsumfang"
+    - "anforderungen"
+    - "bewertung"
+    - "einreichung"
+    - "bedingungen"
+    - "zeitplan"
+    - "anlage"

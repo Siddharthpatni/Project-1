@@ -9,6 +9,7 @@ import { useTheme } from "@/lib/hooks";
 
 const NAV_LINKS = [
   { href: "/",           label: "Dashboard",  exact: true },
+  { href: "/directory",  label: "Directory" },
   { href: "/jobs",       label: "Jobs" },
   { href: "/extraction", label: "Extraction" },
   { href: "/scrapers",   label: "Scrapers" },

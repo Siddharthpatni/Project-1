@@ -1,9 +1,59 @@
+/**
+ * Scraper Registry page — view and manage the Phase 3 reusable scraper cache.
+ *
+ * Every domain that has been successfully scraped by an LLM-generated or
+ * manually-written scraper has an entry here. The registry is what allows
+ * subsequent jobs for the same domain to skip code generation entirely
+ * (the EXISTING strategy).
+ *
+ * Features:
+ *   - Table of all scraper templates: domain, source (disk/llm/manual/cua),
+ *     platform, success/failure counts, health rating
+ *   - Code viewer modal: syntax-highlighted Python source
+ *   - Download scraper as .py file
+ *   - Delete scraper from registry
+ *   - "Learn + Generate" panel: run route-learner then LLM-generate for a URL
+ *
+ * Data source: GET /api/scrapers (with success/failure counts from DB)
+ */
 "use client";
 
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
 import { Fragment, useState } from "react";
 import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle, Layers, Compass, DollarSign, ListOrdered, ChevronRight, Cpu, CheckCircle } from "lucide-react";
+
+/** Mobile card for one registry scraper — shown instead of the table on phones. */
+function ScraperCard({ s }: { s: any }) {
+  const total = s.success_count + s.failure_count;
+  const rate = total ? Math.round((s.success_count / total) * 100) : 0;
+  return (
+    <div className="card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-mono text-xs font-bold break-all" style={{ color: "var(--fg)" }}>{s.domain}</span>
+        <span className="badge bg-emerald-50 text-emerald-700 border-emerald-200 flex-shrink-0">{rate}%</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <span className="badge bg-slate-100 text-slate-600 border-slate-200">{s.source}</span>
+        {s.platform && <span className="badge bg-slate-100 text-slate-600 border-slate-200">{s.platform}</span>}
+        {s.route_used && <span className="badge bg-emerald-50 text-emerald-700 border-emerald-200">route</span>}
+        {s.cua_hint && <span className="badge bg-rose-50 text-rose-700 border-rose-200">CUA</span>}
+      </div>
+      <div className="flex items-center justify-between text-[11px] font-medium" style={{ color: "var(--fg-subtle)" }}>
+        <span>{s.success_count} ok · {s.failure_count} fail</span>
+        <span>{s.avg_runtime != null ? `${s.avg_runtime.toFixed(1)}s` : "—"}</span>
+        <span>{new Date(s.created_at).toLocaleDateString()}</span>
+      </div>
+      {(s.code || s.cua_hint) && (
+        <details className="text-xs">
+          <summary className="cursor-pointer font-semibold" style={{ color: "var(--brand)" }}>View details</summary>
+          {s.cua_hint && <pre className="mt-2 p-3 rounded-lg overflow-x-auto text-[10px] whitespace-pre-wrap custom-scrollbar" style={{ background: "#0d1117", color: "#e6edf3" }}>{s.cua_hint}</pre>}
+          {s.code && <pre className="mt-2 p-3 rounded-lg overflow-x-auto text-[10px] custom-scrollbar" style={{ background: "#0d1117", color: "#e6edf3" }}>{s.code}</pre>}
+        </details>
+      )}
+    </div>
+  );
+}
 
 export default function ScrapersPage() {
   const { data: scrapers, mutate } = useSWR(api("/scrapers"), fetcher, { refreshInterval: 8000 });
@@ -34,7 +84,7 @@ export default function ScrapersPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
@@ -48,7 +98,7 @@ export default function ScrapersPage() {
       </header>
 
       {/* Route Learning Card */}
-      <div className="bg-white border-2 border-emerald-100 rounded-3xl p-6 md:p-8 shadow-sm bg-gradient-to-br from-emerald-50/20 via-white to-white space-y-6">
+      <div className="bg-white border-2 border-emerald-100 rounded-2xl p-6 md:p-8 shadow-sm bg-gradient-to-br from-emerald-50/20 via-white to-white space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-emerald-100/70 border border-emerald-200 rounded-2xl">
             <Compass className="w-6 h-6 text-emerald-700 animate-spin" style={{ animationDuration: '6s' }} />
@@ -207,8 +257,18 @@ export default function ScrapersPage() {
         )}
       </div>
 
-      {/* Existing Scrapers Table */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+      {/* Existing Scrapers — mobile cards */}
+      <div className="md:hidden space-y-3">
+        {scrapers?.length === 0 && (
+          <div className="card p-8 text-center text-sm" style={{ color: "var(--fg-subtle)" }}>
+            Registry is empty. Run a compilation above to build your first template.
+          </div>
+        )}
+        {scrapers?.map((s: any) => <ScraperCard key={s.id} s={s} />)}
+      </div>
+
+      {/* Existing Scrapers Table (desktop) */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden hidden md:block">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2.5 bg-slate-50/50">
           <Layers className="w-5 h-5 text-slate-600" />
           <h2 className="font-bold text-slate-800">Generated Procurement Scrapers</h2>

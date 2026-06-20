@@ -1,3 +1,24 @@
+/**
+ * Audit Log page — append-only structured event history of all pipeline activity.
+ *
+ * Every significant action the pipeline takes (job start, strategy attempt,
+ * success/failure, security event, manual stop) is written to the audit_logs
+ * table and surfaces here so ops can reconstruct exactly what happened for
+ * any job, URL, or incident.
+ *
+ * Features:
+ *   - Filterable table: by level (info/warning/error/critical), event type, domain
+ *   - URL and job_id deep-link from each row to the relevant job detail page
+ *   - Purge control: delete audit entries older than N days
+ *   - Live refresh: new events appear automatically
+ *
+ * Data source:
+ *   GET /api/audit          → paginated log entries (newest first)
+ *   DELETE /api/audit/purge → remove entries older than ?days=N
+ *
+ * Level color coding:
+ *   info → blue  |  warning → amber  |  error → rose  |  critical → red (bold)
+ */
 "use client";
 
 import useSWR from "swr";
@@ -155,7 +176,7 @@ function AuditPageInner() {
   const levels = ["", "info", "warning", "error", "critical"];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="space-y-6">
       <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">
         <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
       </Link>

@@ -62,6 +62,23 @@ class UrlType(str, Enum):
     BE_EPROCURE   = "be_eprocure"     # Belgian e-Procurement — ~75% success
     AT_AUSSCHREIB = "at_ausschreib"   # Austrian ausschreibungen.at — ~70% success
     CH_SIMAP      = "ch_simap"        # Swiss SIMAP / Bund procurement — ~75% success
+    # ── More Europe ───────────────────────────────────────────────────────────
+    IT_PROC       = "it_proc"         # Italy CONSIP/MEPA/acquistinrete — ~60% success
+    IE_ETENDERS   = "ie_etenders"     # Ireland eTenders — ~70% success
+    NORDIC        = "nordic"          # Doffin/Mercell/Visma-Opic/Hilma/Udbud (NO/SE/FI/DK) — ~70%
+    EU_EAST       = "eu_east"         # GR/CZ/HU/RO/SK/SI/HR/BG/EE/LV/LT portals — ~60% success
+    # ── Americas ──────────────────────────────────────────────────────────────
+    US_SAM        = "us_sam"          # USA SAM.gov / grants.gov — ~65% success
+    CA_TENDERS    = "ca_tenders"      # Canada CanadaBuys / MERX — ~65% success
+    LATAM         = "latam"           # BR/MX/CL/AR/CO/PE procurement — ~60% success
+    # ── Asia ──────────────────────────────────────────────────────────────────
+    IN_GEM        = "in_gem"          # India GeM / eProcure / NIC — ~60% success
+    ASIA_OTHER    = "asia_other"      # SG/JP/CN/KR/other Asia — mixed, often login ~45%
+    # ── Africa ────────────────────────────────────────────────────────────────
+    AFRICA        = "africa"          # ZA/KE/NG/EG e-tender portals — ~55% success
+    # ── Oceania ───────────────────────────────────────────────────────────────
+    AU_AUSTENDER  = "au_austender"    # Australia AusTender + state portals — ~75% success
+    NZ_GETS       = "nz_gets"         # New Zealand GETS — ~75% success
     UNKNOWN       = "unknown"         # Needs full cascade
 
 
@@ -181,6 +198,103 @@ _URL_TYPE_PATTERNS: list[tuple[UrlType, list[str]]] = [
         r"ausschreibungen\.admin\.ch",
         r"bkb\.admin\.ch",
     ]),
+    # ── More Europe ────────────────────────────────────────────────────────────
+    (UrlType.IT_PROC, [
+        r"acquistinretepa\.it",
+        r"acquistinrete",
+        r"consip\.it",
+        r"tuttogare",
+        r"appaltipubblici",
+        r"serviziocontrattipubblici\.it",
+    ]),
+    (UrlType.IE_ETENDERS, [
+        r"etenders\.gov\.ie",
+        r"irlgov.*etender",
+    ]),
+    (UrlType.NORDIC, [
+        r"doffin\.no",                 # Norway
+        r"mercell\.com",
+        r"e-avrop\.com",               # Sweden
+        r"visma.*opic|opic\.com",
+        r"kommers\.se",
+        r"tendsign\.com",
+        r"hankintailmoitukset\.fi",    # Finland (Hilma)
+        r"udbud\.dk|ethics\.dk",       # Denmark
+    ]),
+    (UrlType.EU_EAST, [
+        r"promitheus\.gov\.gr|eprocurement\.gov\.gr",  # Greece
+        r"nen\.nipez\.cz|tenderarena\.cz",             # Czechia
+        r"kozbeszerzes\.hu|ekr\.gov\.hu",              # Hungary
+        r"e-licitatie\.ro",                            # Romania
+        r"uvo\.gov\.sk|eks\.sk",                       # Slovakia
+        r"enarocanje\.si",                             # Slovenia
+        r"eojn\.nn\.hr",                               # Croatia
+        r"eop\.bg|aop\.bg",                            # Bulgaria
+        r"riigihanked\.riik\.ee",                      # Estonia
+        r"eis\.gov\.lv",                               # Latvia
+        r"cvpp\.lt|vpt\.lt",                           # Lithuania
+    ]),
+    # ── Americas ───────────────────────────────────────────────────────────────
+    (UrlType.US_SAM, [
+        r"sam\.gov",
+        r"grants\.gov",
+        r"fbo\.gov",
+        r"acquisition\.gov",
+        r"unison.*marketplace",
+        r"bonfirehub\.com",
+    ]),
+    (UrlType.CA_TENDERS, [
+        r"canadabuys\.canada\.ca",
+        r"buyandsell\.gc\.ca",
+        r"merx\.com",
+        r"bidsandtenders\.ca",
+        r"biddingo\.com",
+        r"bcbid\.gov\.bc\.ca",
+    ]),
+    (UrlType.LATAM, [
+        r"comprasnet|gov\.br/compras|\.gov\.br.*licita|licitacoes-e",  # Brazil
+        r"compranet|comprasmx",                                        # Mexico
+        r"mercadopublico\.cl",                                         # Chile
+        r"comprar\.gob\.ar|argentinacompra",                          # Argentina
+        r"colombiacompra|secop\.gov\.co",                             # Colombia
+        r"seace\.gob\.pe|perucompras",                                # Peru
+    ]),
+    # ── Asia ───────────────────────────────────────────────────────────────────
+    (UrlType.IN_GEM, [
+        r"gem\.gov\.in",
+        r"eprocure\.gov\.in",
+        r"etenders?\.gov\.in",
+        r"\.nic\.in.*tender",
+        r"tenderwizard\.com",
+    ]),
+    (UrlType.ASIA_OTHER, [
+        r"gebiz\.gov\.sg",             # Singapore
+        r"njss\.info|geps\.go\.jp|p-portal\.go\.jp",  # Japan
+        r"ccgp\.gov\.cn|chinabidding",  # China
+        r"g2b\.go\.kr",                # South Korea
+        r"eprocure.*gov\.(np|bd|pk|lk)",  # Nepal/Bangladesh/Pakistan/Sri Lanka
+    ]),
+    # ── Africa ─────────────────────────────────────────────────────────────────
+    (UrlType.AFRICA, [
+        r"etenders\.gov\.za|etender.*\.gov\.za",  # South Africa
+        r"tenders\.go\.ke",                       # Kenya
+        r"bpp\.gov\.ng|nocopo\.bpp\.gov\.ng",     # Nigeria
+        r"etenders\.gov\.eg",                     # Egypt
+        r"ghana.*tender|tender.*gov\.gh",         # Ghana
+    ]),
+    # ── Oceania ────────────────────────────────────────────────────────────────
+    (UrlType.AU_AUSTENDER, [
+        r"tenders\.gov\.au",
+        r"austender",
+        r"tenders\.nsw\.gov\.au",
+        r"tenders\.vic\.gov\.au",
+        r"qtenders|hpw\.qld\.gov\.au",
+        r"tenders\.sa\.gov\.au|tenders\.wa\.gov\.au",
+        r"etender.*\.gov\.au",
+    ]),
+    (UrlType.NZ_GETS, [
+        r"gets\.govt\.nz",
+    ]),
 ]
 
 
@@ -219,6 +333,23 @@ URL_TYPE_SUCCESS_RATE: dict[UrlType, float] = {
     UrlType.BE_EPROCURE:   0.75,
     UrlType.AT_AUSSCHREIB: 0.70,
     UrlType.CH_SIMAP:      0.75,
+    # More Europe
+    UrlType.IT_PROC:       0.60,
+    UrlType.IE_ETENDERS:   0.70,
+    UrlType.NORDIC:        0.70,
+    UrlType.EU_EAST:       0.60,
+    # Americas
+    UrlType.US_SAM:        0.65,
+    UrlType.CA_TENDERS:    0.65,
+    UrlType.LATAM:         0.60,
+    # Asia
+    UrlType.IN_GEM:        0.60,
+    UrlType.ASIA_OTHER:    0.45,
+    # Africa
+    UrlType.AFRICA:        0.55,
+    # Oceania
+    UrlType.AU_AUSTENDER:  0.75,
+    UrlType.NZ_GETS:       0.75,
     UrlType.UNKNOWN:       0.35,
 }
 
@@ -228,7 +359,49 @@ URL_TYPE_SUCCESS_RATE: dict[UrlType, float] = {
 from app.models import Strategy
 
 
+def _inject_adaptive(order: list[Strategy]) -> list[Strategy]:
+    """Insert ADAPTIVE immediately before the paid LLM step.
+
+    ADAPTIVE is a free, country-agnostic heuristic scraper — try it before
+    spending LLM budget. Only injected for orders that actually reach
+    LLM_GENERATED, so deliberately-minimal orders (auth-gated, SATELLITE) keep
+    their tuned fast paths. No-op when already present.
+    """
+    if Strategy.ADAPTIVE in order or Strategy.LLM_GENERATED not in order:
+        return order
+    idx = order.index(Strategy.LLM_GENERATED)
+    return order[:idx] + [Strategy.ADAPTIVE] + order[idx:]
+
+
+def _inject_learned_route(order: list[Strategy]) -> list[Strategy]:
+    """Insert LEARNED_ROUTE immediately before CUA in a strategy order.
+
+    A previously-learned CUA route should always be replayed (cheap Playwright)
+    before re-invoking the expensive CUA. Inserting it directly before CUA keeps
+    each per-URL-type order's intent intact. No-op when CUA isn't in the order
+    or LEARNED_ROUTE is already present.
+    """
+    if Strategy.CUA not in order or Strategy.LEARNED_ROUTE in order:
+        return order
+    idx = order.index(Strategy.CUA)
+    return order[:idx] + [Strategy.LEARNED_ROUTE] + order[idx:]
+
+
 def get_strategy_order(url_type: UrlType, platform: str, force: Strategy | None = None) -> list[Strategy]:
+    """Public entry point: optimal strategy order with ADAPTIVE + LEARNED_ROUTE injected.
+
+    Delegates to ``_strategy_order_for_type`` then inserts ADAPTIVE (free
+    universal heuristic) before the paid LLM step, and LEARNED_ROUTE before CUA
+    so a previously-learned route is replayed cheaply before the expensive CUA.
+    The ``force`` path is passed through untouched (run exactly that one).
+    """
+    if force:
+        return [force]
+    order = _strategy_order_for_type(url_type, platform)
+    return _inject_learned_route(_inject_adaptive(order))
+
+
+def _strategy_order_for_type(url_type: UrlType, platform: str, force: Strategy | None = None) -> list[Strategy]:
     """
     Return the optimal strategy execution order for this URL type.
 
@@ -284,12 +457,20 @@ def get_strategy_order(url_type: UrlType, platform: str, force: Strategy | None 
     if url_type in (
         UrlType.UK_TENDER, UrlType.NL_TENDERNED, UrlType.BE_EPROCURE,
         UrlType.CH_SIMAP, UrlType.AT_AUSSCHREIB,
+        # Well-structured public international portals worldwide.
+        UrlType.IE_ETENDERS, UrlType.NORDIC, UrlType.US_SAM, UrlType.CA_TENDERS,
+        UrlType.AU_AUSTENDER, UrlType.NZ_GETS,
     ):
         # Well-structured public portals — LLM-generated scraper works reliably.
+        # (ADAPTIVE is injected before LLM, so the free heuristic runs first.)
         return [Strategy.EXISTING, Strategy.LLM_GENERATED, Strategy.MANUAL, Strategy.CUA]
 
-    if url_type in (UrlType.FR_PLACE, UrlType.PL_MINIPORTAL, UrlType.ES_PLACE,
-                    UrlType.PT_BASE):
+    if url_type in (
+        UrlType.FR_PLACE, UrlType.PL_MINIPORTAL, UrlType.ES_PLACE, UrlType.PT_BASE,
+        # Moderately complex portals across other regions.
+        UrlType.IT_PROC, UrlType.EU_EAST, UrlType.LATAM, UrlType.IN_GEM,
+        UrlType.AFRICA, UrlType.ASIA_OTHER,
+    ):
         # Moderately complex portals — try manual reference first, then LLM.
         return [Strategy.EXISTING, Strategy.MANUAL, Strategy.LLM_GENERATED, Strategy.CUA]
 
@@ -301,6 +482,24 @@ def get_strategy_order(url_type: UrlType, platform: str, force: Strategy | None 
 
 
 # ─── Circuit Breaker ─────────────────────────────────────────────────────────
+
+def _cb_event(event: str) -> None:
+    """Record a circuit-breaker state event in metrics (never raises)."""
+    try:
+        from app.core.metrics import CIRCUIT_BREAKER_EVENTS  # noqa: PLC0415
+        CIRCUIT_BREAKER_EVENTS.labels(event=event).inc()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _rl_hit() -> None:
+    """Record a rate-limiter rejection in metrics (never raises)."""
+    try:
+        from app.core.metrics import RATE_LIMIT_HITS  # noqa: PLC0415
+        RATE_LIMIT_HITS.inc()
+    except Exception:  # noqa: BLE001
+        pass
+
 
 class CircuitState(str, Enum):
     CLOSED   = "closed"    # Normal — allow requests
@@ -382,9 +581,11 @@ class CircuitBreaker:
                         r.set(self._key(domain, "state"), CircuitState.HALF_OPEN.value)
                         r.set(self._key(domain, "half_open_at"), str(time.time()))
                         log.info("circuit_breaker.half_open", domain=domain)
+                        _cb_event("half_open")
                         return True  # let one probe through
                 except Exception:
                     pass
+            _cb_event("reject")
             return False  # still OPEN
         if state == CircuitState.HALF_OPEN:
             # Only allow one probe at a time
@@ -408,11 +609,14 @@ class CircuitBreaker:
         if not r:
             return
         try:
+            prev_state = r.get(self._key(domain, "state"))
             pipe = r.pipeline()
             pipe.set(self._key(domain, "state"), CircuitState.CLOSED.value)
             pipe.delete(self._key(domain, "failures"))
             pipe.delete(self._key(domain, "tripped_at"))
             pipe.execute()
+            if prev_state and prev_state != CircuitState.CLOSED.value:
+                _cb_event("reset")
         except Exception:
             pass
 
@@ -440,6 +644,7 @@ class CircuitBreaker:
                 pipe.set(self._key(domain, "state"), CircuitState.OPEN.value)
                 pipe.set(self._key(domain, "tripped_at"), str(time.time()))
                 pipe.execute()
+                _cb_event("trip")
                 log.warning("circuit_breaker.tripped", domain=domain,
                             failures=failures, category=error_category)
         except Exception:
@@ -511,7 +716,10 @@ class DomainRateLimiter:
             current = r.incr(key)
             if current == 1:
                 r.expire(key, self.window_seconds)
-            return current <= self.max_concurrent
+            allowed = current <= self.max_concurrent
+            if not allowed:
+                _rl_hit()
+            return allowed
         except Exception:
             return True
 

@@ -142,7 +142,13 @@ class ExtractionResult:
 # ---------------------------------------------------------------------------
 
 def _persist(db: Session, result: ExtractionResult) -> None:
-    """Upsert an ExtractionRecord row for the given job_item_id."""
+    """Upsert an ExtractionRecord row for the given job_item_id.
+
+    Also refreshes the parent JobItem's denormalized directory columns
+    (tender_title / tender_reference / deadline) so the public tender directory
+    can index and query them without parsing fields_json. fields_json remains
+    the source of truth; these are a derived projection.
+    """
     from app.models import ExtractionRecord  # imported here to avoid circular
 
     try:
@@ -168,8 +174,23 @@ def _persist(db: Session, result: ExtractionResult) -> None:
             )
             db.add(record)
 
+        _project_to_job_item(db, result.job_item_id, result.fields)
+
         db.commit()
         log.info("extractor.db_persisted", job_item_id=result.job_item_id)
     except Exception as e:  # noqa: BLE001
-        log.warning("extractor.db_persist_failed", error=str(e))
         db.rollback()
+        log.warning("extractor.db_persist_failed", error=str(e))
+
+
+def _project_to_job_item(db: Session, job_item_id: str, fields) -> None:
+    """Copy the directory-facing fields from an extraction onto its JobItem."""
+    from app.document_extractor.dates import parse_deadline  # noqa: PLC0415
+    from app.models import JobItem  # noqa: PLC0415
+
+    item = db.query(JobItem).filter(JobItem.id == job_item_id).first()
+    if item is None:
+        return
+    item.tender_title = (getattr(fields, "titel", None) or None)
+    item.tender_reference = (getattr(fields, "vergabenummer", None) or None)
+    item.deadline = parse_deadline(getattr(fields, "abgabefrist", None))

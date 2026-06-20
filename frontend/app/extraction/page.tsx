@@ -1,3 +1,22 @@
+/**
+ * Extraction page — view and trigger deep extraction of tender fields.
+ *
+ * After documents are downloaded, the DeepExtractor parses them (PDF/DOCX/XML)
+ * and extracts structured fields: Vergabenummer, Auftraggeber, CPV codes,
+ * deadlines, contract value, etc. This page surfaces those results.
+ *
+ * Features:
+ *   - List of extraction records (one per successfully scraped job item)
+ *   - Field detail panel: all extracted TenderFields in a readable layout
+ *   - Download report: generates a PDF or DOCX from the extracted fields
+ *   - Re-trigger extraction: re-run the extractor on already-downloaded documents
+ *
+ * Data sources:
+ *   GET  /api/extract              → all extraction records (newest first)
+ *   GET  /api/extract/{item_id}    → fields for a specific job item
+ *   GET  /api/extract/{item_id}/report?fmt=pdf  → download PDF report
+ *   POST /api/extract/{item_id}/trigger         → re-run extraction
+ */
 "use client";
 
 import useSWR from "swr";
@@ -72,151 +91,102 @@ function TenderCard({ record, onReExtract }: { record: any; onReExtract: () => v
   })();
 
   return (
-    <article className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+    <article className="card overflow-hidden transition-shadow hover:shadow-md">
 
-      {/* ── Main card body ─────────────────────────────────────────── */}
-      <div className="p-5 space-y-3">
+      {/* ── Card body ───────────────────────────────────────────────── */}
+      <div className="p-5 sm:p-6 space-y-4">
 
-        {/* Title */}
-        <h3 className="text-base font-bold text-slate-900 leading-snug">
-          {titel}
-        </h3>
+        {/* Title + deadline chip */}
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-base sm:text-lg font-bold leading-snug min-w-0" style={{ color: "var(--fg)" }}>
+            {titel}
+          </h3>
+          {deadline && (
+            <span
+              className={`badge flex-shrink-0 ${isDeadlineUrgent
+                ? "bg-rose-50 text-rose-700 border-rose-200"
+                : "bg-slate-100 text-slate-600 border-slate-200"}`}
+              title="Angebotsfrist"
+            >
+              <Calendar className="w-3 h-3" />
+              {deadline}{isDeadlineUrgent && " · bald"}
+            </span>
+          )}
+        </div>
 
-        {/* Authority */}
-        {authority && (
-          <div className="flex items-center gap-1.5 text-sm text-slate-600">
-            <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-            <span className="truncate">{authority}</span>
-          </div>
-        )}
-
-        {/* Dates — vergabepilot.ai inline style */}
-        {(pubDate || deadline) && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+        {/* Authority + publication date */}
+        {(authority || pubDate) && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm" style={{ color: "var(--fg-muted)" }}>
+            {authority && (
+              <span className="flex items-center gap-1.5 min-w-0">
+                <Building2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--fg-subtle)" }} />
+                <span className="truncate">{authority}</span>
+              </span>
+            )}
             {pubDate && (
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Veröffentlicht: <span className="font-semibold text-slate-700">{pubDate}</span></span>
-              </span>
-            )}
-            {pubDate && deadline && <span className="text-slate-300">|</span>}
-            {deadline && (
-              <span className="flex items-center gap-1">
-                <Calendar className={`w-3.5 h-3.5 ${isDeadlineUrgent ? "text-rose-500" : "text-slate-400"}`} />
-                <span>
-                  Angebotsfrist:{" "}
-                  <span className={`font-semibold ${isDeadlineUrgent ? "text-rose-600" : "text-slate-700"}`}>
-                    {deadline}
-                  </span>
-                  {isDeadlineUrgent && (
-                    <span className="ml-1 text-[10px] font-bold text-white bg-rose-500 rounded px-1 py-0.5">Bald</span>
-                  )}
-                </span>
+              <span className="flex items-center gap-1.5" style={{ color: "var(--fg-subtle)" }}>
+                <Calendar className="w-3.5 h-3.5" />Veröffentlicht: {pubDate}
               </span>
             )}
           </div>
         )}
 
-        {/* Summary paragraph */}
+        {/* Summary */}
         {summary && (
-          <p className="text-sm text-slate-600 leading-relaxed border-l-2 border-indigo-200 pl-3">
+          <p className="text-sm leading-relaxed pl-3" style={{ color: "var(--fg-muted)", borderLeft: "2px solid var(--brand)" }}>
             {summary}
           </p>
         )}
 
-        {/* Bullet points (kernpunkte) */}
+        {/* Bullets (shown when there is no summary) */}
         {bullets.length > 0 && !summary && (
-          <ul className="space-y-0.5">
+          <ul className="space-y-1">
             {bullets.slice(0, 4).map((b, i) => (
-              <li key={i} className="flex gap-1.5 text-sm text-slate-600">
-                <span className="text-indigo-400 flex-shrink-0">•</span>
+              <li key={i} className="flex gap-2 text-sm" style={{ color: "var(--fg-muted)" }}>
+                <span className="flex-shrink-0" style={{ color: "var(--brand)" }}>•</span>
                 <span>{b}</span>
               </li>
             ))}
           </ul>
         )}
 
-        {/* Tags row: procedure, type, value, location, CPV */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {procedure && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              {procedure}
-            </span>
-          )}
-          {contractType && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-              {contractType}
-            </span>
-          )}
-          {value && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <Euro className="w-3 h-3" />{value}
-            </span>
-          )}
-          {location && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-              <MapPin className="w-3 h-3" />{location}
-            </span>
-          )}
-          {cpv.map(c => (
-            <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono rounded-full bg-slate-50 text-slate-500 border border-slate-200">
-              <Tag className="w-3 h-3" />{c}
-            </span>
-          ))}
-        </div>
+        {/* Tags: procedure, type, value, location, CPV */}
+        {(procedure || contractType || value || location || cpv.length > 0) && (
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {procedure && <span className="badge bg-indigo-50 text-indigo-700 border-indigo-200">{procedure}</span>}
+            {contractType && <span className="badge bg-slate-100 text-slate-600 border-slate-200">{contractType}</span>}
+            {value && <span className="badge bg-emerald-50 text-emerald-700 border-emerald-200"><Euro className="w-3 h-3" />{value}</span>}
+            {location && <span className="badge bg-amber-50 text-amber-700 border-amber-200"><MapPin className="w-3 h-3" />{location}</span>}
+            {cpv.map((c) => (
+              <span key={c} className="badge bg-slate-50 text-slate-500 border-slate-200 font-mono"><Tag className="w-3 h-3" />{c}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Action bar ─────────────────────────────────────────────── */}
-      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-2">
+      <div className="px-5 sm:px-6 py-3 flex flex-wrap items-center gap-2"
+           style={{ borderTop: "1px solid var(--border)", background: "var(--bg-subtle)" }}>
 
-        {/* Source link */}
         {record.source_url && (
-          <a
-            href={record.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-all"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Zur Ausschreibung
+          <a href={record.source_url} target="_blank" rel="noopener noreferrer" className="btn-primary btn-sm">
+            <ExternalLink className="w-3.5 h-3.5" />Zur Ausschreibung
           </a>
         )}
 
-        {/* PDF */}
-        <a
-          href={api(`/extract/${record.job_item_id}/report?fmt=pdf`)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold rounded-lg transition-all"
-        >
+        <a href={api(`/extract/${record.job_item_id}/report?fmt=pdf`)} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
           <FileOutput className="w-3.5 h-3.5" />PDF
         </a>
-
-        {/* DOCX */}
-        <a
-          href={api(`/extract/${record.job_item_id}/report?fmt=docx`)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold rounded-lg transition-all"
-        >
+        <a href={api(`/extract/${record.job_item_id}/report?fmt=docx`)} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
           <FileOutput className="w-3.5 h-3.5" />DOCX
         </a>
 
-        {/* Re-extract */}
-        <button
-          onClick={handleReExtract}
-          disabled={reExtracting}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-all disabled:opacity-50 ml-auto"
-          title="Re-run extraction"
-        >
+        <button onClick={handleReExtract} disabled={reExtracting} className="btn-ghost btn-sm ml-auto"
+                title="Erneut extrahieren" aria-label="Erneut extrahieren">
           {reExtracting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
         </button>
 
-        {/* Toggle full detail */}
-        <button
-          onClick={() => setDetailOpen(v => !v)}
-          className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-all"
-        >
+        <button onClick={() => setDetailOpen(v => !v)} className="btn-secondary btn-sm" aria-expanded={detailOpen}>
           {detailOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           {count} Felder
         </button>
@@ -224,16 +194,16 @@ function TenderCard({ record, onReExtract }: { record: any; onReExtract: () => v
 
       {/* ── Expanded full detail ────────────────────────────────────── */}
       {detailOpen && (
-        <div className="px-5 pb-5 pt-3 border-t border-slate-100 space-y-4">
+        <div className="px-5 sm:px-6 pb-5 pt-4 space-y-5" style={{ borderTop: "1px solid var(--border)" }}>
 
           {/* Full bullet list */}
           {bullets.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kernpunkte</p>
-              <ul className="space-y-0.5">
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>Kernpunkte</p>
+              <ul className="space-y-1">
                 {bullets.map((b, i) => (
-                  <li key={i} className="flex gap-1.5 text-xs text-slate-600">
-                    <span className="text-indigo-400 flex-shrink-0">•</span>
+                  <li key={i} className="flex gap-2 text-sm" style={{ color: "var(--fg-muted)" }}>
+                    <span className="flex-shrink-0" style={{ color: "var(--brand)" }}>•</span>
                     <span>{b}</span>
                   </li>
                 ))}
@@ -241,8 +211,8 @@ function TenderCard({ record, onReExtract }: { record: any; onReExtract: () => v
             </div>
           )}
 
-          {/* All fields table */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+          {/* All extracted fields */}
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 rounded-xl p-4" style={{ background: "var(--bg-subtle)" }}>
             {([
               ["Vergabenummer", f.vergabenummer],
               ["TED-Referenz", f.ted_reference],
@@ -265,57 +235,61 @@ function TenderCard({ record, onReExtract }: { record: any; onReExtract: () => v
             ] as [string, string | null][]).map(([label, val]) => {
               if (!val) return null;
               return (
-                <div key={label} className="flex gap-2 px-3 py-2.5 bg-white">
-                  <span className="text-[10px] font-bold text-slate-400 w-36 flex-shrink-0 pt-px">{label}</span>
-                  <span className="text-[10px] text-slate-700 break-all">{val}</span>
+                <div key={label} className="flex flex-col gap-0.5">
+                  <dt className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>{label}</dt>
+                  <dd className="text-sm break-words" style={{ color: "var(--fg)" }}>{val}</dd>
                 </div>
               );
             })}
-          </div>
+          </dl>
 
           {/* Leistungsbeschreibung */}
           {f.leistungsbeschreibung && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Leistungsbeschreibung</p>
-              <p className="text-xs text-slate-600 leading-relaxed">{f.leistungsbeschreibung}</p>
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>Leistungsbeschreibung</p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--fg-muted)" }}>{f.leistungsbeschreibung}</p>
             </div>
           )}
 
           {/* Zuschlagskriterien */}
           {criteria.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Zuschlagskriterien</p>
-              <ul className="space-y-0.5">
-                {criteria.map((c, i) => <li key={i} className="text-xs text-slate-600">• {c}</li>)}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>Zuschlagskriterien</p>
+              <ul className="space-y-1">
+                {criteria.map((c, i) => (
+                  <li key={i} className="flex gap-2 text-sm" style={{ color: "var(--fg-muted)" }}><span className="flex-shrink-0" style={{ color: "var(--brand)" }}>•</span><span>{c}</span></li>
+                ))}
               </ul>
             </div>
           )}
 
           {/* Eignungskriterien */}
           {eligibility.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Eignungskriterien</p>
-              <ul className="space-y-0.5">
-                {eligibility.map((c, i) => <li key={i} className="text-xs text-slate-600">• {c}</li>)}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>Eignungskriterien</p>
+              <ul className="space-y-1">
+                {eligibility.map((c, i) => (
+                  <li key={i} className="flex gap-2 text-sm" style={{ color: "var(--fg-muted)" }}><span className="flex-shrink-0" style={{ color: "var(--brand)" }}>•</span><span>{c}</span></li>
+                ))}
               </ul>
             </div>
           )}
 
           {/* Lose */}
           {lots.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Lose / Teillose</p>
-              <ul className="space-y-0.5">
-                {lots.map((l, i) => <li key={i} className="text-xs text-slate-600">• {l}</li>)}
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--fg-subtle)" }}>Lose / Teillose</p>
+              <ul className="space-y-1">
+                {lots.map((l, i) => (
+                  <li key={i} className="flex gap-2 text-sm" style={{ color: "var(--fg-muted)" }}><span className="flex-shrink-0" style={{ color: "var(--brand)" }}>•</span><span>{l}</span></li>
+                ))}
               </ul>
             </div>
           )}
 
           {/* Meta */}
-          <p className="text-[10px] text-slate-400">
-            {record.docs_parsed} Dokument{record.docs_parsed !== 1 ? "e" : ""} geparst ·{" "}
-            {record.runtime_seconds}s ·{" "}
-            {new Date(record.created_at).toLocaleString("de-DE")}
+          <p className="text-[11px] pt-1" style={{ color: "var(--fg-subtle)" }}>
+            {record.docs_parsed} Dokument{record.docs_parsed !== 1 ? "e" : ""} geparst · {record.runtime_seconds}s · {new Date(record.created_at).toLocaleString("de-DE")}
           </p>
         </div>
       )}
@@ -370,7 +344,7 @@ function TriggerPanel({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="bg-white border-2 border-indigo-100 rounded-3xl p-6 shadow-sm space-y-5">
+    <div className="card p-5 sm:p-6 space-y-5">
       <div className="flex items-center gap-3">
         <div className="p-3 bg-indigo-100/70 border border-indigo-200 rounded-2xl">
           <ScanSearch className="w-5 h-5 text-indigo-700" />
@@ -520,10 +494,10 @@ function ExtractionRecordsList() {
           <span className="text-sm">Lade Ausschreibungen…</span>
         </div>
       ) : !records || records.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-slate-200 rounded-2xl bg-white">
-          <ScanSearch className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500 font-semibold text-sm">Noch keine extrahierten Ausschreibungen</p>
-          <p className="text-slate-400 text-xs mt-1">
+        <div className="card text-center py-16 px-6" style={{ borderStyle: "dashed" }}>
+          <ScanSearch className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--fg-subtle)" }} />
+          <p className="font-semibold text-sm" style={{ color: "var(--fg)" }}>Noch keine extrahierten Ausschreibungen</p>
+          <p className="text-xs mt-1" style={{ color: "var(--fg-muted)" }}>
             Extraktion läuft automatisch nach jedem erfolgreichen Scraping-Job, oder manuell oben starten.
           </p>
         </div>
@@ -548,17 +522,19 @@ export default function ExtractionPage() {
   const { mutate } = useSWR(api("/extract?limit=200"), fetcher, { revalidateOnMount: false });
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="space-y-8 max-w-5xl mx-auto">
 
       {/* Header */}
-      <header className="border-b border-slate-100 pb-5">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-          <ScanSearch className="w-8 h-8 text-indigo-600" />
-          Ausschreibungsanalyse
-        </h1>
-        <p className="text-slate-500 mt-1.5 text-sm font-medium">
-          Strukturierte Datenextraktion aus heruntergeladenen Vergabedokumenten — deterministisch, ohne KI, kostenlos.
-        </p>
+      <header className="section-header">
+        <div>
+          <h1 className="text-display flex items-center gap-3" style={{ color: "var(--fg)" }}>
+            <ScanSearch className="w-8 h-8 text-indigo-600" aria-hidden="true" />
+            Ausschreibungsanalyse
+          </h1>
+          <p className="mt-1.5 text-sm sm:text-base font-medium" style={{ color: "var(--fg-muted)" }}>
+            Strukturierte Datenextraktion aus heruntergeladenen Vergabedokumenten — deterministisch, ohne KI, kostenlos.
+          </p>
+        </div>
       </header>
 
       {/* Trigger panel */}

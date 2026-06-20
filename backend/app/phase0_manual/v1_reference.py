@@ -1,11 +1,31 @@
 """
 Phase 0 Manual Scraper — V1 Reference Implementation.
 
+Context — why this file exists:
+  Phase 0 predates the LLM-generation pipeline. It is a single hand-crafted
+  Playwright scraper that tries a battery of generic heuristics applicable to
+  most German procurement portals. It was the starting point before Phase 1
+  (LLM generation) and Phase 2 (CUA agents) existed.
+
+Role in the cascade:
+  MANUAL is the last-resort strategy — only tried when all of EXISTING,
+  DETERMINISTIC, LLM_GENERATED, and CUA have failed. It is intentionally
+  kept in the cascade as a final fallback because its generic heuristics
+  occasionally succeed on portals that don't match any learned pattern.
+
+  Call path: pipeline._try_manual() → run_v1_reference()
+
 Strategy (in priority order):
   1. "Download All" / "Alle herunterladen" button  → single ZIP download
   2. ZIP / archive href links                       → direct download
   3. Scored document links (PDF, DOCX, etc.)        → click + HTTP fallback
   4. Buttons with onclick / data-url attributes     → click to trigger download
+
+Maintenance note:
+  This file should NOT be refactored or deleted — it serves as the emergency
+  fallback and a working reference implementation for new portal support.
+  When adding support for a new portal type, prefer writing a dedicated scraper
+  in data/scrapers/ and registering it via the Phase 3 scraper registry.
 """
 from __future__ import annotations
 

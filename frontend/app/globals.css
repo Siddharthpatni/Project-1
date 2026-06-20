@@ -33,18 +33,18 @@
   --error:       #ef4444;
   --info:        #3b82f6;
 
-  /* Radius */
-  --radius-sm:   6px;
-  --radius:      10px;
-  --radius-lg:   14px;
-  --radius-xl:   18px;
-  --radius-2xl:  24px;
+  /* Radius — restrained scale for a crisp, minimal feel */
+  --radius-sm:   5px;
+  --radius:      7px;
+  --radius-lg:   9px;
+  --radius-xl:   12px;
+  --radius-2xl:  14px;
 
-  /* Shadow */
-  --shadow-sm:   0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow:      0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.05);
-  --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  /* Shadow — flat by default; surfaces are defined by borders, not elevation */
+  --shadow-sm:   0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow:      0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-md:   0 2px 8px -2px rgb(15 23 42 / 0.06);
+  --shadow-lg:   0 12px 28px -10px rgb(15 23 42 / 0.10);
 }
 
 .dark {
@@ -88,16 +88,22 @@ html, body {
   background: var(--bg);
   color: var(--fg);
   transition: background 0.2s ease, color 0.2s ease;
+  /* Inter reads best with a hair of negative tracking + contextual alternates */
+  letter-spacing: -0.011em;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 /* ─────────────────────────────────────────────────────────────────────
    Typography
    ───────────────────────────────────────────────────────────────────── */
 .text-display {
-  @apply text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight;
+  /* Fluid: scales smoothly from ~28px on phones to ~40px on large screens. */
+  font-size: clamp(1.75rem, 1.15rem + 2.6vw, 2.5rem);
+  @apply font-extrabold tracking-tight leading-[1.08];
 }
 .text-heading {
-  @apply text-xl font-bold tracking-tight;
+  font-size: clamp(1.125rem, 0.95rem + 0.9vw, 1.375rem);
+  @apply font-bold tracking-tight;
 }
 .text-subheading {
   @apply text-base font-semibold;
@@ -114,15 +120,14 @@ html, body {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
 .card-hover {
-  @apply card transition-all duration-200;
+  @apply card transition-colors duration-150;
 }
 .card-hover:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--brand);
-  transform: translateY(-1px);
+  border-color: var(--border);
+  background: var(--bg-subtle);
 }
 
 /* ─────────────────────────────────────────────────────────────────────
@@ -321,7 +326,11 @@ html, body {
    Page layout helpers
    ───────────────────────────────────────────────────────────────────── */
 .page-container {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8;
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8;
+}
+/* Let content breathe on very large displays without sprawling. */
+@media (min-width: 1536px) {
+  .page-container { max-width: 84rem; }
 }
 .section-header {
   @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5;
@@ -492,4 +501,33 @@ html, body {
 
 /* Ring / focus */
 .dark .focus\:ring-indigo-500\/40:focus { box-shadow: 0 0 0 3px rgba(99,102,241,0.2) !important; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Responsive & accessibility refinements
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Wide tables: a momentum-scrolling wrapper that bleeds to the screen edges on
+   phones so the horizontal scroll reads as intentional, not as a broken layout. */
+.table-wrap {
+  @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Comfortable touch targets on touch devices (Apple HIG ≈ 44pt). */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+  .btn-xs { min-height: 36px; }
+  .form-input, .form-select { min-height: 44px; }
+}
+
+/* Honour users who prefer reduced motion (Apple HIG / WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
 

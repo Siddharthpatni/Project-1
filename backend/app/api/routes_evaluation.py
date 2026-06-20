@@ -25,7 +25,9 @@ router = APIRouter()
 _STRATEGY_LABELS = {
     "existing_scraper":       "Existing (Cached)",
     "deterministic_template": "Deterministic",
+    "adaptive_universal":     "Universal Adaptive",
     "llm_generated_scraper":  "LLM Generated",
+    "learned_route":          "Learned Route",
     "computer_use_agent":     "CUA Fallback",
     "manual_scraper":         "Manual (V1)",
     "none":                   "All Failed",

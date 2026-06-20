@@ -112,7 +112,9 @@ from app.phase1_llm_scraper.executor import (
 from app.phase1_llm_scraper.feedback_loop import run_feedback_loop
 from app.phase1_llm_scraper.route_learner import RouteMap, learn_route
 from app.phase2_cua.orchestrator import run_agent
+from app.phase2_cua.route_learner import learn_from_cua, replay as replay_learned_route
 from app.phase3_integration import platform_classifier, scraper_registry
+from app.phase3_integration.adaptive_scraper import run_adaptive
 from app.phase3_integration.deterministic import try_deterministic
 from app.phase3_integration.fallback import StrategyOutcome, next_strategy
 from app.phase3_integration.url_intelligence import (
@@ -525,8 +527,12 @@ async def _run_strategy(
         return await _try_existing(db, url, domain, scratch, result)
     if strategy is Strategy.DETERMINISTIC:
         return await _try_deterministic(url, scratch, result)
+    if strategy is Strategy.ADAPTIVE:
+        return await _try_adaptive(url, scratch, result)
     if strategy is Strategy.LLM_GENERATED:
         return await _try_llm_generated(db, url, domain, llm, scratch, result)
+    if strategy is Strategy.LEARNED_ROUTE:
+        return await _try_learned_route(db, url, domain, scratch, result)
     if strategy is Strategy.CUA:
         return await _try_cua(db, url, domain, scratch, result)
     return StrategyOutcome(strategy=strategy, success=False, downloaded=0, error="no runner")
@@ -639,6 +645,34 @@ async def _try_deterministic(
         Strategy.DETERMINISTIC, False, 0,
         det.error or "deterministic template did not apply",
     )
+
+
+async def _try_adaptive(
+    url: str, scratch: Path, result: PipelineResult,
+) -> StrategyOutcome:
+    """Universal, country/language-agnostic heuristic scraper (free, no LLM).
+
+    Runs a single bounded Playwright session that harvests documents directly or
+    after one multilingual click-hop. A miss returns a precise reason (e.g. a
+    detected login/captcha wall) so the failure is explained, not generic.
+    """
+    tmp_id = uuid.uuid4().hex[:8]
+    tmp_dir = Path(tempfile.gettempdir()) / f"vergabepilot-adaptive-{tmp_id}"
+    try:
+        ar = await asyncio.to_thread(run_adaptive, url, str(tmp_dir))
+        if ar.success and ar.downloaded_files:
+            moved = _move_into(scratch, ar.downloaded_files)
+            if moved:
+                result.downloaded.extend(moved)
+                return StrategyOutcome(Strategy.ADAPTIVE, True, len(moved))
+        return StrategyOutcome(
+            Strategy.ADAPTIVE, False, 0, ar.error or "no documents found",
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.adaptive.error", url=url, error=str(e))
+        return StrategyOutcome(Strategy.ADAPTIVE, False, 0, str(e))
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 async def _try_llm_generated(
@@ -851,6 +885,34 @@ def _run_loop_sync(
     ))
 
 
+async def _try_learned_route(
+    db: Session, url: str, domain: str, scratch: Path, result: PipelineResult,
+) -> StrategyOutcome:
+    """Replay a route the CUA proved works on a prior visit (cheap Playwright).
+
+    Fast-fails when no route was learned for this domain so the cascade moves on
+    to CUA. Replay is best-effort: a miss is treated as a normal strategy failure.
+    """
+    route = scraper_registry.get_learned_route(db, domain)
+    if route is None:
+        return StrategyOutcome(Strategy.LEARNED_ROUTE, False, 0, "no learned route for domain")
+
+    tmp_id = uuid.uuid4().hex[:8]
+    tmp_dir = Path(tempfile.gettempdir()) / f"vergabepilot-learned-{tmp_id}"
+    try:
+        files = await asyncio.to_thread(replay_learned_route, route.to_dict(), str(tmp_dir))
+        moved = _move_into(scratch, files)
+        if moved:
+            result.downloaded.extend(moved)
+            return StrategyOutcome(Strategy.LEARNED_ROUTE, True, len(moved))
+        return StrategyOutcome(Strategy.LEARNED_ROUTE, False, 0, "learned route returned no documents")
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.learned_route.error", url=url, error=str(e))
+        return StrategyOutcome(Strategy.LEARNED_ROUTE, False, 0, str(e))
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 async def _try_cua(
     db: Session, url: str, domain: str, scratch: Path, result: PipelineResult,
 ) -> StrategyOutcome:
@@ -876,8 +938,46 @@ async def _try_cua(
                 break
         if moved:
             result.downloaded.extend(moved)
+            # ── CUA route learning ───────────────────────────────────────────
+            # The CUA succeeded. If every cheaper strategy already failed for
+            # this URL (i.e. CUA was the only thing that worked), learn the route
+            # so the next visit to this domain replays it cheaply instead of
+            # paying the full CUA cost again. Never let learning break the win.
+            await _maybe_learn_route(db, url, domain, outcome, result)
             return StrategyOutcome(Strategy.CUA, True, len(moved))
     return StrategyOutcome(Strategy.CUA, False, 0, outcome.error or "agent failed")
+
+
+async def _maybe_learn_route(
+    db: Session, url: str, domain: str, outcome, result: PipelineResult,
+) -> None:
+    """Capture & persist a replayable route after a CUA-only success.
+
+    Guards:
+      * gated by settings.enable_cua_route_learning,
+      * only when at least one cheaper strategy was tried and failed for this
+        URL (so a forced/standalone CUA run doesn't trigger learning),
+      * learn_from_cua returns None for unreplayable portals (e.g. login walls),
+        in which case we keep relying on CUA.
+    """
+    if not settings.enable_cua_route_learning:
+        return
+    prior_failures = any(not a.get("success") for a in result.attempts)
+    if not prior_failures:
+        return
+    try:
+        route = await asyncio.to_thread(learn_from_cua, url, outcome)
+        if route is not None:
+            scraper_registry.store_learned_route(db, domain, route)
+            write_audit(
+                "route_learner.learned",
+                f"Learned replayable CUA route for {domain} "
+                f"({len(route.steps)} steps, {len(route.document_links)} docs)",
+                level=INFO, domain=domain, url=url, strategy=Strategy.CUA.value,
+                metadata={"confidence": route.confidence, "learned_via": route.learned_via},
+            )
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.cua.route_learning_failed", url=url, error=str(e))
 
 
 def _format_cua_hint(url: str, outcome) -> str:

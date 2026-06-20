@@ -1,0 +1,1502 @@
+{
+  "_archive/UNi/Phase-1-2/audit_report.py": {
+    "mtime": 1778840891.6588821,
+    "ast_hash": "2541665d3ff1f6bdafd7c4396b38c402",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/build_report.py": {
+    "mtime": 1778840891.6592646,
+    "ast_hash": "dc351572365ab95cec5b6ec469b1f71b",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/debug_bieterportal.py": {
+    "mtime": 1778840891.671267,
+    "ast_hash": "2c8a60c38717b8a020cf82029edf1f43",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/docker_sandbox.py": {
+    "mtime": 1778840891.6715047,
+    "ast_hash": "bd191524b2e697a784d9a5f785f7cec9",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/evaluator.py": {
+    "mtime": 1778840891.6717544,
+    "ast_hash": "ca71c5923027f14204f971b55686323f",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/executor.py": {
+    "mtime": 1778840891.6721091,
+    "ast_hash": "a8d8e14bd5f4ceef33b8d40cd6c80025",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.ausschreibungen.ls.brandenburg.de/bf56102f-6766-445a-a900-851e80f09034/attempt_1.py": {
+    "mtime": 1778244692.453339,
+    "ast_hash": "6aa5add559da4105c1f4eef6822c57cc",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.ausschreibungen.ls.brandenburg.de/bf56102f-6766-445a-a900-851e80f09034/attempt_2.py": {
+    "mtime": 1778244776.3213444,
+    "ast_hash": "f58fabdf0e36ff08826cf22d4f6eacf5",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.ausschreibungen.ls.brandenburg.de/bf56102f-6766-445a-a900-851e80f09034/attempt_3.py": {
+    "mtime": 1778244883.951665,
+    "ast_hash": "7b853124e2c50d683d08fd7b6e247734",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.ausschreibungen.ls.brandenburg.de/bf56102f-6766-445a-a900-851e80f09034/attempt_4.py": {
+    "mtime": 1778244937.6952214,
+    "ast_hash": "1668eee3dbab40187c6cd2fdbd752dd4",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.evergabe.de/00a9f9b2-6489-476d-9e4d-13f7ffe30c94/attempt_1.py": {
+    "mtime": 1778245367.225378,
+    "ast_hash": "48d83763972012908d3acd2f08a8cdc6",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.evergabe.de/00a9f9b2-6489-476d-9e4d-13f7ffe30c94/attempt_2.py": {
+    "mtime": 1778245525.0797715,
+    "ast_hash": "85f7cff316c82d72ab6bfeaf8b0c029a",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.evergabe.de/00a9f9b2-6489-476d-9e4d-13f7ffe30c94/attempt_3.py": {
+    "mtime": 1778245612.9117367,
+    "ast_hash": "991ccd4e9ce84c4f5f736c7f33cf9d6d",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.evergabe.de/00a9f9b2-6489-476d-9e4d-13f7ffe30c94/attempt_4.py": {
+    "mtime": 1778245688.1987898,
+    "ast_hash": "b160d87b880e02e5750b9f6fb115a38b",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.vergabe.metropoleruhr.de/7292f6ed-8559-4d16-8270-91f09b50134f/attempt_1.py": {
+    "mtime": 1778244999.4130392,
+    "ast_hash": "5000928aee4114966ca17b8da5980088",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.vergabe.metropoleruhr.de/7292f6ed-8559-4d16-8270-91f09b50134f/attempt_2.py": {
+    "mtime": 1778245167.6399503,
+    "ast_hash": "2fac934c252cac4c75c0029b811a3cd3",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.vergabe.metropoleruhr.de/7292f6ed-8559-4d16-8270-91f09b50134f/attempt_3.py": {
+    "mtime": 1778245211.278968,
+    "ast_hash": "1b2b2c455066bee8c4859a60fa7b73c1",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generated_scrapers/www.vergabe.metropoleruhr.de/7292f6ed-8559-4d16-8270-91f09b50134f/attempt_4.py": {
+    "mtime": 1778245271.1296325,
+    "ast_hash": "f6bd9eb8a29a44d3606b7c33f73621a1",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/generator.py": {
+    "mtime": 1778840891.672485,
+    "ast_hash": "d8f9e4b0eaccac957ff99c9d6c755021",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/inspect_brandenburg.py": {
+    "mtime": 1778840891.6728325,
+    "ast_hash": "f88a5a69ff20cda5d97a661aa15ac5d6",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/inspect_details.py": {
+    "mtime": 1778840891.6732125,
+    "ast_hash": "82bfa3526a8b037b7e6b7352a8d126dd",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/inspect_page.py": {
+    "mtime": 1778840891.6735525,
+    "ast_hash": "fe6268749d631be4a8ffe5181a918607",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/llm_client.py": {
+    "mtime": 1778840891.6743,
+    "ast_hash": "0c6c60e122daa1d0fbbcbd6520f373e8",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/llm_client_demo.py": {
+    "mtime": 1778840891.6744468,
+    "ast_hash": "b49a44988d011f27d56ae516ce731335",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/models.py": {
+    "mtime": 1778840891.6745925,
+    "ast_hash": "6946c23a8edb5545513276c74dfad945",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/multi_llm_evaluator.py": {
+    "mtime": 1778840891.6749017,
+    "ast_hash": "9ca8b7abc402a0d4b292aab34d47da05",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/pick_urls.py": {
+    "mtime": 1778840891.6750448,
+    "ast_hash": "4f2f80f1156c2c09f4297b7a82f9313d",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/run.py": {
+    "mtime": 1778840891.6757357,
+    "ast_hash": "39e2f0dce5a9cc5516757158740c409a",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/scraper_bieterportal_noncd_db_de.py": {
+    "mtime": 1778840891.6759424,
+    "ast_hash": "a2d6e64d961d30883f19f56e5c4a1284",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/scraper_evergabe.py": {
+    "mtime": 1778840891.6760817,
+    "ast_hash": "a56e20987b0fa02fbfe108561eac47e0",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/test_brandenburg_download.py": {
+    "mtime": 1778840891.6762269,
+    "ast_hash": "1ec1bca4e71d3cad49737a6e8ac0b877",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/test_prompt_injection.py": {
+    "mtime": 1778840891.6763828,
+    "ast_hash": "d4202e07e75f33363191b0f57b2bec2b",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/test_scraper.py": {
+    "mtime": 1778840891.67657,
+    "ast_hash": "cea48a721c22d81d75f137e0edb3a61d",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/test_validator.py": {
+    "mtime": 1778840891.6766984,
+    "ast_hash": "7a1ae4fc9a47594fc4045c10c3bbd274",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1-2/validator.py": {
+    "mtime": 1778840891.6769307,
+    "ast_hash": "6d3c393ea3567147e37939f3dce1bcb3",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1/docker_sandbox.py": {
+    "mtime": 1778840891.677562,
+    "ast_hash": "bd191524b2e697a784d9a5f785f7cec9",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1/evaluator.py": {
+    "mtime": 1778840891.6776667,
+    "ast_hash": "ca71c5923027f14204f971b55686323f",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1/executor.py": {
+    "mtime": 1778840891.6777775,
+    "ast_hash": "a8d8e14bd5f4ceef33b8d40cd6c80025",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1/generated_scrapers/scraper_www_ausschreibungen_ls_brandenburg_de.py": {
+    "mtime": 1778840891.6784172,
+    "ast_hash": "e7063cc60374bc0e3a7e125de120bf21",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1/generator.py": {
+    "mtime": 1778840891.678949,
+    "ast_hash": "771f20730d9a1f313fc3b3b6170c1c1a",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1/test_validator.py": {
+    "mtime": 1778840891.6805267,
+    "ast_hash": "38670307576ec7aa3779b4345d6b3708",
+    "semantic_hash": ""
+  },
+  "_archive/UNi/Phase-1/validator.py": {
+    "mtime": 1778840891.6806545,
+    "ast_hash": "6d3c393ea3567147e37939f3dce1bcb3",
+    "semantic_hash": ""
+  },
+  "_archive/Vergabepilot-v1-development/browser_helper.py": {
+    "mtime": 1778840891.680939,
+    "ast_hash": "580c7c1f713373a49a2c64eedeccf380",
+    "semantic_hash": ""
+  },
+  "_archive/Vergabepilot-v1-development/classifier.py": {
+    "mtime": 1778840891.6810303,
+    "ast_hash": "1843a63c6c740ff371ba7fa960ee8ef2",
+    "semantic_hash": ""
+  },
+  "_archive/Vergabepilot-v1-development/cua_pure_agent.py": {
+    "mtime": 1779561456.9834948,
+    "ast_hash": "93d962e0d5067132a001778f4e7ef09a",
+    "semantic_hash": ""
+  },
+  "_archive/Vergabepilot-v1-development/evaluator.py": {
+    "mtime": 1779356329.434962,
+    "ast_hash": "ef1641f276093ad581439f552a47d5f7",
+    "semantic_hash": ""
+  },
+  "_archive/Vergabepilot-v1-development/llm_codegen.py": {
+    "mtime": 1778840891.6812499,
+    "ast_hash": "e44439dc343ef57466e122298aae8823",
+    "semantic_hash": ""
+  },
+  "_archive/Vergabepilot-v1-development/pipeline.py": {
+    "mtime": 1778840891.6813436,
+    "ast_hash": "9151fc15fc93a9e0e32609bf53c87af0",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/main.py": {
+    "mtime": 1775914329.4366813,
+    "ast_hash": "c494d0aec2d899bf861180d3a28adbb1",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/__init__.py": {
+    "mtime": 1775914329.4368021,
+    "ast_hash": "6a114868eab254a9b982e7f8774cd595",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/browser.py": {
+    "mtime": 1775914329.4392729,
+    "ast_hash": "d3792fe608fda5c2a8d246f6ab2346b7",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/config.py": {
+    "mtime": 1775914329.4393523,
+    "ast_hash": "2f1f38de3772b61bf725a3c8b34fd5d7",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/downloader.py": {
+    "mtime": 1775914329.4398382,
+    "ast_hash": "c6092dcdef120319e36cd551c35058bd",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/filtering.py": {
+    "mtime": 1775914329.4399045,
+    "ast_hash": "d42ccb5db346744f91ac12e40949184a",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/input_loader.py": {
+    "mtime": 1775914329.4399686,
+    "ast_hash": "3f54b5a8e6c683f4ed5a06a3ca494c7c",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/llm_selector.py": {
+    "mtime": 1775914329.4400606,
+    "ast_hash": "5789c128d58b8fa2a7536c224e59e02a",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/models.py": {
+    "mtime": 1775914329.4401343,
+    "ast_hash": "74f1410755dd3d8d172ecb269ead631d",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/runner.py": {
+    "mtime": 1775914329.4402454,
+    "ast_hash": "b0a671c7d6dc217064468921659c0923",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/storage.py": {
+    "mtime": 1775914329.4403374,
+    "ast_hash": "b611833abe1328fd5e77ca2c71985af5",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/system_prompt.py": {
+    "mtime": 1775914329.4403949,
+    "ast_hash": "af041c3fe3f23ddf3561d478ee9f1856",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tender_agent/utils.py": {
+    "mtime": 1775914329.4405015,
+    "ast_hash": "f9815fddd0c7c6caa823e3a5211d245d",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tests/test_browser.py": {
+    "mtime": 1775914329.4408288,
+    "ast_hash": "6af695bea1bbf7d52e8350fc2f4a6c9b",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tests/test_filtering.py": {
+    "mtime": 1775914329.4408875,
+    "ast_hash": "0bbe87ea916cfc633d54d0725b8ff5d0",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/CUA_AGENT_STARTLIGHT/tests/test_input_loader.py": {
+    "mtime": 1775914329.4409413,
+    "ast_hash": "3ddcba2840c3a508a8bb473692e22670",
+    "semantic_hash": ""
+  },
+  "_archive/manual_scrapers_v1/scraper/scraper_v5.py": {
+    "mtime": 1775914329.441097,
+    "ast_hash": "e6d44e54b2497fe587f5304870fe1c4c",
+    "semantic_hash": ""
+  },
+  "_archive/phase2_cua_old/action_space.py": {
+    "mtime": 1779371319.8375418,
+    "ast_hash": "f504c6085a8edd4735e410dcf26237f5",
+    "semantic_hash": ""
+  },
+  "_archive/phase2_cua_old/screenshot.py": {
+    "mtime": 1778165052.7934873,
+    "ast_hash": "4b9dfad9849c782df226ce8d3ade0695",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/api/routes_admin.py": {
+    "mtime": 1778840892.1822288,
+    "ast_hash": "c64f895de3dac512702ac38a2f9aaac8",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/api/routes_jobs.py": {
+    "mtime": 1778840892.1823838,
+    "ast_hash": "7e1414acafcc085542221c56a597b742",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/api/routes_scrapers.py": {
+    "mtime": 1778840892.182541,
+    "ast_hash": "412e32cfe3b737df0cc144c82441c781",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/config.py": {
+    "mtime": 1778840892.1826649,
+    "ast_hash": "ce431226e45d9eeb1e2011db7908be38",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/core/browser_session.py": {
+    "mtime": 1778840892.182848,
+    "ast_hash": "2ff4d192d067cc4520d8ce091b1f6fe4",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/core/sandbox.py": {
+    "mtime": 1778840892.1830049,
+    "ast_hash": "698516b6ead25183f0b36cd93e735ef1",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/core/storage.py": {
+    "mtime": 1778840892.1831415,
+    "ast_hash": "4299fdbcca9d65a20b39474a7769bf56",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/models.py": {
+    "mtime": 1778840892.1832802,
+    "ast_hash": "69e46241cdbf87c7e88dcd8c9362eb57",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase1_llm_scraper/executor.py": {
+    "mtime": 1778840892.1834583,
+    "ast_hash": "ffc883244ddce58c7d4b9bc4993895cf",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase1_llm_scraper/feedback_loop.py": {
+    "mtime": 1778840892.1836095,
+    "ast_hash": "d8f296b27ecca925c9e402e3dcb032f7",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase1_llm_scraper/generator.py": {
+    "mtime": 1778840892.1838446,
+    "ast_hash": "d913085bfafa89177b8970a02481b94b",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase1_llm_scraper/prompts.py": {
+    "mtime": 1778840892.1840625,
+    "ast_hash": "3edbd8dee1f29b79319486bf8627efb7",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase1_llm_scraper/route_learner.py": {
+    "mtime": 1778840892.1841881,
+    "ast_hash": "355dd501b34a12e2d8de9088811eed91",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase3_integration/deterministic.py": {
+    "mtime": 1778840892.184341,
+    "ast_hash": "c924aa78eadbd76a80c5d2f950073640",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase3_integration/fallback.py": {
+    "mtime": 1778840892.184441,
+    "ast_hash": "70f3ef04f4691ada82bcdcb4949d6c5b",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase3_integration/pipeline.py": {
+    "mtime": 1778840892.184892,
+    "ast_hash": "e812f40d193ec1c56f2183bb96e60747",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase3_integration/platform_classifier.py": {
+    "mtime": 1778840892.185026,
+    "ast_hash": "e65fc2ab08f7e1bebcc1436db2480dea",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/phase3_integration/scraper_registry.py": {
+    "mtime": 1778840892.185153,
+    "ast_hash": "abed8a20a47a0cb8e237b0e50dc4423f",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/schemas.py": {
+    "mtime": 1778840892.185284,
+    "ast_hash": "b67d4f37f6c4015b9d71fa9da88199c9",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/app/workers/tasks.py": {
+    "mtime": 1778840892.1856868,
+    "ast_hash": "57db4e495d36ce398637466ad96d940a",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/tests/test_phase3.py": {
+    "mtime": 1778840892.1858242,
+    "ast_hash": "3026d8e857d29e019f3ab73556596dc7",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/tests/test_platform_classifier.py": {
+    "mtime": 1778840892.1859732,
+    "ast_hash": "dfbc59f2d70a36bdfafd271ee2c97fcc",
+    "semantic_hash": ""
+  },
+  "_archive/vergabepilot-merged/backend/tests/test_route_and_deterministic.py": {
+    "mtime": 1778840892.1860955,
+    "ast_hash": "065f1e05f812dc28a2c70d76d35b3ff5",
+    "semantic_hash": ""
+  },
+  "backend/app/__init__.py": {
+    "mtime": 1778165052.788275,
+    "ast_hash": "329913f69f35da7dc733b700aa98c5bb",
+    "semantic_hash": ""
+  },
+  "backend/app/api/__init__.py": {
+    "mtime": 1778165052.7884426,
+    "ast_hash": "9f4af9d1be078de3b5300a22e0adbb94",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_admin.py": {
+    "mtime": 1780918664.6587925,
+    "ast_hash": "49ac27fb7ea336238fb407691a75c3a2",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_agents.py": {
+    "mtime": 1779375042.1704578,
+    "ast_hash": "fe3d81924aa1900723d9f708247014b5",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_audit.py": {
+    "mtime": 1780181859.8264227,
+    "ast_hash": "111644f70a09e7b8e4b2985f6eb049cc",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_evaluation.py": {
+    "mtime": 1780319967.4833746,
+    "ast_hash": "97b0d62a80cab373d9346982838e60ba",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_extractor.py": {
+    "mtime": 1780779102.3177226,
+    "ast_hash": "f0ce684c929de004e06a277d7aa6363f",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_jobs.py": {
+    "mtime": 1780230163.3881967,
+    "ast_hash": "520cf300643a7d0040a46bd57f137fbd",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_scrapers.py": {
+    "mtime": 1779063507.5432868,
+    "ast_hash": "e06b59ad7cf249f2c6b010659e1c5199",
+    "semantic_hash": ""
+  },
+  "backend/app/api/routes_tests.py": {
+    "mtime": 1780181859.8269248,
+    "ast_hash": "235633e7882274b8f1e379c26fa2dff2",
+    "semantic_hash": ""
+  },
+  "backend/app/config.py": {
+    "mtime": 1780779417.1862426,
+    "ast_hash": "1cc98b47392fb117327c24337ac5c055",
+    "semantic_hash": ""
+  },
+  "backend/app/core/__init__.py": {
+    "mtime": 1778165052.7902286,
+    "ast_hash": "eabee788b12c7fccbec55c114ff37ea6",
+    "semantic_hash": ""
+  },
+  "backend/app/core/browser_session.py": {
+    "mtime": 1780315862.2131062,
+    "ast_hash": "1ed15f874f0327885bf1315b2d26c72f",
+    "semantic_hash": ""
+  },
+  "backend/app/core/llm_client.py": {
+    "mtime": 1780325272.3682966,
+    "ast_hash": "00a8af7b28c43ad550f602fb873c01a2",
+    "semantic_hash": ""
+  },
+  "backend/app/core/metrics.py": {
+    "mtime": 1780660885.1230233,
+    "ast_hash": "61fa15e9ea50f074ea7cb14e199ccb6f",
+    "semantic_hash": ""
+  },
+  "backend/app/core/sandbox.py": {
+    "mtime": 1778840891.6926606,
+    "ast_hash": "698516b6ead25183f0b36cd93e735ef1",
+    "semantic_hash": ""
+  },
+  "backend/app/core/security.py": {
+    "mtime": 1780314930.5740497,
+    "ast_hash": "7c62164866c1007bf73372eaba762ba3",
+    "semantic_hash": ""
+  },
+  "backend/app/core/storage.py": {
+    "mtime": 1778840891.6935787,
+    "ast_hash": "4299fdbcca9d65a20b39474a7769bf56",
+    "semantic_hash": ""
+  },
+  "backend/app/core/zip_expander.py": {
+    "mtime": 1780661440.2707114,
+    "ast_hash": "b61d71c4ed971501d5e9c90f0c36c93a",
+    "semantic_hash": ""
+  },
+  "backend/app/database.py": {
+    "mtime": 1780316598.8437753,
+    "ast_hash": "cc00b205c44a9b0c2b14a3d3c65c8529",
+    "semantic_hash": ""
+  },
+  "backend/app/document_extractor/__init__.py": {
+    "mtime": 1780653797.5481498,
+    "ast_hash": "185498970adfc54194698c40823b9b11",
+    "semantic_hash": ""
+  },
+  "backend/app/document_extractor/extractor.py": {
+    "mtime": 1780779049.9411979,
+    "ast_hash": "8f5eee4ce2c4627b1c5e538a20c24423",
+    "semantic_hash": ""
+  },
+  "backend/app/document_extractor/field_extractor.py": {
+    "mtime": 1780653725.1212018,
+    "ast_hash": "fb6694242a2033218a18dbfc288d9e44",
+    "semantic_hash": ""
+  },
+  "backend/app/document_extractor/live_fetcher.py": {
+    "mtime": 1780664050.577682,
+    "ast_hash": "30b20583e09eaf22bff7a2cd9283d49b",
+    "semantic_hash": ""
+  },
+  "backend/app/document_extractor/llm_enhancer.py": {
+    "mtime": 1780776869.0614867,
+    "ast_hash": "b5a827014b0f856687190c93860e3291",
+    "semantic_hash": ""
+  },
+  "backend/app/document_extractor/parsers.py": {
+    "mtime": 1780660851.1443818,
+    "ast_hash": "567775f05b5316ae9c19c7043cd180fc",
+    "semantic_hash": ""
+  },
+  "backend/app/document_extractor/report_builder.py": {
+    "mtime": 1780779049.9417536,
+    "ast_hash": "5d50d7b3c92c860a9b3c2c900d0405ed",
+    "semantic_hash": ""
+  },
+  "backend/app/main.py": {
+    "mtime": 1780779417.1864226,
+    "ast_hash": "2a6ce6af681668bc2c20b54264af7a35",
+    "semantic_hash": ""
+  },
+  "backend/app/models.py": {
+    "mtime": 1780779417.1865945,
+    "ast_hash": "fbf965f780f566cab9f704583a7a2394",
+    "semantic_hash": ""
+  },
+  "backend/app/phase0_manual/v1_reference.py": {
+    "mtime": 1780779417.1868486,
+    "ast_hash": "920a819d00e8cec286b6db3d3758e963",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/__init__.py": {
+    "mtime": 1779357144.9981709,
+    "ast_hash": "6ee750233389284c313637ca22b13d33",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/cua_discovery.py": {
+    "mtime": 1780181859.8283548,
+    "ast_hash": "cb93d0d86cc3fedf6c0b6043ba7ba6d2",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/document_validator.py": {
+    "mtime": 1778843102.3248632,
+    "ast_hash": "c5caa279bd9a6f226f49b5323ae496b1",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/evaluator.py": {
+    "mtime": 1779357131.3362525,
+    "ast_hash": "4f457cbf804d959853a65fdc21c97f58",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/executor.py": {
+    "mtime": 1778842950.292044,
+    "ast_hash": "4e73c8f7c9e3a00b68d400ccda3d034e",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/feedback_loop.py": {
+    "mtime": 1780314806.4361577,
+    "ast_hash": "58bb8af8bee5a86b0602586934e3e8c8",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/generator.py": {
+    "mtime": 1780314827.5536046,
+    "ast_hash": "9db4234d4577704ac42fdcca22ffb3eb",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/pricing.py": {
+    "mtime": 1779481768.0535958,
+    "ast_hash": "9e9e7e8e1b5735e76c59df8e9fc62722",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/prompts.py": {
+    "mtime": 1780316979.3203495,
+    "ast_hash": "8c73299d0e90dcf7975b3afd2eb0d06f",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/route_learner.py": {
+    "mtime": 1779450368.0261033,
+    "ast_hash": "a1632e5b443b43ad740adb21c1da07ba",
+    "semantic_hash": ""
+  },
+  "backend/app/phase1_llm_scraper/validator.py": {
+    "mtime": 1778165052.7926595,
+    "ast_hash": "026093f43e5a16b8e283c1abac1fdf29",
+    "semantic_hash": ""
+  },
+  "backend/app/phase2_cua/__init__.py": {
+    "mtime": 1778165052.792799,
+    "ast_hash": "f7ec5e50cfaca1930d0b9f814a3c418d",
+    "semantic_hash": ""
+  },
+  "backend/app/phase2_cua/action_space.py": {
+    "mtime": 1780181859.8290844,
+    "ast_hash": "09d35e36324c1c7cfbdce87c65e0778e",
+    "semantic_hash": ""
+  },
+  "backend/app/phase2_cua/base_agent.py": {
+    "mtime": 1779445519.8029633,
+    "ast_hash": "a068debfb9fc51ff6c9c056505fae9e1",
+    "semantic_hash": ""
+  },
+  "backend/app/phase2_cua/browser_agent.py": {
+    "mtime": 1780317995.4877374,
+    "ast_hash": "6fd70cde79437604c4927d5988f0cb35",
+    "semantic_hash": ""
+  },
+  "backend/app/phase2_cua/browser_use_agent.py": {
+    "mtime": 1780229030.3759966,
+    "ast_hash": "b8328b0121d7960b6ffe04a9442e4ae3",
+    "semantic_hash": ""
+  },
+  "backend/app/phase2_cua/orchestrator.py": {
+    "mtime": 1780182211.6746795,
+    "ast_hash": "6c988548996a2a85e0f6ceca0106dbb3",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/__init__.py": {
+    "mtime": 1778165052.7936332,
+    "ast_hash": "8e1a4e98c75ef3e983c6b7a60508605b",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/deterministic.py": {
+    "mtime": 1780871262.1212342,
+    "ast_hash": "92d554f52400753ced04855db81df78b",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/fallback.py": {
+    "mtime": 1780314715.7416546,
+    "ast_hash": "f24248558271e215a21126a1409658c9",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/pipeline.py": {
+    "mtime": 1780872973.5083606,
+    "ast_hash": "628d6a932027d115b50472fad148541a",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/platform_classifier.py": {
+    "mtime": 1780871275.6944044,
+    "ast_hash": "73123aba670edd6a1ad3bf31656ee9f6",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/scraper_registry.py": {
+    "mtime": 1780319476.163714,
+    "ast_hash": "b4a76c20719a0237d20c3193ee433d14",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/url_intelligence.py": {
+    "mtime": 1780918553.779806,
+    "ast_hash": "5ff5aaa3e3c77313278f9240a5bdd88a",
+    "semantic_hash": ""
+  },
+  "backend/app/phase3_integration/versioning.py": {
+    "mtime": 1778165052.7941236,
+    "ast_hash": "0d96a2223c49258c73d1736d75182eab",
+    "semantic_hash": ""
+  },
+  "backend/app/schemas.py": {
+    "mtime": 1780230065.0923736,
+    "ast_hash": "d5ba3178b5bfbb4612546cb4c6657304",
+    "semantic_hash": ""
+  },
+  "backend/app/scripts/seed_v1_scraper.py": {
+    "mtime": 1778165052.79451,
+    "ast_hash": "4a6ae3d107276247087f8d81bc242a45",
+    "semantic_hash": ""
+  },
+  "backend/app/utils/__init__.py": {
+    "mtime": 1778165052.794638,
+    "ast_hash": "60254c4de384b7471652aea2befa425c",
+    "semantic_hash": ""
+  },
+  "backend/app/utils/audit.py": {
+    "mtime": 1780779417.187517,
+    "ast_hash": "b0ab3285ebe8b77e382a24867758916e",
+    "semantic_hash": ""
+  },
+  "backend/app/utils/logger.py": {
+    "mtime": 1778165052.7947502,
+    "ast_hash": "479839b08f2f643ae179b9f50f96f350",
+    "semantic_hash": ""
+  },
+  "backend/app/utils/metrics.py": {
+    "mtime": 1778165052.794873,
+    "ast_hash": "7ebd24bda5422586087daecb3c102c69",
+    "semantic_hash": ""
+  },
+  "backend/app/workers/__init__.py": {
+    "mtime": 1778165052.7949972,
+    "ast_hash": "c11f1524142f324d27aede04b3b138c4",
+    "semantic_hash": ""
+  },
+  "backend/app/workers/celery_app.py": {
+    "mtime": 1780918478.8762689,
+    "ast_hash": "b3e072e30aac3de886f3c42f45d2664f",
+    "semantic_hash": ""
+  },
+  "backend/app/workers/tasks.py": {
+    "mtime": 1780918444.6283047,
+    "ast_hash": "63bf738393a8e3f98e089b4f3a3193a4",
+    "semantic_hash": ""
+  },
+  "backend/migrations/env.py": {
+    "mtime": 1780661035.2444522,
+    "ast_hash": "319ad903e2483ac37ae3e1f14a116866",
+    "semantic_hash": ""
+  },
+  "backend/migrations/versions/20197da623db_baseline_schema.py": {
+    "mtime": 1780661048.6750069,
+    "ast_hash": "91a2c8a3f37aef29d2f6289313e26486",
+    "semantic_hash": ""
+  },
+  "backend/tests/__init__.py": {
+    "mtime": 1778165052.7956975,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_document_validator.py": {
+    "mtime": 1779356668.8654077,
+    "ast_hash": "65a65edb3893c37434164d7e9cfd8900",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase1.py": {
+    "mtime": 1778165052.7958658,
+    "ast_hash": "3952bc40405810d0b5fb40c4fcdf8b7e",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase2.py": {
+    "mtime": 1778165052.7960079,
+    "ast_hash": "467e1ddbd8b401d0f0003d5f28fe684b",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_phase3.py": {
+    "mtime": 1780779446.1286256,
+    "ast_hash": "da7f69621987b6124607ebcd4ded9369",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_platform_classifier.py": {
+    "mtime": 1780779452.4006944,
+    "ast_hash": "afa900adc8f6c39399f0c389ea7778de",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_route_and_deterministic.py": {
+    "mtime": 1779295403.5726304,
+    "ast_hash": "f5a61a2fff3e8247962dfcf018813069",
+    "semantic_hash": ""
+  },
+  "backend/tests/test_zip_expansion.py": {
+    "mtime": 1780661298.0773344,
+    "ast_hash": "36155751e08c6a9cab8bb41481d2e315",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper__netserver_pub_generic.py": {
+    "mtime": 1780873025.2567554,
+    "ast_hash": "479b9407d88194d29e46f5c398fa6d08",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_ausschreibung.halle.de.py": {
+    "mtime": 1780181859.8318295,
+    "ast_hash": "6682ba7ba3134f3b356c35312ca5e77b",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_ausschreibungen.kfw.de.py": {
+    "mtime": 1780319419.1143048,
+    "ast_hash": "af063cd42edffbfaa73497f4ad8c9dfa",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_ausschreibungen.landbw.de.py": {
+    "mtime": 1780185900.2528226,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_ausschreibungen.mainpost.de.py": {
+    "mtime": 1780236658.5766134,
+    "ast_hash": "e34376d82bf6f6c68160a57f88a02058",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_beschaffungen.barmer.de.py": {
+    "mtime": 1780918015.9381773,
+    "ast_hash": "1506fd0efe7bc892a85b52c13bf874be",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_bieter.ehealth-evergabe.de.py": {
+    "mtime": 1780319419.117438,
+    "ast_hash": "af063cd42edffbfaa73497f4ad8c9dfa",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_bieterportal.bahn.de.py": {
+    "mtime": 1780319419.1296363,
+    "ast_hash": "af063cd42edffbfaa73497f4ad8c9dfa",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_bieterportal.bundesbank.de.py": {
+    "mtime": 1780319419.1278758,
+    "ast_hash": "af063cd42edffbfaa73497f4ad8c9dfa",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_bieterportal.dfg.de.py": {
+    "mtime": 1780319419.120384,
+    "ast_hash": "af063cd42edffbfaa73497f4ad8c9dfa",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_bieterportal.dfg.e-va.eu.py": {
+    "mtime": 1780319690.7553902,
+    "ast_hash": "8110a63c3a6c82a861e08d0f559bf755",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_bieterportal.noncd.db.de.py": {
+    "mtime": 1780319419.1110134,
+    "ast_hash": "af063cd42edffbfaa73497f4ad8c9dfa",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_bund.vergabe24.de.py": {
+    "mtime": 1780918024.6392105,
+    "ast_hash": "2aa0ebe228a67829215e445be54f506e",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_eit-culture-creativity.eu.py": {
+    "mtime": 1780184548.3073206,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_evergabe-mv.de.py": {
+    "mtime": 1780235292.691246,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_evergabe.blb.nrw.de.py": {
+    "mtime": 1780236598.156033,
+    "ast_hash": "3a903e5602316a479105e2b8b4660c84",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_landesverwaltung.vergabe.rlp.de.py": {
+    "mtime": 1780258473.7294886,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_pnp.aumass.de.py": {
+    "mtime": 1780258473.7999024,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_rlp.vergabekommunal.de.py": {
+    "mtime": 1780235048.2811472,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_saarvpsl.vmstart.de.py": {
+    "mtime": 1780873177.6931531,
+    "ast_hash": "a1c7332a070ad63914fad0c5f3049e4c",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabe.deges.de.py": {
+    "mtime": 1780873177.69299,
+    "ast_hash": "bd28489ffe181d135896fa310aef1f26",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabe.fraunhofer.de.py": {
+    "mtime": 1780873177.6930542,
+    "ast_hash": "713d9e9ff597ba263faab52539dc6bb3",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabe.hilgmbh.de.py": {
+    "mtime": 1780258443.6018705,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabe.landbw.de.py": {
+    "mtime": 1780873177.693107,
+    "ast_hash": "a919741fb79669b1fdc79949d4909e42",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabe.muenchen.de.py": {
+    "mtime": 1780873177.6926038,
+    "ast_hash": "5ecb6f3192721a4fb32cae8bc0ef31a6",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabe.niedersachsen.de.py": {
+    "mtime": 1780235292.80358,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabe.tk.de.py": {
+    "mtime": 1780235017.9249616,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabemarktplatz.brandenburg.de.py": {
+    "mtime": 1780319419.1223862,
+    "ast_hash": "af063cd42edffbfaa73497f4ad8c9dfa",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_vergabeportal-bw.de.py": {
+    "mtime": 1779192955.1275172,
+    "ast_hash": "572e9b54939e8daa48030bfbc24ca76d",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.acingov.pt.py": {
+    "mtime": 1780319658.4668043,
+    "ast_hash": "0d688da244945f718d63236166a47bc1",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.ausschreibungen.ls.brandenburg.de.py": {
+    "mtime": 1780873177.693205,
+    "ast_hash": "55e5f3c3ffcd7ec8cf7fedafd42a287d",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.deutsche-rentenversicherung-bund.de.py": {
+    "mtime": 1780873177.6932569,
+    "ast_hash": "d02548f8158e32cfd0c76aae41c8a590",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.dtvp.de.py": {
+    "mtime": 1779184387.964158,
+    "ast_hash": "572e9b54939e8daa48030bfbc24ca76d",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.evergabe-online.de.py": {
+    "mtime": 1780873177.6922812,
+    "ast_hash": "5e81f19c4b4185682c24ea65a54efccc",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.evergabe.nrw.de.py": {
+    "mtime": 1780917984.632831,
+    "ast_hash": "9c9f581f05b397af65ac197292bed357",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.evergabe.sachsen.de.py": {
+    "mtime": 1780873177.6933093,
+    "ast_hash": "258f5666849fd19fb135b35582d668ef",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.had.de.py": {
+    "mtime": 1780918036.2371993,
+    "ast_hash": "9c1a72034145e524b91eb58ab715005d",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.kvb.de.py": {
+    "mtime": 1780918135.2660873,
+    "ast_hash": "b32adf717d1b9535aa1886139112365a",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.laenderfinanzierungsprogramm.de.py": {
+    "mtime": 1780319383.675424,
+    "ast_hash": "817ef11857b5c305124c09e59a95147f",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.lubey.de.py": {
+    "mtime": 1780319297.0807254,
+    "ast_hash": "b450981824bd185d0807151e683f9d42",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.meinauftrag.rib.de.py": {
+    "mtime": 1780918117.6735203,
+    "ast_hash": "3c22d95c2e6bee6c6ae4ae1f3a244aee",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.sachsen-vergabe.de.py": {
+    "mtime": 1780873177.6933513,
+    "ast_hash": "eeee06f16b3a14404876121b0d31d1a7",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.subreport.de.py": {
+    "mtime": 1780918158.6264417,
+    "ast_hash": "517d6dbb9779015876d20ada649ee4af",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.vergabe.metropoleruhr.de.py": {
+    "mtime": 1780235048.1252763,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.vergabe.rib.de.py": {
+    "mtime": 1780258473.8430467,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.vergabe.stadt-frankfurt.de.py": {
+    "mtime": 1780873177.6933992,
+    "ast_hash": "826b867b41edcce33c1ca4536dac19b4",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.vergabe24.de.py": {
+    "mtime": 1780918018.433868,
+    "ast_hash": "b1f7571f7140fca1e2b949f760a5f370",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.vergabemarktplatz-mv.de.py": {
+    "mtime": 1780249702.6035411,
+    "ast_hash": "022848e23f2ea344cb77fac6970da7f3",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.vergaben-wirtschaftsregion-aachen.de.py": {
+    "mtime": 1780258473.8262062,
+    "ast_hash": "145a8a12eef3ebdd1afdcd91f89c4364",
+    "semantic_hash": ""
+  },
+  "data/scrapers/scraper_www.vgem-mellingen.de.py": {
+    "mtime": 1780319410.7314923,
+    "ast_hash": "c3c9b9c377a537b5f706863667ed348a",
+    "semantic_hash": ""
+  },
+  "frontend/app/admin/page.tsx": {
+    "mtime": 1780780967.0427234,
+    "ast_hash": "2bfc9ff3bc01273281a67c37cd67a18c",
+    "semantic_hash": ""
+  },
+  "frontend/app/agents/page.tsx": {
+    "mtime": 1780181859.8374155,
+    "ast_hash": "89889cd45cf99968953e6d146e83dd53",
+    "semantic_hash": ""
+  },
+  "frontend/app/audit/page.tsx": {
+    "mtime": 1780780345.2119222,
+    "ast_hash": "387720f4043856208f5b1e810e56e09f",
+    "semantic_hash": ""
+  },
+  "frontend/app/error.tsx": {
+    "mtime": 1780181859.8391793,
+    "ast_hash": "8abc7cc46edd586a03c6898a04096b47",
+    "semantic_hash": ""
+  },
+  "frontend/app/evaluation/page.tsx": {
+    "mtime": 1780320079.4158156,
+    "ast_hash": "f3ccea8ea933f62093f1c6a5ae646012",
+    "semantic_hash": ""
+  },
+  "frontend/app/excel/page.tsx": {
+    "mtime": 1780053555.307898,
+    "ast_hash": "c38e1dcf0f0c8a399c16604ab8d21cc0",
+    "semantic_hash": ""
+  },
+  "frontend/app/extraction/page.tsx": {
+    "mtime": 1780664126.7356036,
+    "ast_hash": "72eb6dfcb57b8342fa4097d6bdda5cfe",
+    "semantic_hash": ""
+  },
+  "frontend/app/jobs/[id]/page.tsx": {
+    "mtime": 1780780301.6995296,
+    "ast_hash": "cf120e740d40a8207684341ba30e0202",
+    "semantic_hash": ""
+  },
+  "frontend/app/jobs/page.tsx": {
+    "mtime": 1780779417.1893444,
+    "ast_hash": "628aaa6f8fc8952f98af495c2948c538",
+    "semantic_hash": ""
+  },
+  "frontend/app/layout.tsx": {
+    "mtime": 1780780354.9673803,
+    "ast_hash": "207342805c468689b600822703ad2efa",
+    "semantic_hash": ""
+  },
+  "frontend/app/library/page.tsx": {
+    "mtime": 1780181859.8415086,
+    "ast_hash": "ef5c0d217a80a282ea089df170b6363c",
+    "semantic_hash": ""
+  },
+  "frontend/app/not-found.tsx": {
+    "mtime": 1780780197.1584945,
+    "ast_hash": "cc66aea95f12bde9e3931df8cb8ae104",
+    "semantic_hash": ""
+  },
+  "frontend/app/page.tsx": {
+    "mtime": 1780780126.4308798,
+    "ast_hash": "ec834b5c15d43206b2b15f40be5341da",
+    "semantic_hash": ""
+  },
+  "frontend/app/scrapers/page.tsx": {
+    "mtime": 1780779417.1900156,
+    "ast_hash": "ab52031a4f05ae553292134359d05fd6",
+    "semantic_hash": ""
+  },
+  "frontend/app/tests/page.tsx": {
+    "mtime": 1780779417.1906636,
+    "ast_hash": "f1c7da9e474959066bcab3074a8af411",
+    "semantic_hash": ""
+  },
+  "frontend/components/ExcelWorkspace.tsx": {
+    "mtime": 1780781043.0570056,
+    "ast_hash": "60702c297d83c1d7bae950708ebe6646",
+    "semantic_hash": ""
+  },
+  "frontend/components/JobSubmitForm.tsx": {
+    "mtime": 1780780177.7052257,
+    "ast_hash": "0e3f00e1dd81df78d02905837da66b95",
+    "semantic_hash": ""
+  },
+  "frontend/components/Navbar.tsx": {
+    "mtime": 1780779417.190854,
+    "ast_hash": "665dfca509bdfe8948209471508a1912",
+    "semantic_hash": ""
+  },
+  "frontend/components/Providers.tsx": {
+    "mtime": 1780181859.843867,
+    "ast_hash": "5ad48814f8ff92a83b6778fd58c9a9a4",
+    "semantic_hash": ""
+  },
+  "frontend/components/StatCard.tsx": {
+    "mtime": 1780779417.191096,
+    "ast_hash": "9a52438eb0c326b7dec22b6c48bdbfe0",
+    "semantic_hash": ""
+  },
+  "frontend/components/StatusBadge.tsx": {
+    "mtime": 1780779417.1912587,
+    "ast_hash": "142db828812e0aba6c593d35e2f6ec6c",
+    "semantic_hash": ""
+  },
+  "frontend/components/Toast.tsx": {
+    "mtime": 1780181859.8444521,
+    "ast_hash": "d82e3738e08e09a60bca23c86b48be8e",
+    "semantic_hash": ""
+  },
+  "frontend/components/ui/index.tsx": {
+    "mtime": 1780697391.3449252,
+    "ast_hash": "fbfd4fdf73dd6896e91201e54d8f0d79",
+    "semantic_hash": ""
+  },
+  "frontend/lib/api.ts": {
+    "mtime": 1780181859.8447094,
+    "ast_hash": "76f2b32d0d623ee0b7b4f1944c993358",
+    "semantic_hash": ""
+  },
+  "frontend/lib/hooks.ts": {
+    "mtime": 1780697055.2599478,
+    "ast_hash": "99b866d24268601d9e8cd1f90e6a6e07",
+    "semantic_hash": ""
+  },
+  "frontend/lib/theme.ts": {
+    "mtime": 1780697031.3188803,
+    "ast_hash": "b1edcd83915fb30f3303222a9678c257",
+    "semantic_hash": ""
+  },
+  "frontend/lib/types.ts": {
+    "mtime": 1780779167.818532,
+    "ast_hash": "a7109bea9d6e21e3f3fce5d9b00c7ced",
+    "semantic_hash": ""
+  },
+  "frontend/next-env.d.ts": {
+    "mtime": 1778165052.837364,
+    "ast_hash": "b5ed9dd8b4c5ba8e5ab8e6a379c15838",
+    "semantic_hash": ""
+  },
+  "frontend/next.config.js": {
+    "mtime": 1778840892.181527,
+    "ast_hash": "8256cb51672af8261d6bb7a69ed67659",
+    "semantic_hash": ""
+  },
+  "frontend/postcss.config.js": {
+    "mtime": 1778165052.8384273,
+    "ast_hash": "8640f9b2e6475cc3f5b1ff4548925765",
+    "semantic_hash": ""
+  },
+  "frontend/tailwind.config.js": {
+    "mtime": 1780779417.191413,
+    "ast_hash": "73d79d6d44eda4aae70514b5765c745e",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/main.py": {
+    "mtime": 1780181911.4068222,
+    "ast_hash": "c494d0aec2d899bf861180d3a28adbb1",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/__init__.py": {
+    "mtime": 1780181911.4069452,
+    "ast_hash": "6a114868eab254a9b982e7f8774cd595",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/browser.py": {
+    "mtime": 1780181911.4081845,
+    "ast_hash": "d3792fe608fda5c2a8d246f6ab2346b7",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/config.py": {
+    "mtime": 1780181911.408237,
+    "ast_hash": "2f1f38de3772b61bf725a3c8b34fd5d7",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/downloader.py": {
+    "mtime": 1780181911.4082932,
+    "ast_hash": "c6092dcdef120319e36cd551c35058bd",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/filtering.py": {
+    "mtime": 1780181911.4083622,
+    "ast_hash": "d42ccb5db346744f91ac12e40949184a",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/input_loader.py": {
+    "mtime": 1780181911.4084187,
+    "ast_hash": "3f54b5a8e6c683f4ed5a06a3ca494c7c",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/llm_selector.py": {
+    "mtime": 1780181911.408483,
+    "ast_hash": "5789c128d58b8fa2a7536c224e59e02a",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/models.py": {
+    "mtime": 1780181911.408537,
+    "ast_hash": "74f1410755dd3d8d172ecb269ead631d",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/runner.py": {
+    "mtime": 1780181911.4086146,
+    "ast_hash": "b0a671c7d6dc217064468921659c0923",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/storage.py": {
+    "mtime": 1780181911.4086783,
+    "ast_hash": "b611833abe1328fd5e77ca2c71985af5",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/system_prompt.py": {
+    "mtime": 1780181911.408742,
+    "ast_hash": "af041c3fe3f23ddf3561d478ee9f1856",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tender_agent/utils.py": {
+    "mtime": 1780181911.4088016,
+    "ast_hash": "f9815fddd0c7c6caa823e3a5211d245d",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tests/test_browser.py": {
+    "mtime": 1780181911.409081,
+    "ast_hash": "6af695bea1bbf7d52e8350fc2f4a6c9b",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tests/test_filtering.py": {
+    "mtime": 1780181911.4091341,
+    "ast_hash": "0bbe87ea916cfc633d54d0725b8ff5d0",
+    "semantic_hash": ""
+  },
+  "scraper/CUA_AGENT_STARTLIGHT/tests/test_input_loader.py": {
+    "mtime": 1780181911.4091809,
+    "ast_hash": "3ddcba2840c3a508a8bb473692e22670",
+    "semantic_hash": ""
+  },
+  "scraper/scraper_v5.py": {
+    "mtime": 1780181911.4093509,
+    "ast_hash": "e6d44e54b2497fe587f5304870fe1c4c",
+    "semantic_hash": ""
+  },
+  "scripts/dev_up.sh": {
+    "mtime": 1778165052.839043,
+    "ast_hash": "e736e0e4853683eaa2827f67726dd3b2",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/examples/demo.py": {
+    "mtime": 1780010991.3341122,
+    "ast_hash": "6fc27bfae23dbac82fa47ab388f7f354",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/__init__.py": {
+    "mtime": 1780010134.363545,
+    "ast_hash": "67f0d82c95a25629aa75cc12f494ee6d",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/client.py": {
+    "mtime": 1780010987.6429117,
+    "ast_hash": "540a39a37f6066e77e6cc0f38e76c99e",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/evaluator.py": {
+    "mtime": 1780010970.462792,
+    "ast_hash": "cf8c85db1fb9b3ea4c1e5b4b6f44139a",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/feedback_loop.py": {
+    "mtime": 1780010982.9179914,
+    "ast_hash": "c20176481425a67aa67d5fcf53365d72",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/llm.py": {
+    "mtime": 1780010210.0420923,
+    "ast_hash": "ac6805d6fcd14e4c1a4597d45571e06a",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/prompts.py": {
+    "mtime": 1780010944.4784238,
+    "ast_hash": "e5d0adc00e485996a19a9bec3813efa4",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/sandbox.py": {
+    "mtime": 1780010901.7497933,
+    "ast_hash": "687146461782ff0798da0c941286c441",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/scraper.py": {
+    "mtime": 1780010203.6913757,
+    "ast_hash": "437c15022ed43593cc537d74a7cefbac",
+    "semantic_hash": ""
+  },
+  "scripts/open-scraper-sdk/src/open_scraper_sdk/validator.py": {
+    "mtime": 1780010907.9566302,
+    "ast_hash": "7d2d821516f21d966b44f6d2bea8191a",
+    "semantic_hash": ""
+  },
+  "scripts/submit_smart_batch.py": {
+    "mtime": 1780181859.8455253,
+    "ast_hash": "ac3229f6dde8d1c19f19cd16c7907715",
+    "semantic_hash": ""
+  },
+  "tender_extractor/__init__.py": {
+    "mtime": 1780777573.263202,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "tender_extractor/extractors/__init__.py": {
+    "mtime": 1780777573.263256,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "tender_extractor/extractors/docx_extractor.py": {
+    "mtime": 1780778022.5244946,
+    "ast_hash": "0813a3c1672fa6e088c81e181918108a",
+    "semantic_hash": ""
+  },
+  "tender_extractor/extractors/pdf_extractor.py": {
+    "mtime": 1780777705.5280614,
+    "ast_hash": "fab5bf012a0dee578b5098abc79e2617",
+    "semantic_hash": ""
+  },
+  "tender_extractor/extractors/txt_extractor.py": {
+    "mtime": 1780778370.5488634,
+    "ast_hash": "c1a2e774752f977abb9023cc248305aa",
+    "semantic_hash": ""
+  },
+  "tender_extractor/extractors/xlsx_extractor.py": {
+    "mtime": 1780778051.867915,
+    "ast_hash": "d3190986eed774309199454be3d874fd",
+    "semantic_hash": ""
+  },
+  "tender_extractor/extractors/zip_handler.py": {
+    "mtime": 1780777673.0204933,
+    "ast_hash": "8403fd50f36765456efa62d2d8240448",
+    "semantic_hash": ""
+  },
+  "tender_extractor/main.py": {
+    "mtime": 1780778299.675595,
+    "ast_hash": "f351fafb52a92535a709c94a15c32044",
+    "semantic_hash": ""
+  },
+  "tender_extractor/models.py": {
+    "mtime": 1780777590.8114345,
+    "ast_hash": "053783eee2550b6e77759555ff3d66d4",
+    "semantic_hash": ""
+  },
+  "tender_extractor/parsers/__init__.py": {
+    "mtime": 1780777573.2632933,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "tender_extractor/parsers/date_parser.py": {
+    "mtime": 1780778080.3373897,
+    "ast_hash": "367d32d29680e6a514648d7829b37f96",
+    "semantic_hash": ""
+  },
+  "tender_extractor/parsers/field_parser.py": {
+    "mtime": 1780778631.1825438,
+    "ast_hash": "584ab3887bf8ca051829403d59b49430",
+    "semantic_hash": ""
+  },
+  "tender_extractor/parsers/table_parser.py": {
+    "mtime": 1780778139.464823,
+    "ast_hash": "5edd571d6a5ec3401f6de70ea23b93e1",
+    "semantic_hash": ""
+  },
+  "tender_extractor/parsers/value_parser.py": {
+    "mtime": 1780778617.5041292,
+    "ast_hash": "d4b5a2b32f5f54d9de946a994f93dac9",
+    "semantic_hash": ""
+  },
+  "tender_extractor/pipeline.py": {
+    "mtime": 1780778382.2111337,
+    "ast_hash": "ee0bce59c729cc616ba7dd66487b6d2f",
+    "semantic_hash": ""
+  },
+  "tender_extractor/summarizer/__init__.py": {
+    "mtime": 1780777573.2633348,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "tender_extractor/summarizer/rule_summarizer.py": {
+    "mtime": 1780778231.2508337,
+    "ast_hash": "56b22fd6cdc1c6b32c9793a3ab9388fa",
+    "semantic_hash": ""
+  },
+  "tender_extractor/tests/__init__.py": {
+    "mtime": 1780777573.2633739,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "tender_extractor/tests/test_extraction.py": {
+    "mtime": 1780778351.4564462,
+    "ast_hash": "f809472aebf57ea886774f37b6eac882",
+    "semantic_hash": ""
+  },
+  "backend/data/downloads/1777971237.4421995/doc_1_5456b8.html": {
+    "mtime": 1778840892.1768253,
+    "ast_hash": "a1a67ab4d644ffd0c41191d8ebccc7a9",
+    "semantic_hash": ""
+  },
+  "backend/data/downloads/1777972166.253629/doc_0_d04309.html": {
+    "mtime": 1778840892.1771345,
+    "ast_hash": "21b42c10e47669eab9ce8c0320816020",
+    "semantic_hash": ""
+  },
+  "backend/data/downloads/1777972166.253629/doc_2_a1e6ea.html": {
+    "mtime": 1778840892.1773689,
+    "ast_hash": "dc59966ceddb20944a08e2a9b73333fa",
+    "semantic_hash": ""
+  },
+  "backend/data/downloads/1777972166.253629/doc_3_185d44.html": {
+    "mtime": 1778840892.1776435,
+    "ast_hash": "e700b73c401ac0fdb1ea8d777c91a223",
+    "semantic_hash": ""
+  },
+  "backend/data/downloads/1777972166.253629/doc_4_16e189.html": {
+    "mtime": 1778840892.1779108,
+    "ast_hash": "7b2a2d9049cb10e2cb1ef54805297af4",
+    "semantic_hash": ""
+  },
+  "backend/data/downloads/1777972166.253629/doc_5_9e4e1f.html": {
+    "mtime": 1778840892.1781673,
+    "ast_hash": "9836755ccc35b859740b08fbdfb72a5f",
+    "semantic_hash": ""
+  },
+  "backend/data/downloads/1777972166.253629/doc_6_e16eef.html": {
+    "mtime": 1778840892.1783652,
+    "ast_hash": "bf869633cda791eea5f7203953bc67cc",
+    "semantic_hash": ""
+  }
+}

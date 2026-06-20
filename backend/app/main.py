@@ -14,6 +14,7 @@ from app.api import (
     routes_agents,
     routes_admin,
     routes_audit,
+    routes_directory,
     routes_evaluation,
     routes_extractor,
     routes_jobs,
@@ -172,6 +173,7 @@ app.include_router(routes_admin.router,      prefix="/api/admin",      tags=["ad
 app.include_router(routes_audit.router,      prefix="/api/audit",      tags=["audit"])
 app.include_router(routes_tests.router,      prefix="/api/tests",      tags=["tests"])
 app.include_router(routes_extractor.router,  prefix="/api",            tags=["extraction"])
+app.include_router(routes_directory.router,  prefix="/api/directory",  tags=["directory"])
 
 
 @app.get("/")

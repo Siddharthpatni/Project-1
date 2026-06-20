@@ -17,24 +17,40 @@ def test_existing_to_deterministic():
     assert next_strategy(Strategy.EXISTING, out, enable_cua=True) is Strategy.DETERMINISTIC
 
 
-def test_deterministic_to_llm():
-    """When the deterministic template doesn't apply, fall through to LLM generation."""
+def test_deterministic_to_adaptive():
+    """When the deterministic template doesn't apply, fall through to the free
+    universal adaptive scraper before spending LLM budget."""
     out = StrategyOutcome(Strategy.DETERMINISTIC, success=False, downloaded=0)
-    assert next_strategy(Strategy.DETERMINISTIC, out, enable_cua=True) is Strategy.LLM_GENERATED
+    assert next_strategy(Strategy.DETERMINISTIC, out, enable_cua=True) is Strategy.ADAPTIVE
 
 
-def test_llm_to_cua():
+def test_adaptive_to_llm():
+    out = StrategyOutcome(Strategy.ADAPTIVE, success=False, downloaded=0)
+    assert next_strategy(Strategy.ADAPTIVE, out, enable_cua=True) is Strategy.LLM_GENERATED
+
+
+def test_llm_to_learned_route():
+    """LLM_GENERATED now falls through to LEARNED_ROUTE (replay a CUA-learned path)."""
     out = StrategyOutcome(Strategy.LLM_GENERATED, success=False, downloaded=0)
-    assert next_strategy(Strategy.LLM_GENERATED, out, enable_cua=True) is Strategy.CUA
+    assert next_strategy(Strategy.LLM_GENERATED, out, enable_cua=True) is Strategy.LEARNED_ROUTE
+
+
+def test_learned_route_to_cua():
+    out = StrategyOutcome(Strategy.LEARNED_ROUTE, success=False, downloaded=0)
+    assert next_strategy(Strategy.LEARNED_ROUTE, out, enable_cua=True) is Strategy.CUA
 
 
 def test_cua_disabled():
+    """With CUA disabled the cascade still reaches LEARNED_ROUTE (cheap, no CUA),
+    then stops there because the only remaining step (CUA) is gated off."""
     out = StrategyOutcome(Strategy.LLM_GENERATED, success=False, downloaded=0)
-    assert next_strategy(Strategy.LLM_GENERATED, out, enable_cua=False) is None
+    assert next_strategy(Strategy.LLM_GENERATED, out, enable_cua=False) is Strategy.LEARNED_ROUTE
+    out2 = StrategyOutcome(Strategy.LEARNED_ROUTE, success=False, downloaded=0)
+    assert next_strategy(Strategy.LEARNED_ROUTE, out2, enable_cua=False) is None
 
 
 def test_cua_terminal():
-    # Cascade order: EXISTING → DETERMINISTIC → LLM_GENERATED → CUA → MANUAL
+    # Cascade order: EXISTING → DETERMINISTIC → LLM_GENERATED → LEARNED_ROUTE → CUA → MANUAL
     # CUA is NOT the last strategy — MANUAL (legacy phase-0 scraper) follows it.
     out = StrategyOutcome(Strategy.CUA, success=False, downloaded=0)
     assert next_strategy(Strategy.CUA, out, enable_cua=True) is Strategy.MANUAL

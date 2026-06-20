@@ -1,3 +1,17 @@
+/**
+ * Dashboard home page — entry point for the Vergabepilot.AI frontend.
+ *
+ * Shows:
+ *   - Hero header with product description
+ *   - KPI grid: total jobs, success rate, scraper templates, LLM cost
+ *   - Job submit form (manual URL paste or CSV/Excel upload)
+ *   - Strategy success-rate bar chart (live from admin/stats API)
+ *   - Quick-nav links to other sections
+ *   - Scraping-volume breakdown per strategy
+ *   - Recent jobs widget (last 5, auto-refreshes every 8s)
+ *
+ * Data source: GET /api/admin/stats (polled 5s when active, 30s when idle).
+ */
 "use client";
 
 import useSWR from "swr";
@@ -8,19 +22,32 @@ import { KpiCard, SectionHeader, Empty, Skeleton } from "@/components/ui";
 import {
   Activity, CheckCircle2, Cpu, DollarSign, TrendingUp,
   Layers, ChevronRight, Zap, FileText, Clock, AlertTriangle,
+  ShieldAlert, Workflow, ArrowRight,
 } from "lucide-react";
 import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip,
 } from "recharts";
-import { strategyColors } from "@/lib/theme";
+import {
+  strategyColors, strategyLabels,
+  OUTCOME_ORDER, outcomeColors, outcomeLabels, NEEDS_MANUAL_BUCKETS,
+} from "@/lib/theme";
 import type { AdminStats } from "@/lib/types";
+
+// The cascade as the backend runs it, in order. Showcases every stage a URL
+// flows through — including the free ADAPTIVE catch-all and the CUA LEARNED_ROUTE.
+const CASCADE = [
+  "existing_scraper", "deterministic_template", "adaptive_universal",
+  "llm_generated_scraper", "learned_route", "computer_use_agent", "manual_scraper",
+];
 
 const STRATEGIES = [
   { key: "manual_scraper",         label: "Manual",        desc: "Pre-written legacy scripts" },
   { key: "existing_scraper",       label: "Cached",        desc: "Fast cached scrapers" },
   { key: "deterministic_template", label: "Deterministic", desc: "Direct ZIP URL construction" },
+  { key: "adaptive_universal",     label: "Universal Adaptive", desc: "Country-agnostic heuristic scraper" },
   { key: "llm_generated_scraper",  label: "LLM Generated", desc: "Autonomous code synthesis" },
+  { key: "learned_route",          label: "Learned Route", desc: "Replay of a CUA-learned path" },
   { key: "computer_use_agent",     label: "CUA Fallback",  desc: "Visual browser automation" },
   { key: "none",                   label: "Failure",       desc: "No strategy succeeded" },
 ];
@@ -82,28 +109,41 @@ export default function HomePage() {
   return (
     <div className="space-y-8 animate-fade-up">
 
-      {/* Hero */}
-      <header className="relative rounded-2xl overflow-hidden"
-              style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)" }}>
-        <div className="absolute inset-0 pointer-events-none"
-             style={{ background: "radial-gradient(ellipse at 70% 0%, rgba(99,102,241,0.25) 0%, transparent 60%)" }} />
-        <div className="relative z-10 px-8 py-10 text-white">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase mb-5"
-               style={{ background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", color: "#a5b4fc" }}>
-            <Zap className="w-3.5 h-3.5 fill-current" />
-            Agentic Cascade Scraper
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            Vergabepilot<span style={{ color: "#818cf8" }}>.AI</span>
-          </h1>
-          <p className="mt-2 text-sm sm:text-base leading-relaxed max-w-xl" style={{ color: "#94a3b8" }}>
-            Automated public procurement document scraper. Enter any notice URL and the cascaded pipeline handles route discovery, autonomous agent execution, and document extraction.
-          </p>
-        </div>
+      {/* Header */}
+      <header className="flex flex-col gap-2">
+        <p className="text-label">Agentic Cascade Scraper</p>
+        <h1 className="text-display" style={{ color: "var(--fg)" }}>
+          Vergabepilot<span style={{ color: "var(--brand)" }}>.AI</span>
+        </h1>
+        <p className="text-sm sm:text-base leading-relaxed max-w-2xl" style={{ color: "var(--fg-muted)" }}>
+          Automated public procurement document scraper. Enter any notice URL — the cascade
+          handles route discovery, agent execution, and document extraction.
+        </p>
       </header>
 
+      {/* Needs-manual banner — surfaces human-resolvable blocks instead of hiding them as "failed" */}
+      {(stats?.needs_manual_count ?? 0) > 0 && (
+        <Link href="/admin"
+              className="flex items-center gap-3 p-4 rounded-2xl border transition-all hover:shadow-md group"
+              style={{ background: "var(--bg-elevated)", borderColor: "#f59e0b66" }}>
+          <div className="p-2 rounded-xl flex-shrink-0" style={{ background: "#f59e0b1a", color: "#d97706" }}>
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold" style={{ color: "var(--fg)" }}>
+              {stats!.needs_manual_count} URL{stats!.needs_manual_count === 1 ? "" : "s"} need manual action
+            </p>
+            <p className="text-xs" style={{ color: "var(--fg-subtle)" }}>
+              Blocked by login or CAPTCHA — a human can resolve these. Review the queue →
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+                        style={{ color: "var(--fg-subtle)" }} />
+        </Link>
+      )}
+
       {/* KPI Grid */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           label="Total Jobs"
           value={stats?.jobs ?? 0}
@@ -136,13 +176,13 @@ export default function HomePage() {
       </section>
 
       {/* Main layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
 
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
 
           {/* Submit form */}
-          <div className="card p-6">
+          <div className="card p-5 sm:p-6">
             <div className="flex items-center gap-3 mb-5"
                  style={{ borderBottom: "1px solid var(--border)", paddingBottom: "1rem" }}>
               <div className="p-2.5 rounded-xl" style={{ background: "var(--brand-light)", color: "var(--brand)" }}>
@@ -159,7 +199,7 @@ export default function HomePage() {
           </div>
 
           {/* Strategy chart */}
-          <div className="card p-6">
+          <div className="card p-5 sm:p-6">
             <div className="flex items-center justify-between mb-1"
                  style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.875rem", marginBottom: "1.25rem" }}>
               <div className="flex items-center gap-3">
@@ -216,13 +256,53 @@ export default function HomePage() {
               </div>
             )}
           </div>
+
+          {/* Cascade pipeline — the ordered stages every URL flows through */}
+          <div className="card p-5 sm:p-6">
+            <div className="flex items-center gap-3 mb-1"
+                 style={{ borderBottom: "1px solid var(--border)", paddingBottom: "0.875rem", marginBottom: "1.25rem" }}>
+              <div className="p-2 rounded-xl" style={{ background: "var(--brand-light)", color: "var(--brand)" }}>
+                <Workflow className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-subheading">Cascade Pipeline</h2>
+                <p className="text-xs mt-0.5" style={{ color: "var(--fg-subtle)" }}>
+                  Each URL flows through these stages until one wins — cheapest first.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
+              {CASCADE.map((key, i) => {
+                const total = stats?.strategy_distribution?.[key] ?? 0;
+                const won   = stats?.strategy_success_distribution?.[key] ?? 0;
+                const color = strategyColors[key] ?? "#94a3b8";
+                return (
+                  <div key={key} className="flex items-center gap-1">
+                    <div className="flex flex-col items-center px-2.5 py-2 rounded-xl border min-w-[86px]"
+                         style={{ background: "var(--bg-subtle)", borderColor: "var(--border)" }}>
+                      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-center" style={{ color: "var(--fg)" }}>
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                        {strategyLabels[key] ?? key}
+                      </span>
+                      <span className="text-[10px] font-mono mt-0.5" style={{ color: "var(--fg-subtle)" }}>
+                        {won}/{total} won
+                      </span>
+                    </div>
+                    {i < CASCADE.length - 1 && (
+                      <ArrowRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--fg-subtle)", opacity: 0.5 }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Right column */}
         <div className="space-y-5">
 
           {/* Quick links */}
-          <div className="card p-5">
+          <div className="card p-5 sm:p-6">
             <h2 className="text-subheading mb-4 pb-3" style={{ borderBottom: "1px solid var(--border)" }}>
               Pipeline Explorer
             </h2>
@@ -247,7 +327,7 @@ export default function HomePage() {
           </div>
 
           {/* Volume breakdown */}
-          <div className="card p-5">
+          <div className="card p-5 sm:p-6">
             <h2 className="text-subheading mb-1 pb-3" style={{ borderBottom: "1px solid var(--border)", marginBottom: "0.75rem" }}>
               Scraping Volume
             </h2>
@@ -282,10 +362,74 @@ export default function HomePage() {
             </p>
           </div>
 
+          {/* Outcome breakdown — honest reporting of where every URL landed */}
+          <OutcomeBreakdown stats={stats} loading={isLoading} />
+
           {/* Recent activity */}
           <RecentJobs />
         </div>
       </div>
+    </div>
+  );
+}
+
+function OutcomeBreakdown({ stats, loading }: { stats?: AdminStats; loading: boolean }) {
+  const buckets = stats?.outcome_buckets ?? {};
+  const rows = OUTCOME_ORDER
+    .map((key) => ({ key, label: outcomeLabels[key] ?? key, value: buckets[key] ?? 0, color: outcomeColors[key] ?? "#94a3b8" }))
+    .filter((r) => r.value > 0);
+  const total = rows.reduce((s, r) => s + r.value, 0);
+
+  return (
+    <div className="card p-5">
+      <h2 className="text-subheading mb-1 pb-3"
+          style={{ borderBottom: "1px solid var(--border)", marginBottom: "0.75rem" }}>
+        Outcome Breakdown
+      </h2>
+
+      {loading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <Skeleton key={i} height="2rem" className="rounded-lg" />)}
+        </div>
+      ) : total === 0 ? (
+        <p className="text-xs py-6 text-center" style={{ color: "var(--fg-subtle)" }}>
+          No completed items yet.
+        </p>
+      ) : (
+        <>
+          {/* Stacked proportion bar */}
+          <div className="flex w-full h-2.5 rounded-full overflow-hidden mb-4" style={{ background: "var(--bg-muted)" }}>
+            {rows.map((r) => (
+              <div key={r.key} title={`${r.label}: ${r.value}`}
+                   style={{ width: `${(r.value / total) * 100}%`, background: r.color }} />
+            ))}
+          </div>
+          {/* Legend */}
+          <div className="space-y-1.5">
+            {rows.map((r) => (
+              <div key={r.key} className="flex items-center gap-2.5 px-3 py-2 rounded-lg"
+                   style={{ background: "var(--bg-subtle)" }}>
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: r.color }} />
+                <span className="text-xs font-medium flex-1 truncate" style={{ color: "var(--fg)" }}>
+                  {r.label}
+                </span>
+                {NEEDS_MANUAL_BUCKETS.has(r.key) && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: "#f59e0b1a", color: "#d97706" }}>
+                    MANUAL
+                  </span>
+                )}
+                <span className="font-mono text-xs font-bold" style={{ color: "var(--fg-muted)" }}>
+                  {r.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <p className="text-[10px] mt-3 pt-3" style={{ color: "var(--fg-subtle)", borderTop: "1px solid var(--border)" }}>
+        Every URL lands in exactly one bucket — no silent failures.
+      </p>
     </div>
   );
 }

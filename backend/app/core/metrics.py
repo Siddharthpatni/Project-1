@@ -131,5 +131,27 @@ EXTRACTION_FIELDS_FOUND = Histogram(
 )
 
 
+# ---------------------------------------------------------------------------
+# Reliability / resilience metrics
+# ---------------------------------------------------------------------------
+
+HTTP_RETRIES = Counter(
+    "vergabepilot_http_retries_total",
+    "Outbound HTTP requests retried, by reason",
+    ["reason"],   # network | status_429 | status_500 | status_502 | status_503 | status_504 | ...
+)
+
+CIRCUIT_BREAKER_EVENTS = Counter(
+    "vergabepilot_circuit_breaker_events_total",
+    "Per-domain circuit breaker state events",
+    ["event"],   # trip | reject | half_open | reset
+)
+
+RATE_LIMIT_HITS = Counter(
+    "vergabepilot_rate_limit_hits_total",
+    "Per-domain rate limiter rejections (caller had to back off)",
+)
+
+
 def is_available() -> bool:
     return _AVAILABLE

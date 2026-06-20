@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum as PyEnum
 
-from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -38,7 +38,9 @@ class Strategy(str, PyEnum):
     MANUAL = "manual_scraper"
     EXISTING = "existing_scraper"
     DETERMINISTIC = "deterministic_template"
+    ADAPTIVE = "adaptive_universal"  # country/language-agnostic heuristic scraper (free)
     LLM_GENERATED = "llm_generated_scraper"
+    LEARNED_ROUTE = "learned_route"  # replay a route the CUA proved works (cheap)
     CUA = "computer_use_agent"
     NONE = "none"
 
@@ -79,8 +81,28 @@ class JobItem(Base):
     # Stored as JSON list of {strategy, success, downloaded, error, duration_s, ts}
     attempts_detail: Mapped[list] = mapped_column(JSON, default=list)
 
+    # ── Public tender-directory projection ──────────────────────────────────
+    # A successful JobItem *is* one published tender. These three columns are a
+    # denormalized projection of the most-queried extracted fields (kept in
+    # sync by the deep extractor; ExtractionRecord.fields_json stays the source
+    # of truth). They exist so the public browse-by-domain directory can filter
+    # "currently open" and sort "soonest-closing" with a real index instead of
+    # parsing JSON at query time. All nullable — extraction may be absent or a
+    # field may not have been found.
+    tender_title:     Mapped[str | None]      = mapped_column(String, nullable=True)
+    tender_reference: Mapped[str | None]      = mapped_column(String, nullable=True)
+    # Parsed submission deadline. NULL = unknown (treated as still-open, never as
+    # expired). A past value marks the tender expired and hides it from the directory.
+    deadline:         Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     job: Mapped[Job] = relationship(back_populates="items")
     documents: Mapped[list["Document"]] = relationship(back_populates="job_item", cascade="all, delete-orphan")
+
+    # Composite index for the directory queries: group/filter by domain, restrict
+    # to published (status) tenders, and range-filter / order by deadline.
+    __table_args__ = (
+        Index("ix_job_items_directory", "domain", "status", "deadline"),
+    )
 
 
 class Document(Base):
@@ -114,6 +136,11 @@ class ScraperTemplate(Base):
     # CUA fallback runs for this domain (success or failure) so future LLM
     # generation can use it as verified navigation knowledge.
     cua_hint:      Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Replayable navigation route learned from a CUA-only success (set by the
+    # CUA route learner when the agent succeeded after every cheaper strategy
+    # failed). Serialized LearnedRoute — replayed cheaply by the LEARNED_ROUTE
+    # strategy on future visits to this domain (no LLM, no vision, no full CUA).
+    learned_route: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     success_count: Mapped[int] = mapped_column(Integer, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_runtime:   Mapped[float] = mapped_column(Float, default=0.0)

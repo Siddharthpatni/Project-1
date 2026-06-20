@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Vergabepilot.AI — Review Party #3</title>
+<style>
+  :root{
+    --brand-50:#eef2ff; --brand-100:#e0e7ff; --brand-500:#6366f1; --brand-600:#4f46e5;
+    --brand-700:#4338ca; --brand-900:#312e81; --cyan:#06b6d4; --sky:#0ea5e9;
+    --ink:#0f1b30; --ink-soft:#33425c; --muted:#64748b; --line:#dde4ef; --paper:#fff;
+    --navy:#0b1530; --ok:#10b981; --amber:#f59e0b;
+    --s-cached:#6366f1; --s-det:#10b981; --s-llm:#8b5cf6; --s-cua:#ec4899; --s-store:#64748b;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; background:#0a1020; font-family:"Helvetica Neue",Arial,sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; color:var(--ink); overflow:hidden;}
+  /* ---- slide stage ---- */
+  #stage{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  .slide{
+    width:1280px; height:720px; position:absolute; overflow:hidden; background:var(--paper);
+    transform-origin:center center; display:none; flex-direction:column;
+  }
+  .slide.active{ display:flex; }
+  /* progress + nav */
+  #bar{ position:fixed; bottom:0; left:0; height:5px; background:linear-gradient(90deg,var(--brand-500),var(--cyan)); z-index:50; transition:width .25s; }
+  #hint{ position:fixed; bottom:12px; right:16px; color:#5b6b86; font-size:12px; z-index:50; font-family:monospace; }
+  /* ---- shared slide chrome ---- */
+  .pad{ padding:64px 76px; flex:1; display:flex; flex-direction:column; }
+  .kicker{ font-size:18px; font-weight:800; letter-spacing:3px; text-transform:uppercase; color:var(--brand-600); }
+  .stitle{ font-size:52px; font-weight:800; letter-spacing:-1px; color:var(--brand-900); margin-top:8px; line-height:1.05; }
+  .sub{ font-size:24px; color:var(--ink-soft); margin-top:14px; line-height:1.4; }
+  .pagenum{ position:absolute; bottom:26px; right:34px; font-size:16px; color:#9aa7bd; font-weight:700; }
+  .brandtag{ position:absolute; bottom:24px; left:36px; font-size:16px; font-weight:800; color:var(--brand-700); }
+  .brandtag .ai{ color:var(--cyan); }
+  b,strong{ color:var(--ink); }
+  .grad{ background:linear-gradient(125deg,var(--brand-700),var(--brand-600) 45%,var(--sky)); color:#fff; }
+  .grad .kicker{ color:#a5f3fc; } .grad .stitle{ color:#fff; } .grad .sub{ color:#e2e9f7; }
+  .grad .pagenum{ color:#bcd0ef; }
+
+  ul.big{ list-style:none; margin-top:26px; }
+  ul.big li{ font-size:25px; line-height:1.4; color:var(--ink-soft); padding-left:38px; position:relative; margin-top:20px; }
+  ul.big li::before{ content:""; position:absolute; left:0; top:9px; width:18px; height:18px; border-radius:5px;
+    background:linear-gradient(135deg,var(--brand-500),var(--sky)); }
+  ul.big li b{ color:var(--ink); }
+
+  /* ---- title slide ---- */
+  .title-wrap{ flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 90px; position:relative; }
+  .title-wrap .mono{ width:84px; height:84px; border-radius:20px; background:#fff; color:var(--brand-700);
+    font-size:52px; font-weight:800; display:flex; align-items:center; justify-content:center; box-shadow:0 12px 30px -12px rgba(0,0,0,.5); }
+  .title-wrap h1{ font-size:74px; font-weight:800; letter-spacing:-2px; margin-top:26px; line-height:1.02; }
+  .title-wrap h1 .ai{ color:#a5f3fc; }
+  .title-wrap .tline{ font-size:27px; color:#dbe7fb; margin-top:18px; max-width:920px; line-height:1.35; }
+  .title-meta{ position:absolute; bottom:54px; left:90px; right:90px; display:flex; align-items:flex-end; justify-content:space-between; }
+  .title-meta .who{ font-size:18px; color:#cdddf6; line-height:1.6; }
+  .title-meta .who b{ color:#fff; }
+  .logostrip{ background:#fff; border-radius:14px; padding:14px 22px; display:flex; gap:26px; align-items:center; }
+  .logostrip img{ height:38px; width:auto; }
+  .logostrip img.tall{ height:44px; }
+
+  /* ---- architecture ---- */
+  .arch{ margin-top:30px; display:flex; flex-direction:column; gap:16px; align-items:flex-start; }
+  .arow{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .node{ font-size:20px; font-weight:700; color:#fff; padding:12px 18px; border-radius:12px; white-space:nowrap; }
+  .node.sm{ font-size:17px; font-weight:600; padding:9px 14px; }
+  .n-ui{background:#0ea5e9;}.n-api{background:#4f46e5;}.n-worker{background:#6366f1;}.n-redis{background:#ef4444;}
+  .n-p1{background:#8b5cf6;}.n-p2{background:#ec4899;}.n-p3{background:#10b981;}.n-store{background:#64748b;}
+  .ar{ color:#94a3b8; font-size:24px; font-weight:800; }
+
+  /* ---- feedback loop ---- */
+  .loop{ margin-top:30px; display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+  .agent{ border-radius:16px; padding:24px 22px; color:#fff; min-height:190px; }
+  .agent .t{ font-size:28px; font-weight:800; } .agent .d{ font-size:18px; line-height:1.32; margin-top:12px; opacity:.97; }
+  .a1{background:#6366f1;}.a2{background:#8b5cf6;}.a3{background:#0ea5e9;}.a4{background:#14b8a6;}
+  .loopflow{ margin-top:26px; text-align:center; font-size:23px; font-weight:800; color:var(--ink-soft); }
+  .loopflow .ok{color:var(--ok);} .loopflow .fb{color:#8b5cf6;} .loopflow span{ color:var(--muted); margin:0 8px; }
+
+  /* ---- two-col ---- */
+  .cols2{ margin-top:26px; display:grid; grid-template-columns:1fr 1fr; gap:30px; flex:1; }
+  .card{ border:1px solid var(--line); border-radius:18px; padding:30px 30px; background:#fff; }
+  .card h3{ font-size:30px; font-weight:800; color:var(--brand-700); }
+  .card .tagline{ font-size:18px; color:var(--cyan); font-weight:700; margin-top:2px; }
+  .card ul{ list-style:none; margin-top:16px; }
+  .card li{ font-size:20px; line-height:1.35; color:var(--ink-soft); padding-left:28px; position:relative; margin-top:14px; }
+  .card li::before{ content:""; position:absolute; left:0; top:9px; width:12px; height:12px; border-radius:3px; background:var(--brand-500); }
+  .cascade-mini{ margin-top:16px; display:flex; flex-direction:column; gap:9px; }
+  .cstage{ display:flex; justify-content:space-between; align-items:center; color:#fff; border-radius:9px; padding:10px 16px; font-size:19px; font-weight:700; }
+  .cstage small{ font-weight:600; opacity:.85; font-size:14px; }
+  .cs1{background:var(--s-cached);}.cs2{background:var(--s-det);}.cs3{background:var(--s-llm);}.cs4{background:var(--s-cua);}.cs5{background:var(--s-store);}
+
+  /* ---- demo ---- */
+  .demowrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:#0a1020; position:relative; }
+  .demowrap video{ width:1040px; max-height:520px; border-radius:14px; box-shadow:0 20px 60px -20px rgba(0,0,0,.7); background:#0d1117; }
+  .demowrap .vposter{ display:none; }
+  .demobadge{ align-self:flex-start; margin:0 0 0 44px; color:#fff; }
+  .demobadge .k{ font-size:16px; letter-spacing:3px; font-weight:800; color:#a5f3fc; text-transform:uppercase; }
+  .demobadge .t{ font-size:34px; font-weight:800; margin-top:4px; }
+
+  /* ---- stats ---- */
+  .stats{ margin-top:34px; display:grid; grid-template-columns:repeat(4,1fr); gap:24px; flex:1; align-content:center; }
+  .stat{ border:1px solid var(--brand-100); border-radius:18px; padding:30px 26px; background:linear-gradient(160deg,#fff,var(--brand-50)); }
+  .stat .big{ font-size:64px; font-weight:800; color:var(--brand-700); letter-spacing:-2px; line-height:1; }
+  .stat .big.green{ color:var(--ok);} .stat .big .u{ font-size:30px; }
+  .stat .lab{ margin-top:16px; font-size:18px; color:var(--ink-soft); font-weight:600; line-height:1.3; }
+
+  /* ---- benchmark ---- */
+  table.bm{ width:100%; border-collapse:collapse; margin-top:24px; font-size:22px; }
+  table.bm th{ text-align:left; color:var(--brand-700); font-weight:800; padding:14px 16px; border-bottom:2px solid var(--brand-100); font-size:18px; text-transform:uppercase; letter-spacing:1px; }
+  table.bm td{ padding:13px 16px; border-bottom:1px solid var(--line); color:var(--ink-soft); }
+  table.bm tr.best td{ background:var(--brand-50); color:var(--ink); font-weight:800; }
+  .gr{ font-weight:800; } .gr.A{color:var(--ok);} .gr.B{color:var(--amber);} .gr.F{color:#ef4444;}
+  .bmtake{ margin-top:20px; font-size:21px; color:var(--ink); } .bmtake b{ color:var(--brand-700); }
+
+  /* ---- roadmap ---- */
+  .road{ margin-top:50px; display:flex; }
+  .rstep{ flex:1; text-align:center; position:relative; padding-top:40px; }
+  .rstep::before{ content:""; position:absolute; top:11px; left:50%; width:100%; height:6px; background:var(--brand-100); }
+  .rstep:last-child::before{ display:none; }
+  .rdot{ position:absolute; top:0; left:50%; transform:translateX(-50%); width:24px; height:24px; border-radius:50%; background:var(--ok); box-shadow:0 0 0 5px #fff,0 0 0 8px var(--ok); }
+  .rstep.now .rdot{ background:#fff; box-shadow:0 0 0 5px #fff,0 0 0 8px var(--sky); }
+  .rstep .rt{ font-size:24px; font-weight:800; color:var(--brand-700);} .rstep .rd{ font-size:17px; color:var(--muted); margin-top:10px; padding:0 10px; line-height:1.3; }
+
+  /* ---- team ---- */
+  .team-grad{ background:linear-gradient(125deg,var(--brand-700),var(--brand-600) 45%,var(--sky)); color:#fff; }
+  .leads{ display:flex; gap:40px; margin-top:8px; }
+  .lead{ text-align:center; } .lead img{ width:150px; height:150px; object-fit:cover; border-radius:18px; border:3px solid rgba(255,255,255,.5); }
+  .lead .ln{ font-size:18px; font-weight:700; margin-top:12px; color:#fff; } .lead .lr{ font-size:15px; color:#cdddf6; }
+  .members{ font-size:24px; color:#eaf2ff; line-height:1.7; margin-top:8px; max-width:620px; }
+  .thanks{ font-size:46px; font-weight:800; }
+
+  @media print{
+    html,body{ overflow:visible; background:#fff; }
+    @page{ size:1280px 720px; margin:0; }
+    #stage{ position:static; display:block; }
+    .slide{ display:flex !important; position:relative; page-break-after:always; transform:none !important; box-shadow:none; }
+    #bar,#hint{ display:none !important; }
+    .demowrap video{ display:none; }
+    .demowrap .vposter{ display:block; width:1090px; border-radius:14px; }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 1 TITLE -->
+  <section class="slide active grad">
+    <div class="title-wrap">
+      <div class="mono">V</div>
+      <h1>Vergabepilot<span class="ai">.AI</span></h1>
+      <div class="tline">Self-improving AI agents that <b style="color:#fff">write their own web scrapers</b> to collect public-procurement documents — at scale, and at near-zero cost.</div>
+      <div class="title-meta">
+        <div class="who">
+          <b>Team:</b> Maxi · Marwin · Fabian · Radu · Victor · Siddharth · Prakshal · Dhruvin · Utsav<br>
+          <b>Leads:</b> Prof. Dr. Christian Bartelt · Kristian Kolthoff &nbsp;—&nbsp; CORE &amp; CICONIA initiative<br>
+          DIGIT · Review Party #3 · GoTec II, Goslar · 3 July 2026
+        </div>
+        <div class="logostrip">
+          <img src="assets/logo_ciconia_dark.png" class="tall" alt="CICONIA">
+          <img src="assets/logo_core.png" alt="CORE">
+          <img src="assets/logo_tuc.png" alt="TU Clausthal">
+          <img src="assets/logo_babes.png" alt="Babes-Bolyai">
+        </div>
+      </div>
+    </div>
+    <div class="pagenum">01</div>
+  </section>
+
+  <!-- 2 PROBLEM -->
+  <section class="slide">
+    <div class="pad">
+      <div class="kicker">Problem &amp; Motivation</div>
+      <div class="stitle">Every new data source needs a scraper<br>built from scratch.</div>
+      <div class="sub">That is slow, costly, and hard to scale. As the number of portals grows, the engineering effort itself becomes the bottleneck.</div>
+      <ul class="big">
+        <li><b>Hundreds of portals</b> — DTVP, NetServer, Cosinex, RIB, Subreport… each with its own layout &amp; login walls.</li>
+        <li><b>Manual work doesn't scale</b> — one custom scraper per source, maintained by hand.</li>
+        <li><b>Portals change</b> — scrapers silently break and tenders are missed.</li>
+      </ul>
+    </div>
+    <div class="brandtag">vergabepilot<span class="ai">.AI</span></div>
+    <div class="pagenum">02</div>
+  </section>
+
+  <!-- 3 IDEA -->
+  <section class="slide grad">
+    <div class="pad" style="justify-content:center">
+      <div class="kicker">The Idea</div>
+      <div class="stitle" style="font-size:60px; max-width:1050px">What if the system writes, tests and fixes<br>its <span style="color:#a5f3fc">own</span> scraper — for any portal?</div>
+      <div class="sub" style="font-size:26px; max-width:1000px; margin-top:24px">
+        An LLM generates a Python scraper per domain inside a closed
+        <b style="color:#fff">generate → validate → execute → evaluate</b> loop, with a visual computer-use agent
+        as a fallback and a cost-aware cascade that reuses cached scrapers first.
+      </div>
+    </div>
+    <div class="pagenum">03</div>
+  </section>
+
+  <!-- 4 ARCHITECTURE -->
+  <section class="slide">
+    <div class="pad">
+      <div class="kicker">System Architecture</div>
+      <div class="stitle">One pipeline, three extraction phases</div>
+      <div class="arch">
+        <div class="arow">
+          <span class="node n-ui">Next.js UI</span><span class="ar">›</span>
+          <span class="node n-api">FastAPI · /api/jobs</span><span class="ar">›</span>
+          <span class="node n-worker">Celery worker pool</span><span class="ar">·</span>
+          <span class="node n-redis">Redis</span>
+        </div>
+        <div class="arow" style="padding-left:40px">
+          <span class="ar">↳</span>
+          <span class="node n-p1">Phase 1 · Scraper feedback loop</span>
+          <span class="node n-p2">Phase 2 · CUA agent</span>
+          <span class="node n-p3">Phase 3 · Cost-aware cascade</span>
+        </div>
+        <div class="arow" style="padding-left:40px">
+          <span class="ar">↳</span>
+          <span class="node n-store sm">MinIO (S3) — documents</span>
+          <span class="node n-store sm">Postgres — metadata</span>
+        </div>
+      </div>
+      <div class="sub" style="margin-top:34px; font-size:21px">A job is enqueued from the UI, fanned out across parallel workers, and routed through the phases; documents land in object storage with metadata in Postgres.</div>
+    </div>
+    <div class="brandtag">vergabepilot<span class="ai">.AI</span></div>
+    <div class="pagenum">04</div>
+  </section>
+
+  <!-- 5 PHASE 1 LOOP -->
+  <section class="slide">
+    <div class="pad">
+      <div class="kicker">Phase 1 · The core innovation</div>
+      <div class="stitle">A scraper that repairs itself</div>
+      <div class="loop">
+        <div class="agent a1"><div class="t">Generator</div><div class="d">Takes a URL and writes a Python scraper for that domain via LLM.</div></div>
+        <div class="agent a2"><div class="t">Validator</div><div class="d">Checks code safety with AST analysis before anything runs.</div></div>
+        <div class="agent a3"><div class="t">Executor</div><div class="d">Runs it in a sandboxed subprocess with memory &amp; timeout limits.</div></div>
+        <div class="agent a4"><div class="t">Evaluator</div><div class="d">Compares results to expected output and flags discrepancies.</div></div>
+      </div>
+      <div class="loopflow">
+        Generate <span>→</span> Validate <span>→</span> Execute <span>→</span> Evaluate&nbsp;&nbsp;
+        <span class="ok">✓ save</span> &nbsp;·&nbsp; <span class="fb">✗ feedback → regenerate ↺</span>
+      </div>
+    </div>
+    <div class="brandtag">vergabepilot<span class="ai">.AI</span></div>
+    <div class="pagenum">05</div>
+  </section>
+
+  <!-- 6 PHASE 2 & 3 -->
+  <section class="slide">
+    <div class="pad">
+      <div class="kicker">Phase 2 &amp; 3 · Fallback and routing</div>
+      <div class="stitle">When code isn't enough — and paying only when needed</div>
+      <div class="cols2">
+        <div class="card">
+          <h3>Phase 2 — CUA Agent</h3>
+          <div class="tagline">Visual fallback</div>
+          <ul>
+            <li>A computer-use agent <b>navigates the portal like a human</b> with Playwright.</li>
+            <li>Handles dynamic pages where a generated scraper can't reach the documents.</li>
+            <li>Used as a fallback, not a default — it is the most expensive path.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Phase 3 — Cost-Aware Cascade</h3>
+          <div class="tagline">Cheapest viable strategy first</div>
+          <div class="cascade-mini">
+            <div class="cstage cs1">Cached scraper <small>~free</small></div>
+            <div class="cstage cs2">Deterministic template (DTVP/ZIP) <small>cheap</small></div>
+            <div class="cstage cs3">LLM-generated (Phase-1 loop) <small>AI</small></div>
+            <div class="cstage cs4">CUA agent <small>AI</small></div>
+            <div class="cstage cs5">Store → MinIO + Postgres <small>save</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="brandtag">vergabepilot<span class="ai">.AI</span></div>
+    <div class="pagenum">06</div>
+  </section>
+
+  <!-- 7 DEMO -->
+  <section class="slide" data-demo="1" style="background:#0a1020">
+    <div class="demowrap">
+      <div class="demobadge"><div class="k">Live Demo</div><div class="t">100 URLs · 4 workers</div></div>
+      <video id="demovid" src="demo_vergabepilot.mp4" muted loop playsinline controls
+             poster="demo_poster.png"></video>
+      <img class="vposter" src="demo_poster.png" alt="demo summary">
+    </div>
+    <div class="pagenum" style="color:#9aa7bd">07</div>
+  </section>
+
+  <!-- 8 RESULTS -->
+  <section class="slide">
+    <div class="pad">
+      <div class="kicker">Results · 100-URL benchmark</div>
+      <div class="stitle">97% success — for two cents</div>
+      <div class="stats">
+        <div class="stat"><div class="big green">97<span class="u">%</span></div><div class="lab">URLs scraped successfully (97/100; 3 had no documents)</div></div>
+        <div class="stat"><div class="big">$0.02</div><div class="lab">Total LLM cost for the whole run, with caching</div></div>
+        <div class="stat"><div class="big">5.8<span class="u">min</span></div><div class="lab">End-to-end (348 s) across 4 parallel workers</div></div>
+        <div class="stat"><div class="big">4<span class="u">/75</span></div><div class="lab">New vs. cached LLM calls — the cache does the work</div></div>
+      </div>
+      <div class="sub" style="font-size:19px; margin-top:8px">Single-shot regeneration without cache reached 87% at $0.53 — showing the value of the feedback loop and caching.</div>
+    </div>
+    <div class="brandtag">vergabepilot<span class="ai">.AI</span></div>
+    <div class="pagenum">08</div>
+  </section>
+
+  <!-- 9 BENCHMARK -->
+  <section class="slide">
+    <div class="pad">
+      <div class="kicker">Multi-model benchmarking</div>
+      <div class="stitle">The cheapest model won</div>
+      <table class="bm">
+        <tr><th>Rank</th><th>Model</th><th>Success</th><th>Latency</th><th>Cost/run</th><th>Grade</th></tr>
+        <tr class="best"><td>#1</td><td>Gemini 2.5 Flash Lite</td><td>83%</td><td>4.2 s</td><td>$0.0018</td><td><span class="gr A">A</span></td></tr>
+        <tr><td>#2</td><td>Gemini 2.5 Flash</td><td>83%</td><td>4.5 s</td><td>$0.0034</td><td><span class="gr A">A</span></td></tr>
+        <tr><td>#3</td><td>GPT-4o mini</td><td>67%</td><td>12.8 s</td><td>$0.0027</td><td><span class="gr B">B</span></td></tr>
+        <tr><td>#4</td><td>Claude Sonnet</td><td>67%</td><td>17.7 s</td><td>$0.0719</td><td><span class="gr B">B</span></td></tr>
+      </table>
+      <div class="bmtake"><b>10 models benchmarked.</b> The smallest, fastest and cheapest model extracted as well as the large ones — bigger and pricier did <b>not</b> mean better.</div>
+    </div>
+    <div class="brandtag">vergabepilot<span class="ai">.AI</span></div>
+    <div class="pagenum">09</div>
+  </section>
+
+  <!-- 10 ROADMAP -->
+  <section class="slide">
+    <div class="pad">
+      <div class="kicker">Status &amp; Roadmap</div>
+      <div class="stitle">Where we are</div>
+      <div class="road">
+        <div class="rstep"><span class="rdot"></span><div class="rt">Discovery</div><div class="rd">Research &amp; insights</div></div>
+        <div class="rstep"><span class="rdot"></span><div class="rt">Phase 1</div><div class="rd">Scraper loop + benchmarking</div></div>
+        <div class="rstep"><span class="rdot"></span><div class="rt">Phase 2</div><div class="rd">CUA agent live</div></div>
+        <div class="rstep"><span class="rdot"></span><div class="rt">Phase 3</div><div class="rd">Cascade pipeline + error injection</div></div>
+        <div class="rstep now"><span class="rdot"></span><div class="rt">Final</div><div class="rd">UI ↔ backend, server-side loading</div></div>
+      </div>
+      <div class="sub" style="margin-top:60px; font-size:23px"><b>Takeaway:</b> a self-improving generate-and-verify loop plus a cost-aware cascade turns fragmented procurement portals into reliable, near-zero-cost document discovery.</div>
+    </div>
+    <div class="brandtag">vergabepilot<span class="ai">.AI</span></div>
+    <div class="pagenum">10</div>
+  </section>
+
+  <!-- 11 TEAM / THANKS -->
+  <section class="slide team-grad">
+    <div class="pad" style="justify-content:center">
+      <div class="kicker" style="color:#a5f3fc">Our team</div>
+      <div class="thanks">Thank you — questions?</div>
+      <div style="display:flex; gap:60px; align-items:center; margin-top:30px">
+        <div class="leads">
+          <div class="lead"><img src="assets/lead_bartelt.png" alt="Bartelt"><div class="ln">Prof. Dr. Christian Bartelt</div><div class="lr">Project lead</div></div>
+          <div class="lead"><img src="assets/lead_kolthoff.png" alt="Kolthoff"><div class="ln">Kristian Kolthoff</div><div class="lr">Project lead</div></div>
+        </div>
+        <div class="members">
+          <b style="color:#fff">Team:</b><br>Maxi · Marwin · Fabian · Radu · Victor<br>Siddharth · Prakshal · Dhruvin · Utsav
+        </div>
+      </div>
+      <div class="logostrip" style="position:absolute; bottom:48px; right:76px">
+        <img src="assets/logo_ciconia_dark.png" class="tall" alt="CICONIA">
+        <img src="assets/logo_core.png" alt="CORE">
+        <img src="assets/logo_tuc.png" alt="TU Clausthal">
+        <img src="assets/logo_babes.png" alt="Babes-Bolyai">
+      </div>
+    </div>
+    <div class="pagenum" style="color:#bcd0ef">11</div>
+  </section>
+
+</div>
+
+<div id="bar"></div>
+<div id="hint">← / → navigate · F fullscreen</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  const stage=document.getElementById('stage'), bar=document.getElementById('bar');
+  const vid=document.getElementById('demovid');
+  function fit(){
+    const s=Math.min(window.innerWidth/1280, window.innerHeight/720);
+    slides.forEach(sl=>sl.style.transform=`scale(${s})`);
+  }
+  function show(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((sl,k)=>sl.classList.toggle('active',k===i));
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    if(vid){ if(slides[i].dataset.demo){ vid.currentTime=0; vid.play().catch(()=>{});} else { vid.pause(); } }
+  }
+  window.addEventListener('resize',fit);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){show(i+1);e.preventDefault();}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){show(i-1);}
+    else if(e.key==='Home'){show(0);} else if(e.key==='End'){show(slides.length-1);}
+    else if(e.key.toLowerCase()==='f'){ if(!document.fullscreenElement)document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+  });
+  stage.addEventListener('click',e=>{ if(e.target.tagName!=='VIDEO') show(i+1); });
+  fit(); show(0);
+</script>
+</body>
+</html>

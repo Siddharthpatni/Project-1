@@ -18,7 +18,7 @@ from app.phase1_llm_scraper.evaluator import load_dataset
 from app.phase1_llm_scraper.feedback_loop import run_feedback_loop
 from app.phase2_cua.orchestrator import run_agent
 from app.phase3_integration.pipeline import process_url
-from app.utils.logger import get_logger
+from app.utils.logger import bind_request_context, clear_request_context, get_logger
 from app.workers.celery_app import celery_app
 
 log = get_logger(__name__)
@@ -246,11 +246,17 @@ async def _process_items_async(db, job, items, force_model: str | None, force_st
         async with sem:
             # Each coroutine opens and closes its own DB session independently.
             item_db = SessionLocal()
+            # Bind a correlation context so every log line emitted while this URL
+            # is processed (here and deep inside the pipeline) carries the same
+            # job/item/trace identifiers. Cleared in finally so it never leaks to
+            # the next item handled by this worker.
+            bind_request_context(trace_id=f"{job_id}:{item_id}", job_id=job_id, item_id=item_id)
             try:
                 # Re-fetch item in the coroutine's own session
                 item = item_db.query(JobItem).filter(JobItem.id == item_id).first()
                 if item is None:
                     return 0.0
+                bind_request_context(domain=item.domain)
 
                 # Double-check: skip if another worker already completed this item
                 # (race condition in fan-out when the same item_id appears in two chunks)
@@ -272,6 +278,7 @@ async def _process_items_async(db, job, items, force_model: str | None, force_st
                 return 0.0
             finally:
                 item_db.close()
+                clear_request_context()
 
     # Fan out all items concurrently (bounded by sem)
     costs = await asyncio.gather(*(_process_one(item.id) for item in items))

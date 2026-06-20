@@ -156,6 +156,43 @@ def store_cua_hint(db: Session, domain: str, hint: str) -> None:
     log.info("phase3.registry.cua_hint_stored", domain=domain, hint_len=len(hint))
 
 
+def store_learned_route(db: Session, domain: str, route) -> None:
+    """Persist a replayable navigation route learned from a CUA-only success.
+
+    Called by the CUA route learner after the agent reached the documents when
+    every cheaper strategy failed. Creates a minimal stub row if the domain has
+    no template yet (mirrors store_cua_hint). ``route`` is a LearnedRoute.
+    """
+    tpl = db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first()
+    if tpl is None:
+        tpl = ScraperTemplate(
+            domain=domain,
+            code="# placeholder — CUA route learned before any scraper existed",
+            source="cua",
+        )
+        db.add(tpl)
+    tpl.learned_route = route.to_dict()
+    db.commit()
+    log.info(
+        "phase3.registry.learned_route_stored",
+        domain=domain, steps=len(route.steps), docs=len(route.document_links),
+    )
+
+
+def get_learned_route(db: Session, domain: str):
+    """Return the stored LearnedRoute for a domain, or None.
+
+    Returns None when no row exists or the column is empty/malformed — the
+    caller (LEARNED_ROUTE strategy) then fast-fails and the cascade continues.
+    """
+    from app.phase2_cua.route_learner import LearnedRoute  # noqa: PLC0415
+
+    tpl = db.query(ScraperTemplate).filter(ScraperTemplate.domain == domain).first()
+    if tpl is None or not tpl.learned_route:
+        return None
+    return LearnedRoute.from_dict(tpl.learned_route)
+
+
 def seed_from_disk(db: Session) -> int:
     """Load all scraper_<domain>.py files from the registry directory into the DB.
 

@@ -101,7 +101,7 @@ export default function TestsPage() {
   const selectedSuite = SUITES.find(s => s.value === suite);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="space-y-6">
       <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">
         <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
       </Link>

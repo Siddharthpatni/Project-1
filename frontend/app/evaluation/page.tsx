@@ -1,3 +1,23 @@
+/**
+ * Evaluation page — LLM benchmark results and live pipeline analytics.
+ *
+ * Two views (tabbed):
+ *
+ *   LLM Benchmark (Phase 1):
+ *     - Per-model comparison: success rate, avg iterations, avg cost, avg runtime
+ *     - Historical benchmark run list (trigger new runs from here)
+ *     - Source: GET /api/evaluation/summary + GET /api/evaluation/runs
+ *
+ *   Pipeline Analytics (Phase 3, real job data):
+ *     - By-strategy success rates with cost breakdown
+ *     - By-platform success rates (DTVP, NetServer, eVergabe, etc.)
+ *     - Top failure categories across all processed URLs
+ *     - Scraper registry health report (healthy / degraded / retiring)
+ *     - Source: GET /api/evaluation/pipeline + GET /api/evaluation/scraper-health
+ *
+ * The benchmark tab lets you trigger a new Phase 1 LLM benchmark run via
+ * POST /api/evaluation/run, which queues a Celery task and returns a task_id.
+ */
 "use client";
 
 import useSWR from "swr";
@@ -29,7 +49,9 @@ const AVAILABLE_MODELS = [
 const STRATEGY_COLORS: Record<string, string> = {
   existing_scraper:       "#6366f1",
   deterministic_template: "#10b981",
+  adaptive_universal:     "#0ea5e9",
   llm_generated_scraper:  "#8b5cf6",
+  learned_route:          "#14b8a6",
   computer_use_agent:     "#ec4899",
   manual_scraper:         "#3b82f6",
   none:                   "#f43f5e",
@@ -347,7 +369,7 @@ function LLMBenchmarkTab() {
     <div className="space-y-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Run trigger */}
-        <div className="bg-white border-2 border-dashed border-indigo-200 rounded-3xl p-6 space-y-6">
+        <div className="bg-white border-2 border-dashed border-indigo-200 rounded-2xl p-6 space-y-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-2xl">
               <Play className="w-6 h-6 text-indigo-600" />
@@ -406,7 +428,7 @@ function LLMBenchmarkTab() {
         </div>
 
         {/* Success rate chart */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 flex flex-col min-h-[320px] shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col min-h-[320px] shadow-sm">
           <h2 className="font-bold text-slate-800 mb-1">Accuracy by Model</h2>
           <p className="text-xs text-slate-400 mb-4">LLM scraper generation success rate.</p>
           {(!summary || summary.length === 0) ? (
@@ -511,7 +533,7 @@ export default function EvaluationPage() {
   const [tab, setTab] = useState<"pipeline" | "llm">("pipeline");
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="space-y-8">
       <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all">
         <ArrowLeft className="w-3.5 h-3.5" />Back to Dashboard
       </Link>

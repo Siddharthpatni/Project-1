@@ -1,5 +1,29 @@
 """
-Admin / ops endpoints — stats, costs, error reports.
+Admin and operations endpoints for monitoring, diagnostics, and system control.
+
+These endpoints are intended for internal ops tooling, not end-user clients.
+No authentication is enforced here — deploy behind VPN or with a reverse-proxy
+auth layer (e.g. Nginx basic-auth) in production.
+
+Endpoints
+─────────
+GET  /api/admin/stats                    → aggregated KPIs: success rate, cost, strategy distribution
+GET  /api/admin/errors                   → recent failed items with error category + severity
+POST /api/admin/reset                    → danger: wipe all jobs, items, scrapers from DB
+POST /api/admin/reset-stale-jobs         → mark RUNNING/PENDING jobs as FAILED (post-crash recovery)
+GET  /api/admin/system-check             → live health check: DB, Redis, MinIO, OpenRouter, Celery workers
+GET  /api/admin/circuit-breakers         → per-domain circuit breaker state (open/half-open/closed)
+DELETE /api/admin/circuit-breakers/{d}  → manually close a circuit breaker for a domain
+GET  /api/admin/verified-urls            → pre-verified URL database (best known URL per domain)
+GET  /api/admin/url-intelligence         → classify a single URL before submitting it
+POST /api/admin/url-intelligence/batch   → pre-classify up to 50K URLs to estimate success before a run
+
+Error category system
+─────────────────────
+All failed items have their error message classified into one of ~15 error categories
+(defined in `core.security.classify_error`) so ops can distinguish transient failures
+(network, rate-limit) from systematic ones (auth-gated portals, blocked URLs).
+Severity levels: info, warning, error, critical.
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
@@ -27,7 +51,9 @@ _STRATEGY_LABELS: dict[str, str] = {
     Strategy.MANUAL.value: "Manual Scraper",
     Strategy.EXISTING.value: "Existing Scraper",
     Strategy.DETERMINISTIC.value: "Deterministic DTVP",
+    Strategy.ADAPTIVE.value: "Universal Adaptive",
     Strategy.LLM_GENERATED.value: "LLM Generated",
+    Strategy.LEARNED_ROUTE.value: "Learned Route",
     Strategy.CUA.value: "CUA Agent",
     Strategy.NONE.value: "Failure / None",
 }
@@ -98,6 +124,19 @@ def stats(db: Session = Depends(get_db)):
         cat = classify_error(msg)
         error_categories[cat] = error_categories.get(cat, 0) + 1
 
+    # Coarse outcome-bucket breakdown — collapses the detailed error categories
+    # into a handful of human buckets, and counts how many items need a human.
+    from app.phase3_integration.outcomes import (  # noqa: PLC0415
+        BUCKET_LABELS, NEEDS_MANUAL, bucket_for,
+    )
+    outcome_buckets: dict[str, int] = {}
+    for cat, n in error_categories.items():
+        b = bucket_for(cat)
+        outcome_buckets[b] = outcome_buckets.get(b, 0) + n
+    if succeeded:
+        outcome_buckets["success"] = succeeded
+    needs_manual_count = sum(n for b, n in outcome_buckets.items() if b in NEEDS_MANUAL)
+
     return {
         "jobs": total_jobs,
         "items": total_items,
@@ -113,6 +152,9 @@ def stats(db: Session = Depends(get_db)):
         "error_category_labels": {
             k: v["label"] for k, v in _ERROR_DISPLAY.items()
         },
+        "outcome_buckets": outcome_buckets,
+        "outcome_bucket_labels": BUCKET_LABELS,
+        "needs_manual_count": needs_manual_count,
     }
 
 

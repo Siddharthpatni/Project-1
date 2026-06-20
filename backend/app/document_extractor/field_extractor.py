@@ -13,6 +13,42 @@ from typing import Optional
 
 @dataclass
 class TenderFields:
+    """
+    Structured fields extracted from a German public procurement tender.
+
+    Field naming follows German administrative terminology so the output
+    is directly usable by German-speaking procurement teams without translation.
+    All fields are optional — extraction quality depends on document completeness.
+
+    Field glossary:
+      vergabenummer      — Tender reference number (e.g. "2024-VgV-042")
+      aktenzeichen       — Internal file/case reference number
+      ted_reference      — EU TED Official Journal reference (e.g. "2024/S 123-456789")
+      auftraggeber       — Contracting authority (the buyer organisation)
+      vergabestelle      — Procurement office within the authority
+      titel              — Title / subject of contract
+      leistungsbeschreibung — Brief description of what is being procured
+      vergabeverfahren   — Procurement procedure type
+                           (Offenes Verfahren / Verhandlungsverfahren / VgV / UVgO ...)
+      auftragsart        — Contract type (Lieferauftrag / Dienstleistungsauftrag / Bauauftrag)
+      veroeffentlichungsdatum — Publication date
+      abgabefrist        — Bid/tender submission deadline
+      bindefrist         — Bid validity period (how long bidders must hold their offer)
+      cpv_codes          — EU CPV codes (Common Procurement Vocabulary classification)
+      nuts_codes         — NUTS regional codes (e.g. "DE212" = Munich)
+      auftragswert       — Estimated contract value (as a string — may include range)
+      waehrung           — Currency (almost always EUR)
+      leistungsort       — Place of performance
+      laufzeit           — Contract duration / performance period
+      ansprechpartner    — Contact person name at the contracting authority
+      email / telefon / fax / website — Contact details
+      zuschlagskriterien — Award criteria (e.g. "Preis 60%, Qualität 40%")
+      eignungskriterien  — Eligibility/suitability requirements for bidders
+      lose               — Lots if the contract is divided (Loos descriptions)
+      additional_notes   — Free-text sentences extracted but not classifiable above
+      zusammenfassung    — LLM-generated executive summary paragraph (filled by llm_enhancer)
+      kernpunkte         — LLM-generated key bullet points (filled by llm_enhancer)
+    """
     # Reference numbers
     vergabenummer: Optional[str] = None
     aktenzeichen: Optional[str] = None
@@ -24,7 +60,7 @@ class TenderFields:
 
     # Tender description
     titel: Optional[str] = None
-    leistungsbeschreibung: Optional[str] = None  # brief description of services
+    leistungsbeschreibung: Optional[str] = None
     vergabeverfahren: Optional[str] = None
     auftragsart: Optional[str] = None
 
@@ -59,10 +95,10 @@ class TenderFields:
     # Lots
     lose: list[str] = field(default_factory=list)
 
-    # Raw sentences that couldn't be classified
+    # Raw sentences that couldn't be classified into a named field
     additional_notes: list[str] = field(default_factory=list)
 
-    # Generated summary (filled by llm_enhancer)
+    # Generated summary — populated by llm_enhancer after regex extraction
     zusammenfassung: Optional[str] = None        # executive summary paragraph
     kernpunkte: list[str] = field(default_factory=list)  # key bullet points
 

@@ -1,3 +1,17 @@
+/**
+ * Jobs list page — paginated table of all submitted scraping jobs.
+ *
+ * Each row shows the job's status, number of URLs processed, success count,
+ * LLM cost, and the first domain (+ overflow count). Clicking a row navigates
+ * to the job detail page for per-URL breakdown and document downloads.
+ *
+ * Features:
+ *   - Status filter chips (All / Running / Success / Partial / Failed)
+ *   - Live updates: auto-refreshes every 5s when any job is running
+ *   - Delete job with confirmation prompt
+ *
+ * Data source: GET /api/jobs?limit=50 (newest first)
+ */
 "use client";
 
 import useSWR from "swr";
@@ -36,6 +50,36 @@ function ProgressPill({ completed, total }: { completed: number; total: number }
         {completed}/{total}
       </span>
     </div>
+  );
+}
+
+/** Mobile row — a tappable card shown instead of the table on small screens. */
+function JobCard({ job }: { job: Job }) {
+  const domains = job.domains ?? [];
+  const active = job.status === "pending" || job.status === "running";
+  return (
+    <Link
+      href={`/jobs/${job.id}`}
+      className="card card-hover block p-4 active:scale-[0.99] transition-transform"
+      aria-label={`Open job ${domains[0] ?? job.id.slice(0, 8)}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-sm truncate" style={{ color: "var(--fg)" }} title={domains.join(", ")}>
+            {domains.length ? domains.slice(0, 2).join(", ") : `${job.id.slice(0, 12)}…`}
+            {domains.length > 2 && <span style={{ color: "var(--fg-subtle)" }}> +{domains.length - 2}</span>}
+          </p>
+          <p className="font-mono text-[10px] mt-0.5" style={{ color: "var(--fg-subtle)" }}>{job.id.slice(0, 8)}…</p>
+        </div>
+        <StatusBadge status={job.status} />
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3">
+        {active
+          ? <ProgressPill completed={job.completed} total={job.total_urls} />
+          : <span className="font-mono text-xs" style={{ color: "var(--fg-subtle)" }}>{job.completed}/{job.total_urls} URLs</span>}
+        <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>${(job.cost_usd ?? 0).toFixed(4)}</span>
+      </div>
+    </Link>
   );
 }
 
@@ -126,8 +170,26 @@ export default function JobsPage() {
         </span>
       </div>
 
-      {/* Table */}
-      <div className="card overflow-hidden">
+      {/* Mobile: stacked cards (no horizontal scrolling on phones) */}
+      <div className="md:hidden space-y-3">
+        {isLoading && Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="card p-4"><Skeleton height="3.25rem" /></div>
+        ))}
+        {!isLoading && filtered.length === 0 && (
+          <Empty
+            icon={<FileStack className="w-10 h-10" />}
+            title={search ? "No jobs match your search" : "No jobs yet"}
+            description={search ? "Try a different search term." : "Submit a URL on the dashboard to start scraping."}
+            action={!search && (
+              <Link href="/" className="btn btn-primary btn-sm"><Zap className="w-3.5 h-3.5" /> Submit Job</Link>
+            )}
+          />
+        )}
+        {!isLoading && filtered.map((job) => <JobCard key={job.id} job={job} />)}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="data-table">
             <thead>

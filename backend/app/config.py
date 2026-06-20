@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     enable_fallback_cua: bool = True
     enable_route_learning: bool = False
     route_learning_max_clicks: int = 2
+    # When the CUA succeeds after every cheaper strategy failed, learn a
+    # replayable route and persist it so the LEARNED_ROUTE strategy can serve
+    # future visits to the domain cheaply (no LLM, no vision, no full CUA).
+    enable_cua_route_learning: bool = True
     versioning_check_interval_hours: int = 24
 
     # --- Parallelism & Scalability ---
@@ -80,6 +84,8 @@ class Settings(BaseSettings):
 
     # --- Security ---
     secret_key: str = ""
+    # Per-IP request cap for the public (unauthenticated) tender directory, per minute.
+    public_rate_limit_per_minute: int = 60
 
     # --- Misc ---
     log_level: str = "INFO"

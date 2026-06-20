@@ -1,3 +1,23 @@
+/**
+ * CUA Agent Runs page — trigger and inspect Phase 2 computer-use agent sessions.
+ *
+ * The Computer-Use Agent (CUA) is the last-resort strategy in the cascade:
+ * a vision-capable LLM (e.g. GPT-4o) drives a real Chromium browser to navigate
+ * procurement portals and click download buttons — used when all other strategies fail.
+ *
+ * Features:
+ *   - Run form: submit a URL + agent type + max steps to trigger a CUA session
+ *   - Run history table: past sessions with success/failure, cost, step count
+ *   - Session detail: expand to see the full action trace from each run
+ *
+ * Agent types registered in the backend orchestrator:
+ *   playwright_cua — primary, with CRITICAL RULES prompt (used in production cascade)
+ *   browser_use    — secondary, simpler prompt (for benchmarking only)
+ *
+ * Data sources:
+ *   GET  /api/agents          → list historical CUA runs
+ *   POST /api/agents/run      → trigger a new CUA session (async, returns run_id)
+ */
 "use client";
 
 import { useState } from "react";
@@ -46,7 +66,7 @@ export default function AgentsPage() {
     : 0;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="space-y-8">
       {/* ── Navigation ── */}
       <Link 
         href="/" 
@@ -100,7 +120,7 @@ export default function AgentsPage() {
       </div>
 
       {/* ── Trigger Run Form ── */}
-      <div className="bg-white border-2 border-dashed border-indigo-200 rounded-3xl p-6 md:p-8 bg-gradient-to-br from-indigo-50/15 via-white to-white space-y-6">
+      <div className="bg-white border-2 border-dashed border-indigo-200 rounded-2xl p-6 md:p-8 bg-gradient-to-br from-indigo-50/15 via-white to-white space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-2xl">
             <Sparkles className="w-6 h-6 text-indigo-600" />
@@ -189,7 +209,7 @@ export default function AgentsPage() {
                 key={preset.label}
                 type="button"
                 onClick={() => setUrl(preset.url)}
-                className="text-xs px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-full font-bold shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="text-xs px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-full font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
                 disabled={busy}
               >
                 {preset.label}

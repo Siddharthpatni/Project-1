@@ -25,6 +25,10 @@ x-worker-common: &worker-common
     JOB_CHUNK_SIZE: ${JOB_CHUNK_SIZE:-50}
     LLM_GLOBAL_CONCURRENCY: ${LLM_GLOBAL_CONCURRENCY:-8}
     DOMAIN_LLM_LOCK_TTL: ${DOMAIN_LLM_LOCK_TTL:-360}
+    # Cascade feature flags (workers run the pipeline, so these matter here)
+    ENABLE_FALLBACK_CUA: ${ENABLE_FALLBACK_CUA:-true}
+    ENABLE_CUA_ROUTE_LEARNING: ${ENABLE_CUA_ROUTE_LEARNING:-true}
+    ENABLE_ROUTE_LEARNING: ${ENABLE_ROUTE_LEARNING:-false}
     ANONYMIZED_TELEMETRY: "false"
     BROWSER_USE_LOGGING_LEVEL: "warning"
   depends_on:

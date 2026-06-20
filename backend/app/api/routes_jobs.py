@@ -1,6 +1,12 @@
 """
-Job submission and retrieval.
+Job submission and retrieval API — the primary interface for the scraping pipeline.
 
+Every scraping operation starts here: a client submits a list of URLs, this module
+creates the Job + JobItem DB records, and kicks off a Celery task that fans out
+to the Phase 3 cascade pipeline.
+
+Endpoints:
+──────────
 POST /api/jobs                         → create a job (async Celery task kicked off)
 POST /api/jobs/smart-domain            → smart domain-aware batch: 1 URL/domain, auto-fallback to backup URL on failure
 POST /api/jobs/upload                  → upload CSV/Excel containing URL list
@@ -8,9 +14,19 @@ GET  /api/jobs                         → list recent jobs
 GET  /api/jobs/{id}                    → full job detail with items
 GET  /api/jobs/{id}/documents          → flat list of downloaded documents
 GET  /api/jobs/{id}/download-all       → download all docs as ZIP
-GET  /api/jobs/local-files             → list locally stored files
+GET  /api/jobs/{id}/error-report       → per-attempt error breakdown (JSON or CSV)
+GET  /api/jobs/{id}/diagnostics        → full domain-level failure analysis with audit trail
+GET  /api/jobs/local-files             → list locally stored files (when S3 unavailable)
 POST /api/jobs/{id}/items/{item_id}/retry → retry a single failed item
-DELETE /api/jobs/{id}                  → cancel / delete
+POST /api/jobs/{id}/stop               → cancel a running/pending job
+DELETE /api/jobs/{id}                  → delete job and all its records
+
+Job lifecycle:
+──────────────
+  PENDING → RUNNING (worker picks it up) → SUCCESS / PARTIAL / FAILED
+  PARTIAL: some URLs succeeded, some failed
+  Jobs with > JOB_CHUNK_SIZE URLs are fanned out across multiple Celery workers
+  for horizontal scale-out. Items already in SUCCESS state are skipped on retry.
 """
 import io
 import zipfile
@@ -41,12 +57,24 @@ router = APIRouter()
 
 @router.post("", response_model=JobRead, status_code=201)
 def create_job(payload: JobCreateRequest, db: Session = Depends(get_db)):
+    """
+    Create a new scraping job and immediately queue it on the Celery task queue.
+
+    The response is returned synchronously after DB commit — the actual scraping
+    runs asynchronously in a Celery worker. Poll GET /api/jobs/{id} for progress.
+
+    Optional overrides:
+      force_strategy: skip the cascade and use exactly one strategy (e.g. "llm_generated_scraper")
+      force_model:    override the LLM model used for generation (e.g. "anthropic/claude-3-haiku")
+    """
     job = Job(
         submitted_by=payload.submitted_by,
         total_urls=len(payload.urls),
         status=JobStatus.PENDING.value,
     )
     db.add(job)
+    # flush() assigns the DB-generated ID without committing so we can create
+    # JobItems referencing job.id in the same transaction.
     db.flush()
 
     for url in payload.urls:
@@ -61,6 +89,7 @@ def create_job(payload: JobCreateRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(job)
 
+    # Kick off the Celery task — returns immediately, task runs in background.
     process_job_task.delay(
         job.id,
         force_strategy=payload.force_strategy.value if payload.force_strategy else None,
@@ -272,6 +301,46 @@ def list_local_files(db: Session = Depends(get_db)):
                         download_url=f"/jobs/{job_id}/documents-by-path/{item_id}/{f.name}",
                     ))
     return result
+
+
+@router.get("/needs-manual")
+def needs_manual_queue(limit: int = 200, job_id: str | None = None, db: Session = Depends(get_db)):
+    """Items whose only path forward is a human stepping in (login / CAPTCHA).
+
+    These are not silent failures — the cascade correctly determined that no
+    automated strategy can succeed without credentials or solving a bot check.
+    Surfacing them lets an operator act (log in, then retry) instead of the URL
+    quietly counting as "failed".
+    """
+    from app.phase3_integration.outcomes import (  # noqa: PLC0415
+        NEEDS_MANUAL_CATEGORIES, SUGGESTED_ACTIONS, BUCKET_LABELS, bucket_for,
+    )
+
+    q = (
+        db.query(JobItem)
+        .filter(JobItem.status == JobStatus.FAILED.value)
+        .filter(JobItem.failure_category.in_(tuple(NEEDS_MANUAL_CATEGORIES)))
+    )
+    if job_id:
+        q = q.filter(JobItem.job_id == job_id)
+    items = q.order_by(JobItem.id).limit(limit).all()
+
+    rows = []
+    for it in items:
+        bucket = bucket_for(it.failure_category)
+        rows.append({
+            "job_id":           it.job_id,
+            "item_id":          it.id,
+            "url":              it.url,
+            "domain":           it.domain,
+            "failure_category": it.failure_category,
+            "bucket":           bucket,
+            "bucket_label":     BUCKET_LABELS.get(bucket, bucket),
+            "reason":           (it.error_message or "")[:300],
+            "suggested_action": SUGGESTED_ACTIONS.get(bucket, ""),
+            "retry_url":        f"/jobs/{it.job_id}/items/{it.id}/retry",
+        })
+    return {"total": len(rows), "items": rows}
 
 
 @router.get("/{job_id}", response_model=JobRead)
