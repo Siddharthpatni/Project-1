@@ -79,11 +79,22 @@ Copy `.env.example` to `.env` and fill in all values. Never commit `.env` to ver
 
 | Variable | Default | Description |
 |---|---|---|
-| `JOB_CONCURRENCY` | `8` | Parallel URLs per chunk worker |
+| `JOB_CONCURRENCY` | `8` | Parallel URLs processed per chunk task (asyncio) |
 | `JOB_CHUNK_SIZE` | `50` | URLs per Celery chunk task |
-| `LLM_GLOBAL_CONCURRENCY` | `8` | Max simultaneous LLM API calls |
-| `DOMAIN_LLM_LOCK_TTL` | `360` | Seconds to hold per-domain Redis lock |
+| `LLM_GLOBAL_CONCURRENCY` | `8` (compose) / `2` (code default) | Max simultaneous LLM API calls per worker |
+| `DOMAIN_LLM_LOCK_TTL` | `360` | Seconds to hold the per-domain Redis dedup lock |
 | `SANDBOX_TIMEOUT_SECONDS` | `45` | Max sandbox execution time |
+| `SANDBOX_MEMORY_MB` | `512` | Sandbox memory ceiling |
+
+### Cascade Feature Flags
+
+These are read by the **workers** (which run the pipeline), so set them in the worker environment.
+
+| Variable | Default | Description |
+|---|---|---|
+| `ENABLE_FALLBACK_CUA` | `true` | Allow the CUA (Strategy 6) in the cascade |
+| `ENABLE_CUA_ROUTE_LEARNING` | `true` | Learn a replayable route after a CUA-only success (powers Strategy 5) |
+| `ENABLE_ROUTE_LEARNING` | `false` | Pre-trace the click path before LLM generation (adds 20–30 s/URL) |
 
 ### Security
 
@@ -91,6 +102,7 @@ Copy `.env.example` to `.env` and fill in all values. Never commit `.env` to ver
 |---|---|---|
 | `VERGABEPILOT_ENV` | `development` | Set to `production` for hard-fail on insecure defaults |
 | `ALLOWED_ORIGINS` | `http://localhost:3000` | CORS allowed origins (comma-separated) |
+| `PUBLIC_RATE_LIMIT_PER_MINUTE` | `60` | Per-IP cap on the public tender directory |
 
 ---
 
@@ -139,18 +151,20 @@ docker compose up -d api frontend
 
 ## 4. Scaling Workers
 
-The `worker-chunks` pool is the main throughput bottleneck. Scale it to handle more URLs concurrently:
+The `worker-chunks` pool is the main throughput bottleneck. Concurrent URLs = `replicas × Celery concurrency (2) × JOB_CONCURRENCY (8)`.
 
 ```bash
-# Default: 2 replicas × 16 = 32 simultaneous URLs
+# Default: 2 replicas × 2 × 8 = ~32 concurrent URLs
 docker compose up --scale worker-chunks=2 -d
 
-# 2× throughput: 4 replicas × 16 = 64 simultaneous URLs
+# ~2× throughput: 4 replicas → ~64 concurrent URLs
 docker compose up --scale worker-chunks=4 -d
 
-# Maximum recommended: 8 replicas × 16 = 128 simultaneous URLs
+# ~4× throughput: 8 replicas → ~128 concurrent URLs
 docker compose up --scale worker-chunks=8 -d
 ```
+
+Jobs of any size still work at the default scale — a 10,000-URL job is split into chunks of `JOB_CHUNK_SIZE` and streamed through the fixed worker pool; chunk tasks skip already-`SUCCESS` items on retry (resumability).
 
 **Memory per replica:** ~512 MB base + up to 512 MB per sandbox execution.
 
@@ -158,13 +172,13 @@ docker compose up --scale worker-chunks=8 -d
 
 ### Tuning `JOB_CONCURRENCY`
 
-`JOB_CONCURRENCY` controls the asyncio concurrency within each chunk worker (how many URLs it processes in parallel within one Celery task).
+`JOB_CONCURRENCY` controls the asyncio concurrency within each chunk task (how many URLs it processes in parallel inside one Celery task).
 
 | Setting | Best for |
 |---|---|
-| `4–8` | Light portals, fast responses |
-| `16` (default) | Mixed workload |
-| `32` | Mostly deterministic/cached (low browser usage) |
+| `4` | Heavy browser/CUA-bound workloads |
+| `8` (default) | Mixed workload |
+| `16–32` | Mostly deterministic/cached (low browser usage) |
 
 ---
 
@@ -249,11 +263,15 @@ scrape_configs:
 
 | Metric | Alert condition |
 |---|---|
-| `vergabepilot_active_jobs` | > 10 for > 30 minutes |
 | `vergabepilot_scrape_total{status="failed"}` rate | > 50% |
+| `vergabepilot_circuit_breaker_events_total{event="trip"}` rate | sustained spike (portals down/blocking) |
+| `vergabepilot_rate_limit_hits_total` rate | high (workers throttled by limiter) |
+| `vergabepilot_http_retries_total` rate | high (flaky upstreams) |
 | PostgreSQL connections | > 35 (near pool limit) |
 | MinIO disk usage | > 80% |
 | Redis memory | > 400 MB |
+
+> Three Celery Beat jobs keep long runs healthy: `crash_recovery` (every 10 min, rescues zombie jobs), `check_document_versions` (every `VERSIONING_CHECK_INTERVAL_HOURS`, default 24 h), and `cleanup_stale_downloads` (hourly, removes download dirs > 24 h old to prevent disk exhaustion on 10K-URL runs).
 
 ### Log Aggregation
 

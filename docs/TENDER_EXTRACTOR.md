@@ -1,6 +1,16 @@
-# Tender Extractor — Offline Document Extraction Module
+# Tender Extractor — Document Extraction Module
 
-The `tender_extractor/` package is a **fully self-contained, offline, rule-based** Python library for extracting structured procurement fields from tender documents. It runs with zero LLM calls, zero internet access, and zero external AI services — entirely deterministic and reproducible.
+> **Status:** The standalone `tender_extractor/` package is now archived under
+> [`_archive/tender_extractor/`](../_archive/tender_extractor/). Its design lives
+> on inside the **active** in-process engine at
+> [`backend/app/document_extractor/`](../backend/app/document_extractor/), which
+> runs automatically after every successful download and is exposed through the
+> [`/api/extraction`](API.md#7-extraction--api) endpoints. Both share the same
+> rule-based approach and the same 22 procurement fields; the active engine adds
+> an *optional* Gemini field-boost and persists results to PostgreSQL
+> (`ExtractionRecord`). This document describes the rule-based design common to both.
+
+The extractor is a **rule-based, deterministic** pipeline for pulling structured procurement fields from tender documents. The offline library runs with zero LLM calls, zero internet access, and zero external AI services — entirely deterministic and reproducible; the in-process engine layers an optional LLM field-boost on top.
 
 ## Table of Contents
 1. [Overview](#1-overview)

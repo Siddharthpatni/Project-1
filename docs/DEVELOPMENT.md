@@ -85,26 +85,27 @@ pytest tests/ --cov=app --cov-report=term-missing
 pytest tests/ -v --ignore=tests/test_phase2.py
 ```
 
-**Current test suite:** 95 tests across 7 files
+**Current test suite:** **225 tests collected** across 18 files (`pytest --collect-only -q`). Key files:
 
-| File | Tests | Coverage |
-|---|---|---|
-| `test_document_validator.py` | 25 | Document validation + magic bytes |
-| `test_phase1.py` | 7 | LLM scraper generation + sandbox |
-| `test_phase2.py` | 4 | CUA agent action space |
-| `test_phase3.py` | 8 | Cascade pipeline + strategy routing |
-| `test_platform_classifier.py` | 22 | Portal detection + URL classification |
-| `test_route_and_deterministic.py` | 15 | Route learning + direct download |
-| `test_zip_expansion.py` | 14 | ZIP extraction + bomb protection |
+| File | Covers |
+|---|---|
+| `test_document_validator.py` | Document validation + magic bytes |
+| `test_platform_classifier.py` | Portal detection + URL classification |
+| `test_directory.py` | Public tender directory (visibility, ordering, field whitelist) |
+| `test_route_and_deterministic.py` | Route learning + direct download |
+| `test_zip_expansion.py` | ZIP extraction + bomb protection |
+| `test_cua_route_learner.py` | Learn / replay CUA routes (Strategy 5) |
+| `test_adaptive_scraper.py` | Universal heuristic scraper (Strategy 3) |
+| `test_phase3.py` | Cascade pipeline + strategy routing |
+| `test_http_client.py` | Resilient HTTP retry + backoff |
+| `test_web_harvest.py` | Multilingual document harvesting |
+| `test_global_coverage.py` | International URL types across continents |
+| `test_outcomes.py` | Honest outcome buckets + needs-manual |
+| `test_ratelimit.py` | Per-IP API rate limiter |
+| `test_logger_context.py` | structlog correlation IDs |
+| `test_phase1.py` / `test_phase2.py` | LLM generation / CUA agent |
 
-### Tender Extractor Tests (separate module)
-
-```bash
-cd tender_extractor
-
-pytest tests/ -v
-# 28 tests: date parser, value parser, field parser, rule summarizer, pipeline
-```
+> The standalone `tender_extractor/` library is now archived under `_archive/`. The active extraction engine is `backend/app/document_extractor/`, exercised through the backend suite and the `/api/extraction` endpoints.
 
 ### Frontend Type Check + Lint
 
@@ -355,7 +356,7 @@ The GitHub Actions pipeline at `.github/workflows/ci.yml` runs on every push and
 
 ```mermaid
 flowchart LR
-    PUSH[git push] --> LINT[1. Backend Tests<br/>pytest 95 tests]
+    PUSH[git push] --> LINT[1. Backend Tests<br/>pytest 225 tests]
     LINT --> FE[2. Frontend Check<br/>tsc + eslint + build]
     FE --> SEC[3. Security Scan<br/>pip-audit + npm audit]
     SEC --> DOCKER[4. Docker Build<br/>backend + frontend images]

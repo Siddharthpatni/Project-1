@@ -1,5 +1,34 @@
 # Vergabepilot.AI — Release Notes
 
+## v0.2.0 — Global Coverage, Scale & Honest Reporting (June 2026)
+
+A major evolution from the 5-strategy German-focused cascade into a globally-aware, scale-hardened system that fails honestly when it must.
+
+### Highlights
+
+**7-Strategy Cascade** — Two new strategies join the loop: **Adaptive** (`adaptive_universal`), a free country/language-agnostic heuristic scraper that runs before any paid LLM step, and **Learned Route** (`learned_route`), which replays a navigation route the CUA previously proved works — cheap Playwright, no LLM or vision. Full order: `EXISTING → DETERMINISTIC → ADAPTIVE → LLM_GENERATED → LEARNED_ROUTE → CUA → MANUAL`, with the last two injected automatically at the right point.
+
+**URL Intelligence — 30 portal types across every continent** — A no-HTTP pre-classifier (`url_intelligence.py`) routes each URL to the cheapest viable strategy order: German/DTVP, EU (TED, UK, FR, PL, ES, PT, NL, BE, AT, CH, IT, IE, Nordics, Eastern Europe), Americas (US SAM, Canada, LATAM), Asia (India GeM + more), Africa, and Oceania (AusTender, NZ GETS). Auth-gated portals skip the LLM entirely.
+
+**Built for 1,000+ URL jobs (designed to 10,000+)** — Chunked fan-out with per-domain **circuit breaker** and **rate limiter** (Redis), a **domain LLM dedup lock** + global semaphore, resilient HTTP retry/backoff with jitter, job resumability (skip already-succeeded items on retry), worker recycling, and hourly disk cleanup. structlog correlation IDs (`job:item`) thread the whole lifecycle.
+
+**Honest Failure Reporting** — The ~27 fine-grained failure categories collapse into 8 plain-English **outcome buckets**; the two a human can fix (login required, CAPTCHA) surface in a **"Needs manual action"** queue (`GET /api/jobs/needs-manual`) with a suggested next step. `/api/admin/stats` returns the bucket breakdown.
+
+**Public Tender Directory** — A read-only, per-IP rate-limited `/api/directory` (and `/directory` UI page) browses currently-open tenders grouped by portal, exposing only a whitelist of tender-facing fields. Backed by denormalized `JobItem` columns (`tender_title`, `tender_reference`, `deadline`) and a composite index.
+
+**Auto-orchestration & multi-country pipeline** — The full pipeline auto-runs end to end; international URL detection works for any region; deterministic + adaptive paths keep most public portals free.
+
+### New metrics & observability
+HTTP retries, circuit-breaker events, and rate-limit hits are now exported at `/metrics`, alongside per-strategy scrape totals and durations.
+
+### Migrations
+`add_learned_route` (CUA route column) and `add_tender_directory_fields` (directory projection + index), applied automatically on startup.
+
+### Tests
+Backend suite grown to **225 tests** (URL intelligence, adaptive scraper, CUA route learner, directory, outcomes, HTTP client, rate limiter, logger context, global coverage).
+
+---
+
 ## v0.1.0 — Agentic Cascade Pipeline (May 2026)
 
 First production-ready release of Vergabepilot.AI, an autonomous agentic system for scraping and downloading public procurement (tender) documents across fragmented German and EU portals.

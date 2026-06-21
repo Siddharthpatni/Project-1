@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Autonomous Agentic AI for Public Procurement Document Extraction**
+**Autonomous Agentic AI for Public Procurement Document Extraction — at any scale, in any country**
 
 *SoSe 2026 · CORE Research Group · Ciconia Systems GmbH*
 
@@ -11,19 +11,22 @@
 ![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-225%20passing-success)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 </div>
 
 ---
 
-Vergabepilot.AI automates the scraping and downloading of public procurement tender documents across thousands of fragmented German and EU portals. Instead of brittle manual scrapers it uses an intelligent **Agentic Cascade Pipeline** — 5 strategies tried in order, stopping the moment one succeeds.
+Vergabepilot.AI automates scraping and downloading of public-procurement tender documents across thousands of fragmented portals — German, EU, and **30+ portal families across every continent**. Instead of brittle hand-written scrapers it runs an intelligent **Agentic Cascade Pipeline**: a chain of 7 strategies tried cheapest-first, stopping the moment one succeeds, learning from every success, and reporting an **honest, human-readable reason** whenever a URL genuinely cannot be scraped (login wall, CAPTCHA, expired, unreachable).
 
 ```
-Cached → Deterministic → LLM Generated → CUA Agent → Manual Fallback
-  ↓ ms       ↓ seconds        ↓ 10-45s       ↓ 30-120s     ↓ 5-45s
-  free         free           ~$0.00001       vision LLM    pre-written
+Cached → Deterministic → Adaptive → LLM Generated → Learned Route → CUA Agent → Manual
+ ↓ ms      ↓ 1-50s        ↓ free      ↓ 10-45s        ↓ cheap          ↓ 30-120s    ↓ 5-45s
+ free        free          free       ~$0.00001       Playwright       vision LLM    pre-written
 ```
+
+A URL pre-classifier routes each URL to the **optimal** strategy order for its portal type, so auth-gated portals skip the expensive LLM step entirely and Satellite/DTVP URLs go straight to a free direct download. The whole thing is built to ingest **1,000+ URLs per job (designed to 10,000+)** without falling over.
 
 ---
 
@@ -32,7 +35,7 @@ Cached → Deterministic → LLM Generated → CUA Agent → Manual Fallback
 <table>
   <tr>
     <td align="center"><img src="docs/screenshots/dashboard_main.png" alt="Dashboard" width="420"/><br/><sub><b>Live Dashboard — KPIs + Strategy Analytics</b></sub></td>
-    <td align="center"><img src="docs/screenshots/admin_panel.png" alt="Admin Panel" width="420"/><br/><sub><b>Admin Panel — Error Breakdown + System Health</b></sub></td>
+    <td align="center"><img src="docs/screenshots/admin_panel.png" alt="Admin Panel" width="420"/><br/><sub><b>Admin Panel — Outcome Breakdown + Needs-Manual Queue</b></sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/cua_agent.png" alt="CUA Agent" width="420"/><br/><sub><b>CUA Agent — Visual Browser Automation Sessions</b></sub></td>
@@ -45,12 +48,14 @@ Cached → Deterministic → LLM Generated → CUA Agent → Manual Fallback
 ## Table of Contents
 
 - [How It Works](#how-it-works)
+- [The 7-Strategy Cascade](#the-7-strategy-cascade)
+- [URL Intelligence & Global Coverage](#url-intelligence--global-coverage)
 - [System Architecture](#system-architecture)
 - [Technology Stack](#technology-stack)
 - [Quickstart](#quickstart)
 - [Project Structure](#project-structure)
 - [Key Features](#key-features)
-- [Performance](#performance)
+- [Performance & Scale](#performance--scale)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 
@@ -60,24 +65,60 @@ Cached → Deterministic → LLM Generated → CUA Agent → Manual Fallback
 
 ```mermaid
 flowchart LR
-    A([Procurement Notice URL]) --> B{Registry hit?}
-    B -- yes --> C[Run cached scraper]
-    B -- no --> D{Known platform?}
-    C -- success --> Z
-    C -- fail --> D
-    D -- DTVP/NetServer --> E[Direct ZIP download]
-    D -- other --> F[LLM generates Playwright code]
-    E -- success --> Z
-    E -- fail --> F
-    F --> G[Sandbox execution + feedback loop]
-    G -- success --> H[Save to registry] --> Z
-    G -- exhausted --> I[CUA visual agent]
-    I -- success --> Z
-    I -- fail --> J[Manual pre-written scraper]
-    J --> Z([Documents stored in MinIO])
+    A([Procurement Notice URL]) --> P{URL pre-classifier}
+    P -->|auth-gated| AG[skip LLM → CUA / Manual]
+    P -->|Satellite / DTVP| DET[direct ZIP download]
+    P -->|public portal| CAS[free heuristics → LLM → learned route → CUA]
+    AG & DET & CAS --> CB{Circuit breaker<br/>+ rate limiter OK?}
+    CB -- open --> SKIP[skip fast — explained]
+    CB -- closed --> RUN[Run cascade in tuned order]
+    RUN -- success --> SAVE[Learn scraper / route] --> Z
+    RUN -- exhausted --> BUCKET[Classify honest outcome] --> Z
+    Z([Docs in MinIO · fields extracted · outcome recorded])
 ```
 
-Each URL passes through up to 5 strategies. A failure in one stage triggers the next automatically. The system learns from success — newly generated scrapers are saved and reused for free on all future runs.
+Every URL is pre-classified (no HTTP) into one of **30 portal types**, which selects the cheapest viable strategy order. A per-domain **circuit breaker** and **rate limiter** protect both the system and the target portal. On success, the system *learns* — a generated scraper or a replayable CUA route is saved and reused for free on every future visit to that domain. On genuine failure, the error is classified into a small set of **honest outcome buckets** so an operator knows exactly what (if anything) a human can do about it.
+
+---
+
+## The 7-Strategy Cascade
+
+Each URL passes through strategies in cost-ascending order. The first to return documents wins; the rest are skipped. The order is **tuned per URL type** — not every URL runs all 7.
+
+| # | Strategy | Enum | Cost | Speed | What it does |
+|---|----------|------|------|-------|--------------|
+| 1 | **Existing / Cached** | `existing_scraper` | Free | ms–25s | Replays a scraper already saved for this domain |
+| 2 | **Deterministic** | `deterministic_template` | Free | 1–50s | Builds the ZIP URL directly for DTVP/Satellite/NetServer — no browser, no LLM |
+| 3 | **Adaptive** *(new)* | `adaptive_universal` | Free | 5–30s | Country/language-agnostic heuristic scraper: one bounded Playwright pass that harvests docs directly or after a single multilingual click-hop |
+| 4 | **LLM Generated** | `llm_generated_scraper` | ~$0.00001 | 10–45s | LLM writes Playwright code, runs it in a sandbox, and self-heals from the error up to 3× |
+| 5 | **Learned Route** *(new)* | `learned_route` | Cheap | 5–20s | Replays a navigation route the CUA previously proved works — no LLM, no vision |
+| 6 | **CUA Agent** | `computer_use_agent` | ~$0.001–0.05 | 30–120s | Visual browser agent (browser-use) that *sees* the page and clicks like a human |
+| 7 | **Manual** | `manual_scraper` | Free | 5–45s | Hand-written reference scrapers for the hardest/highest-volume domains |
+
+**Two strategies are injected automatically** by the URL-intelligence layer: `ADAPTIVE` is slotted in just before the paid `LLM_GENERATED` step (try the free universal heuristic first), and `LEARNED_ROUTE` is slotted in just before `CUA` (replay a known-good route cheaply before paying for full vision).
+
+**Self-learning loop:** when CUA is the *only* thing that worked, the system records a replayable route and the interaction trace. The next visit to that domain replays the route for pennies (Strategy 5) and feeds the trace to the LLM generator (Strategy 4) as ground-truth navigation knowledge.
+
+See **[docs/PIPELINE.md](docs/PIPELINE.md)** for the full flowchart of every stage.
+
+---
+
+## URL Intelligence & Global Coverage
+
+Before the cascade runs, `phase3_integration/url_intelligence.py` classifies each URL — **using the URL string alone, no network call** — into one of 30 `UrlType` categories. Each type carries an expected success rate and a hand-tuned strategy order.
+
+**Why it matters:** auth-gated portals (vendor login required) waste ~90s of LLM generation that logs show *never* succeeds. The classifier routes them straight to `[EXISTING, CUA, MANUAL]` and skips the LLM, saving both time and API budget on every such URL.
+
+| Region | Covered portal families |
+|--------|------------------------|
+| 🇩🇪 **Germany / DTVP** | Satellite/VMPSatellite, NetServer (public + auth), eVergabe Cosinex deeplinks, e-VA, subreport ELViS, evergabe-online |
+| 🇪🇺 **EU** | TED Europa, UK Find-a-Tender, France PLACE/BOAMP, Poland miniPortal/BZP, Spain PLACE, Portugal BASE, Netherlands TenderNed, Belgium e-Procurement, Austria, Switzerland SIMAP, Italy CONSIP/MEPA, Ireland eTenders, Nordics (Doffin/Mercell/Hilma/Udbud), Eastern Europe (GR/CZ/HU/RO/SK/SI/HR/BG/EE/LV/LT) |
+| 🌎 **Americas** | USA SAM.gov/grants.gov, Canada CanadaBuys/MERX, LATAM (BR/MX/CL/AR/CO/PE) |
+| 🌏 **Asia** | India GeM/eProcure/NIC, plus SG/JP/CN/KR and South Asia |
+| 🌍 **Africa** | ZA/KE/NG/EG e-tender portals |
+| 🇦🇺 **Oceania** | Australia AusTender + state portals, New Zealand GETS |
+
+For any URL that doesn't match a known family (`UNKNOWN`), the free **Adaptive** strategy provides a genuinely country-agnostic catch-all — it works off multilingual document-navigation keywords rather than hardcoded selectors — before any money is spent on the LLM. Batch endpoints (`POST /api/admin/url-intelligence/batch`) can pre-classify up to 50,000 URLs to forecast success and surface auth-gated URLs *before* a run starts.
 
 ---
 
@@ -97,37 +138,35 @@ graph TB
     end
 
     subgraph Workers["Celery Worker Pool"]
-        WD[worker-default<br/>concurrency=4<br/>orchestration]
-        WC[worker-chunks × 2<br/>concurrency=16 each<br/>URL processing]
-        WQ[worker-cua<br/>concurrency=2<br/>browser agents]
-        BT[Celery Beat<br/>periodic tasks]
+        WD[worker-default<br/>orchestration · fan-out]
+        WC[worker-chunks × 2<br/>parallel URL processing]
+        WQ[worker-cua<br/>browser agents]
+        BT[Celery Beat<br/>recovery · versioning · cleanup]
     end
 
-    subgraph Cascade["Cascade Engine"]
+    subgraph Cascade["Cascade Engine (per URL)"]
         direction TB
-        S1[Cached Scraper]
-        S2[Deterministic Template]
-        S3[LLM Code Gen + Sandbox]
-        S4[CUA Visual Agent]
-        S5[Manual Phase 0]
-        S1 --> S2 --> S3 --> S4 --> S5
+        UIQ[URL Intelligence<br/>classify + circuit breaker + rate limit]
+        S1[1 Existing] --> S2[2 Deterministic] --> S3[3 Adaptive]
+        S3 --> S4[4 LLM Gen] --> S5[5 Learned Route] --> S6[6 CUA] --> S7[7 Manual]
+        UIQ --> S1
     end
 
-    subgraph Infra["Infrastructure"]
-        PROM[Prometheus :9090]
-        AUDIT[Audit Log<br/>append-only]
+    subgraph Post["Post-processing"]
+        EX[Deep Extractor<br/>22 fields · regex + LLM]
+        OUT[Outcome buckets<br/>honest failure reporting]
     end
 
     UI -->|REST /api/| APP
-    APP -->|enqueue tasks| RD
+    APP -->|enqueue| RD
     RD --> WD & WC & WQ & BT
     WC --> Cascade
-    Cascade -->|documents| S3
-    Cascade -->|status| DB
-    APP --> PROM & AUDIT
+    Cascade -->|documents| S3DB[(MinIO)]
+    Cascade --> EX & OUT
+    EX & OUT --> DB
 ```
 
-**Capacity:** 2 × 16 = **32 simultaneous URLs** by default. Scale `worker-chunks` replicas for more throughput.
+**Default capacity:** ~**32 URLs processed concurrently** (2 chunk replicas × 2 Celery slots × `JOB_CONCURRENCY=8` asyncio). Jobs of any size are chunked (`JOB_CHUNK_SIZE=50`) and fanned out, so a 10,000-URL job streams through the same fixed worker pool. Scale `worker-chunks` replicas for higher throughput.
 
 ---
 
@@ -142,16 +181,16 @@ graph TB
 | **Backend API** | FastAPI + Uvicorn | 0.115 / 0.32 |
 | **Language** | Python | 3.11 |
 | **Validation** | Pydantic v2 | 2.9+ |
-| **ORM** | SQLAlchemy | 2.0 |
-| **Migrations** | Alembic | 1.13 |
+| **ORM / Migrations** | SQLAlchemy 2.0 / Alembic 1.13 | — |
 | **Task Queue** | Celery + Redis | 5.4 / 7.x |
 | **Database** | PostgreSQL | 16 |
 | **Object Storage** | MinIO (S3-compatible) | latest |
 | **Browser Automation** | Playwright | 1.47 |
 | **Visual Agents** | browser-use | 0.12 |
 | **LLM Provider** | OpenRouter → Gemini 2.5 Flash Lite | free tier |
+| **Resilience** | Redis circuit breaker · domain rate limiter · HTTP retry+backoff | — |
 | **Containerisation** | Docker Compose | — |
-| **Observability** | Prometheus + Audit Log | — |
+| **Observability** | Prometheus · append-only audit log · structlog correlation IDs | — |
 | **CI/CD** | GitHub Actions | — |
 
 ---
@@ -222,8 +261,9 @@ curl localhost:8000/ready
 
 ### 5 — Open Dashboard
 
-**[http://localhost:3000](http://localhost:3000)** — paste a procurement notice URL and watch the cascade pipeline process it in real time.
+**[http://localhost:3000](http://localhost:3000)** — paste one or many procurement notice URLs (or upload a CSV/Excel) and watch the cascade process them live.
 
+> **Public tender directory:** [http://localhost:3000/directory](http://localhost:3000/directory) — browse open tenders by portal  
 > **MinIO Console:** [http://localhost:9001](http://localhost:9001) — browse stored documents  
 > **API Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
 
@@ -237,146 +277,120 @@ vergabepilot-ai/
 ├── backend/
 │   ├── app/
 │   │   ├── api/                    # FastAPI route handlers
-│   │   │   ├── routes_jobs.py      # Job CRUD + retry + diagnostics
+│   │   │   ├── routes_jobs.py      # Job CRUD + upload + retry + stop + diagnostics + needs-manual
 │   │   │   ├── routes_scrapers.py  # Scraper registry + route learning
-│   │   │   ├── routes_admin.py     # Stats + system controls
+│   │   │   ├── routes_directory.py # Public tender directory (browse by domain)
+│   │   │   ├── routes_admin.py     # Stats + outcomes + circuit breakers + url-intelligence
 │   │   │   ├── routes_audit.py     # Append-only event log
-│   │   │   ├── routes_extractor.py # Document field extraction
-│   │   │   ├── routes_evaluation.py# LLM benchmark suite
+│   │   │   ├── routes_extractor.py # Document field extraction + reports
+│   │   │   ├── routes_evaluation.py# LLM benchmark + pipeline analytics + scraper health
 │   │   │   ├── routes_agents.py    # CUA agent sessions
 │   │   │   └── routes_tests.py     # Backend test runner
 │   │   │
 │   │   ├── core/
-│   │   │   ├── security.py         # SSRF + prompt injection guards
-│   │   │   ├── storage.py          # MinIO / S3 client
+│   │   │   ├── security.py         # SSRF + prompt injection + classify_error (27 categories)
+│   │   │   ├── storage.py          # MinIO / S3 client (local fallback)
+│   │   │   ├── http_client.py      # Resilient HTTP: retry + backoff + jitter, honours Retry-After
+│   │   │   ├── web_harvest.py      # Multilingual document harvesting (powers Adaptive)
+│   │   │   ├── ratelimit.py        # Per-IP API rate limiter (public directory)
+│   │   │   ├── sandbox.py          # Sandboxed scraper execution primitives
+│   │   │   ├── browser_session.py  # Shared Playwright session helpers
+│   │   │   ├── llm_client.py       # OpenRouter client with retries + global semaphore
 │   │   │   ├── metrics.py          # Prometheus counters + histograms
 │   │   │   └── zip_expander.py     # Recursive ZIP extraction (bomb-safe)
 │   │   │
-│   │   ├── document_extractor/
-│   │   │   ├── extractor.py        # Orchestrator: regex + LLM merge
-│   │   │   ├── field_extractor.py  # 50+ German procurement regex patterns
+│   │   ├── document_extractor/     # Deep field extraction (post-download)
+│   │   │   ├── extractor.py        # Orchestrator: regex + structural + optional LLM merge
+│   │   │   ├── field_extractor.py  # German procurement regex patterns
 │   │   │   ├── parsers.py          # PDF / DOCX / XLSX text extraction
-│   │   │   ├── llm_enhancer.py     # Gemini 2.5 Flash Lite field boost
+│   │   │   ├── dates.py            # Robust multi-format date parsing
+│   │   │   ├── summarizer.py       # Deterministic rule-based summary
+│   │   │   ├── llm_enhancer.py     # Gemini field boost (optional)
 │   │   │   ├── report_builder.py   # PDF + DOCX report generation
 │   │   │   └── live_fetcher.py     # Fallback live document fetch
 │   │   │
-│   │   ├── phase0_manual/
-│   │   │   └── v1_reference.py     # Playwright manual scraper (legacy)
+│   │   ├── phase0_manual/v1_reference.py   # Hand-written reference scraper
 │   │   │
-│   │   ├── phase1_llm_scraper/
-│   │   │   ├── generator.py        # LLM prompt + code builder
-│   │   │   ├── executor.py         # Sandboxed Playwright runner
-│   │   │   ├── feedback_loop.py    # Iterative self-healing (3 retries)
-│   │   │   ├── validator.py        # Code safety + SSRF validation
-│   │   │   ├── evaluator.py        # Benchmark runner
-│   │   │   └── route_learner.py    # CUA trace recorder
+│   │   ├── phase1_llm_scraper/     # Strategy 4 — LLM code generation
+│   │   │   ├── generator.py · prompts.py   # Prompt + code builder
+│   │   │   ├── executor.py · validator.py  # Sandbox runner + code safety
+│   │   │   ├── feedback_loop.py             # Iterative self-healing (3 retries)
+│   │   │   ├── document_validator.py        # Magic-byte / real-document checks
+│   │   │   ├── route_learner.py · cua_discovery.py  # Route tracing
+│   │   │   ├── evaluator.py · pricing.py    # Benchmarks + cost accounting
 │   │   │
-│   │   ├── phase2_cua/
-│   │   │   ├── browser_agent.py    # Playwright + vision LLM agent
-│   │   │   ├── browser_use_agent.py# browser-use framework agent
-│   │   │   └── orchestrator.py     # Agent dispatcher
+│   │   ├── phase2_cua/             # Strategy 6 — Computer Use Agent
+│   │   │   ├── browser_agent.py · browser_use_agent.py
+│   │   │   ├── orchestrator.py     # Agent dispatcher
+│   │   │   └── route_learner.py    # Learn / replay CUA routes (Strategy 5)
 │   │   │
-│   │   ├── phase3_integration/
-│   │   │   ├── pipeline.py         # Cascade orchestrator (main engine)
-│   │   │   ├── scraper_registry.py # Save + load + upgrade scrapers
-│   │   │   ├── deterministic.py    # Direct ZIP download (DTVP, NetServer)
-│   │   │   ├── platform_classifier.py # Portal detection
-│   │   │   ├── versioning.py       # Document change detection
+│   │   ├── phase3_integration/     # The cascade engine
+│   │   │   ├── pipeline.py         # Cascade orchestrator (process_url)
+│   │   │   ├── url_intelligence.py # 30 UrlTypes + strategy ordering + circuit breaker + rate limiter
+│   │   │   ├── adaptive_scraper.py # Strategy 3 — universal heuristic scraper
+│   │   │   ├── deterministic.py    # Strategy 2 — direct ZIP download
+│   │   │   ├── platform_classifier.py # Portal fingerprinting + URL builders
+│   │   │   ├── scraper_registry.py # Save / load / upgrade scrapers + learned routes
+│   │   │   ├── outcomes.py         # Honest failure buckets + needs-manual logic
+│   │   │   ├── portal_directory_seed.py # 100 seed portal domains for the directory
+│   │   │   ├── versioning.py       # Document change detection (SHA-256)
 │   │   │   └── fallback.py         # Next-strategy selector
 │   │   │
 │   │   ├── workers/
-│   │   │   ├── celery_app.py       # Celery broker + task routing
-│   │   │   └── tasks.py            # All Celery task definitions
+│   │   │   ├── celery_app.py       # Queues (default/chunks/cua/beat) + beat schedule
+│   │   │   └── tasks.py            # Job fan-out, chunk processing, beat tasks
 │   │   │
-│   │   ├── models.py               # SQLAlchemy ORM models
-│   │   ├── config.py               # Pydantic settings (all env vars)
-│   │   ├── database.py             # Engine + session + connection pool
-│   │   └── main.py                 # FastAPI app + lifespan hooks
+│   │   ├── utils/                  # structlog logger (correlation IDs), audit, metrics
+│   │   ├── models.py · schemas.py · config.py · database.py · main.py
 │   │
-│   ├── migrations/                 # Alembic migration scripts
-│   └── tests/                      # pytest — 95 tests
+│   ├── migrations/                 # Alembic: baseline → learned_route → directory fields
+│   └── tests/                      # pytest — 225 tests
 │
 ├── frontend/
 │   ├── app/                        # Next.js App Router pages
-│   │   ├── page.tsx                # Dashboard (KPIs + submit form)
-│   │   ├── jobs/                   # Job list + job detail
+│   │   ├── page.tsx                # Dashboard (KPIs + submit form + strategy chart)
+│   │   ├── jobs/                   # Job list + job detail (cascade trail)
+│   │   ├── directory/              # Public tender directory (browse by portal)
+│   │   ├── library/                # Saved/local tender document library
 │   │   ├── extraction/             # Deep field extraction
 │   │   ├── scrapers/               # Scraper registry + route learning
 │   │   ├── audit/                  # Append-only audit log viewer
-│   │   ├── admin/                  # System health + error breakdown
+│   │   ├── admin/                  # Outcome breakdown + needs-manual + system health
 │   │   ├── agents/                 # CUA agent sessions
-│   │   ├── evaluation/             # LLM benchmark comparison
+│   │   ├── evaluation/             # LLM benchmark + pipeline analytics
 │   │   ├── excel/                  # Excel workspace (IndexedDB)
-│   │   ├── tests/                  # Backend test runner UI
-│   │   ├── layout.tsx              # Root layout + Navbar + Providers
-│   │   ├── not-found.tsx           # 404 page
-│   │   └── error.tsx               # Global error boundary
+│   │   └── tests/                  # Backend test runner UI
 │   │
-│   ├── components/
-│   │   ├── ui/index.tsx            # Full design system (20+ components)
-│   │   ├── Navbar.tsx              # Sticky navbar + dark mode toggle
-│   │   ├── JobSubmitForm.tsx       # URL + CSV/Excel submission
-│   │   ├── StatusBadge.tsx         # Animated job status pills
-│   │   ├── Toast.tsx               # Toast notification system
-│   │   ├── Providers.tsx           # SWR + Toast providers
-│   │   └── ExcelWorkspace.tsx      # Full spreadsheet editor
-│   │
-│   └── lib/
-│       ├── api.ts                  # Fetcher with retry + backoff
-│       ├── hooks.ts                # useTheme, useDebounce
-│       ├── types.ts                # TypeScript interfaces
-│       └── theme.ts                # Design tokens
+│   ├── components/                 # Navbar, JobSubmitForm, StatusBadge, StatCard, Toast, ui/
+│   └── lib/                        # api.ts (retry fetcher), hooks.ts, types.ts, theme.ts
 │
-├── tender_extractor/               # Standalone offline extraction library
-│   ├── extractors/                 # PDF, DOCX, XLSX, ZIP, TXT parsers
-│   ├── parsers/                    # Field, date, value, table parsers
-│   ├── summarizer/                 # Rule-based summary generator
-│   ├── config/patterns.yaml        # ALL regex + labels (no hardcoding)
-│   ├── pipeline.py                 # Batch processing entry point
-│   ├── main.py                     # CLI entry point
-│   └── tests/                      # 28 unit + integration tests
-│
-├── data/
-│   └── scrapers/                   # Auto-saved domain scraper scripts
-│
-├── docs/
-│   ├── ARCHITECTURE.md             # System design + 8 diagrams
-│   ├── PIPELINE.md                 # Cascade strategies + flow charts
-│   ├── API.md                      # Full REST API reference (35+ endpoints)
-│   ├── DEPLOYMENT.md               # Docker + production checklist
-│   ├── DEVELOPMENT.md              # Local dev + testing guide
-│   ├── FRONTEND.md                 # Component library + dark mode
-│   ├── TENDER_EXTRACTOR.md         # Offline extraction module
-│   └── screenshots/                # UI screenshots
-│
+├── data/scrapers/                  # 50 auto-saved + hand-written domain scrapers
+├── docs/                           # Architecture, pipeline, API, deployment, frontend docs
 ├── .env.example                    # All env vars documented
 ├── .github/workflows/ci.yml        # CI: test → lint → security → docker
 └── docker-compose.yml              # Full production stack
 ```
 
+> The standalone offline `tender_extractor/` library and the experimental CUA agents now live under `_archive/`. The **active** extraction engine is `backend/app/document_extractor/`, which runs automatically after every successful download.
+
 ---
 
 ## Key Features
 
-### 🔄 5-Stage Cascade Pipeline
-Each URL is tried through 5 strategies in cost-ascending order. One failure never blocks others — the pipeline isolates errors at the URL level.
+### 🔄 7-Strategy Cascade Pipeline
+Each URL is tried through up to 7 strategies in cost-ascending order, in an order tuned to its portal type. One failure never blocks others — the pipeline isolates errors at the URL level and records the full attempt chain.
 
-| Stage | Strategy | Cost | Speed |
-|---|---|---|---|
-| 1 | Cached Scraper (registry hit) | Free | ms |
-| 2 | Deterministic Template (DTVP/NetServer) | Free | 2–10 s |
-| 3 | LLM Code Generation + Sandbox | ~$0.00001 | 10–45 s |
-| 4 | Computer Use Agent (visual browser) | ~$0.001–0.05 | 30–120 s |
-| 5 | Manual Pre-written Scraper (legacy) | Free | 5–45 s |
+### 🌍 Global URL Intelligence
+30 portal-family classifiers spanning every continent select the cheapest viable strategy order per URL, skip the LLM for auth-gated portals, and provide a free country-agnostic Adaptive fallback for anything unrecognised.
 
-### 🤖 Self-Healing LLM Loop
-When generated scraper code fails, the full error (code + stdout/stderr + traceback) is sent back to Gemini. The LLM diagnoses the issue and produces a corrected version — up to 3 times automatically.
+### 🤖 Self-Healing & Self-Learning
+Generated scraper code that fails is sent back to the LLM with the full error (code + stdout/stderr + traceback) for up to 3 automatic corrections. Successful scrapers are saved to the registry; CUA-only successes are distilled into replayable routes — both reused for free forever.
 
-### 📦 Scraper Registry
-Every successfully generated scraper is saved to PostgreSQL and reused for all future jobs on that domain. A domain that costs $0.00001 to scrape the first time costs nothing on every subsequent run.
+### 🛡️ Production Resilience at Scale
+Per-domain Redis **circuit breaker** (trips after repeated failures, re-opens after 30 min), **domain rate limiter** (token bucket), a **domain LLM dedup lock** (so N workers don't all call the LLM for the same domain), a **global LLM semaphore**, resilient HTTP retry/backoff, job resumability, and hourly disk cleanup — all designed for 10,000-URL runs.
 
 ### 🔍 Deep Document Extraction
-After documents are downloaded, a second pipeline parses PDF/DOCX/XLSX files and extracts 22 structured procurement fields using 50+ German-language regex patterns, optionally enhanced by Gemini 2.5 Flash Lite. Outputs a branded PDF or DOCX report.
+After download, a second pipeline parses PDF/DOCX/XLSX and extracts **22 structured procurement fields** with German-language regex (optionally LLM-enhanced), then can render a branded PDF or DOCX report.
 
 | Field | Example |
 |---|---|
@@ -387,37 +401,39 @@ After documents are downloaded, a second pipeline parses PDF/DOCX/XLSX files and
 | `cpv_codes` | 39130000, 39150000 |
 | `email` | vergabe@bund.de |
 
-### 🛡️ Security Layers
-SSRF protection → prompt injection detection → code safety validation → sandboxed execution → magic-byte validation → per-file size limits (200 MB) → total job limits (500 MB). Every security event is written to the append-only audit log.
+### 📂 Public Tender Directory
+A read-only, rate-limited public view (`/api/directory`) browses **currently-open** tenders grouped by portal — exposing only a whitelist of tender-facing fields, never internal errors, costs, or strategy traces. A successful scrape *is* a published tender.
+
+### ✅ Honest Failure Reporting
+The ~27 fine-grained failure categories collapse into 8 plain-English **outcome buckets** (succeeded · login/registration required · CAPTCHA · expired/not-found · unreachable · no documents · blocked · error). The two buckets a human can actually fix surface in a **"Needs manual action"** queue (`GET /api/jobs/needs-manual`) with a suggested next step.
 
 ### 📊 Real-time Observability
-- **Dashboard**: Live KPIs, strategy distribution bar chart, per-domain failure breakdown
-- **Audit Log**: Searchable append-only event stream with level filtering
-- **Prometheus**: 13 metrics at `/metrics` (scrape totals, durations, active jobs, registry size)
-- **Diagnostics**: Per-job failure analysis grouped by domain + error category
+Live dashboard KPIs and strategy distribution, searchable append-only audit log, Prometheus metrics at `/metrics` (scrapes, durations, retries, circuit-breaker events, rate-limit hits), and per-job diagnostics grouped by domain + error category. Every log line carries a `job:item` correlation ID.
 
 ---
 
-## Performance
+## Performance & Scale
 
 | Metric | Value | Notes |
 |---|---|---|
-| Peak throughput | **32 URLs/min** | 2 × worker-chunks × concurrency 16 |
-| Scale ceiling | **128 URLs/min** | 8 × worker-chunks replicas |
-| API read latency | < 200 ms p95 | Read endpoints; writes go to Celery |
+| Concurrent URLs (default) | **~32** | 2 chunk replicas × 2 Celery slots × `JOB_CONCURRENCY=8` |
+| Job size | **1,000+ URLs** | Chunked fan-out, designed to 10,000+ |
+| API read latency | < 200 ms p95 | Reads; writes go to Celery |
+| Deterministic / cached hit | free, 1–50 s | No LLM, no browser |
 | LLM cost per URL | ~$0.00001 | Gemini 2.5 Flash Lite free tier |
-| Document extraction | < 5 s | Regex only |
-| Document extraction + LLM | 10–30 s | With Gemini field enhancement |
-| Test suite | 95 tests / 1.6 s | Backend; 28 tests tender_extractor |
+| Document extraction | < 5 s (regex) / 10–30 s (+LLM) | Runs after each successful download |
+| Test suite | **225 tests** | Backend pytest, SQLite, no external deps |
 
 **Scaling workers:**
 ```bash
-# 2× throughput — 64 parallel URLs
+# ~2× throughput
 docker compose up --scale worker-chunks=4 -d
 
-# 4× throughput — 128 parallel URLs
+# ~4× throughput
 docker compose up --scale worker-chunks=8 -d
 ```
+
+How a large job flows: `POST /api/jobs` enqueues `process_job_task` → items are **sorted by expected success rate** and split into chunks of 50 → `process_chunk_task` instances run in parallel, each processing its chunk with asyncio. Chunk tasks skip already-`SUCCESS` items on retry (resumability), and beat tasks rescue zombie jobs (every 10 min) and clean stale download dirs (hourly).
 
 ---
 
@@ -425,13 +441,13 @@ docker compose up --scale worker-chunks=8 -d
 
 | Document | Description |
 |---|---|
-| [Architecture](docs/ARCHITECTURE.md) | System design, all component diagrams, DB schema, security layers |
-| [Pipeline](docs/PIPELINE.md) | All 5 cascade stages with flow charts, error classification, self-healing |
-| [API Reference](docs/API.md) | Every endpoint — request/response schemas, query params, examples |
+| [Architecture](docs/ARCHITECTURE.md) | System design, component & DB diagrams, worker model, security, observability |
+| [Pipeline](docs/PIPELINE.md) | All 7 cascade strategies, URL intelligence, circuit breaker, self-healing, outcome buckets |
+| [API Reference](docs/API.md) | Every endpoint — jobs, scrapers, directory, admin, audit, extraction, evaluation, agents |
 | [Deployment](docs/DEPLOYMENT.md) | Docker setup, env vars, production checklist, scaling, troubleshooting |
-| [Development](docs/DEVELOPMENT.md) | Local dev, testing, conventions, adding routes and scrapers |
-| [Frontend](docs/FRONTEND.md) | All pages, component library API, dark mode system, SWR patterns |
-| [Tender Extractor](docs/TENDER_EXTRACTOR.md) | Offline extraction module — CLI, Python API, patterns.yaml format |
+| [Development](docs/DEVELOPMENT.md) | Local dev, testing, conventions, adding strategies and scrapers |
+| [Frontend](docs/FRONTEND.md) | All pages, component library, dark-mode system, SWR patterns |
+| [Tender Extractor](docs/TENDER_EXTRACTOR.md) | The deep-extraction module — fields, parsers, reports |
 
 ---
 
@@ -440,12 +456,12 @@ docker compose up --scale worker-chunks=8 -d
 The GitHub Actions pipeline runs on every push and pull request:
 
 ```
-git push → Backend Tests (95) → Frontend Build + TS Check → Security Scan → Docker Build
+git push → Backend Tests (225) → Frontend Build + TS Check → Security Scan → Docker Build
 ```
 
 ```yaml
 # .github/workflows/ci.yml stages:
-backend-test:   pytest 95 tests (SQLite, no external deps)
+backend-test:   pytest (SQLite, no external deps)
 frontend-check: tsc --noEmit + eslint + next build
 security-scan:  pip-audit (Python CVEs) + npm audit (Node CVEs)
 container-build: docker build backend + frontend images
@@ -458,7 +474,7 @@ container-build: docker build backend + frontend images
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/my-feature`
 3. Follow the conventions in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
-4. Run tests: `pytest tests/ -v` (backend) and `npm run build` (frontend)
+4. Run tests: `pytest tests/ -v` (backend, from `backend/`) and `npm run build` (frontend)
 5. Open a pull request against `main`
 
 ---

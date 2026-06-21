@@ -25,12 +25,14 @@ graph LR
         P1["/ — Dashboard<br/>Job submit + KPIs + Strategy chart"]
         P2["/jobs — Job List<br/>Search, filter, progress pills"]
         P3["/jobs/[id] — Job Detail<br/>Cascade trail, docs, extraction"]
+        PD["/directory — Public Tender Directory<br/>Browse open tenders by portal"]
+        PL["/library — Document Library<br/>Saved / local tender documents"]
         P4["/extraction — Deep Extraction<br/>Field extract + PDF/DOCX report"]
         P5["/scrapers — Scraper Registry<br/>Generate + manage scrapers"]
         P6["/audit — Audit Log<br/>Searchable event stream"]
-        P7["/admin — System Health<br/>Error breakdown + controls"]
+        P7["/admin — Health + Needs-Manual<br/>Outcome breakdown + controls"]
         P8["/agents — CUA Sessions<br/>Agent leaderboard + live feed"]
-        P9["/evaluation — Benchmarks<br/>LLM accuracy comparison"]
+        P9["/evaluation — Benchmarks<br/>LLM accuracy + pipeline analytics"]
         P10["/excel — Excel Workspace<br/>Edit procurement spreadsheets"]
         P11["/tests — Test Runner<br/>Run backend test suite from UI"]
     end
@@ -42,17 +44,21 @@ graph LR
 
 | Page | Route | Key Components | Polling |
 |---|---|---|---|
-| Dashboard | `/` | `JobSubmitForm`, `KpiCard`, Recharts `BarChart`, `RecentJobs` | 5s active / 30s idle |
+| Dashboard | `/` | `JobSubmitForm`, `StatCard`/`KpiCard`, Recharts `BarChart`, `RecentJobs` | 5s active / 30s idle |
 | Jobs | `/jobs` | `StatusBadge`, `SearchInput`, `Tabs`, `ProgressPill` | 3s active / 0 idle |
 | Job Detail | `/jobs/[id]` | `CascadeTrail`, `AttemptTimeline`, `ExtractionPanel`, `DomainSection` | 2s active / 0 idle |
+| Directory | `/directory` | Portal list with open-tender counts, per-domain tender cards (public API) | 30s |
+| Library | `/library` | Saved/local document browser, download links | — |
 | Extraction | `/extraction` | `ExtractionCard`, `TriggerPanel`, `ExtractionRecordsList` | 15s |
 | Scrapers | `/scrapers` | Route learn form, scraper table with expandable code | 8s |
 | Audit | `/audit` | `AuditRow`, level filter, `useSearchParams` | 6s |
-| Admin | `/admin` | Error breakdown, Recharts `PieChart`, system controls | 10s |
+| Admin | `/admin` | Outcome breakdown, **Needs-manual queue**, Recharts `PieChart`, system controls | 10s |
 | Agents | `/agents` | CUA leaderboard, live execution feed | 6s |
-| Evaluation | `/evaluation` | Model comparison table, strategy chart | 10s |
+| Evaluation | `/evaluation` | Model comparison table, pipeline analytics, strategy chart | 10s |
 | Excel | `/excel` | IndexedDB, `react-window` virtual list, XLSX export | — |
 | Tests | `/tests` | Test suite selector, live output streaming | — |
+
+> The `/directory` page consumes the **public** `/api/directory` endpoints (rate-limited, whitelist fields only). The `/admin` page surfaces the honest **outcome buckets** and the **needs-manual** queue from `/api/admin/stats` and `/api/jobs/needs-manual`.
 
 ---
 
