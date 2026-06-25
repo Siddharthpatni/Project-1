@@ -50,23 +50,39 @@ CASCADE_ORDER: list[Strategy] = [
 ]
 
 
-def next_strategy(current: Strategy, outcome: StrategyOutcome, enable_cua: bool) -> Strategy | None:
+def next_strategy(
+    current: Strategy,
+    outcome: StrategyOutcome,
+    enable_cua: bool,
+    order: list[Strategy] | None = None,
+) -> Strategy | None:
     """
     Return the next strategy to try, or None if the cascade is exhausted.
 
-    Cascade order:
-        EXISTING → DETERMINISTIC → ADAPTIVE → LLM_GENERATED → LEARNED_ROUTE → CUA → MANUAL → (stop)
+    ``order`` is the *actual* strategy order the pipeline is executing for this
+    URL — it is URL-type-specific (see ``url_intelligence.get_strategy_order``)
+    and often places MANUAL in the middle rather than last. We MUST advance
+    within that order, not within the canonical ``CASCADE_ORDER`` default;
+    otherwise a strategy that happens to be last in ``CASCADE_ORDER`` (e.g.
+    MANUAL) would falsely terminate the cascade and skip the LLM/CUA steps that
+    still follow it in the tuned order.
+
+    When ``current`` isn't found in ``order`` we return None (the caller's loop
+    already iterates the full order, so a missing entry just means "stop here").
+    A disabled CUA is skipped over rather than terminating the cascade, so any
+    later strategy (e.g. MANUAL after CUA) still runs.
     """
     if outcome.success:
         return None
 
+    seq = order or CASCADE_ORDER
     try:
-        idx = CASCADE_ORDER.index(current)
+        idx = seq.index(current)
     except ValueError:
-        return Strategy.EXISTING  # safe default if forced into an unknown state
+        return None
 
-    for nxt in CASCADE_ORDER[idx + 1:]:
+    for nxt in seq[idx + 1:]:
         if nxt is Strategy.CUA and not enable_cua:
-            return None
+            continue  # skip CUA but keep looking for later strategies
         return nxt
     return None

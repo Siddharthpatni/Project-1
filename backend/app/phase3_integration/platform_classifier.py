@@ -19,6 +19,39 @@ from __future__ import annotations
 import re
 from urllib.parse import urlsplit
 
+
+# ---------------------------------------------------------------------------
+# URL normalization  (run before classification / cascade)
+# ---------------------------------------------------------------------------
+
+def normalize_url(url: str) -> str:
+    """Rewrite known *login-entrance* / landing URLs to the public tender page
+    that actually exposes documents.
+
+    Some source URLs (e.g. exported lists) point at a portal's login entrance or
+    a redirect stub rather than the public page that serves the documents.
+    Scraping the entrance yields nothing; rewriting to the public page lets the
+    cascade (and the CUA) start where the documents actually are.
+
+    Handled today:
+      * EU-Supply CTM:  /app/rfq/rwlentrance_s.asp?PID=<id>   (login entrance)
+                     →  /ctm/Supplier/PublicPurchase/<id>/0/0  (public page)
+    """
+    try:
+        parts = urlsplit(url)
+    except Exception:  # noqa: BLE001
+        return url
+    host = (parts.netloc or "").lower()
+
+    # EU-Supply CTM family (eu.eu-supply.com, www.eu-supply.com, <tenant>.eu-supply.com)
+    if "eu-supply.com" in host and "rwlentrance" in parts.path.lower():
+        m = re.search(r"[?&]PID=(\d+)", url, re.IGNORECASE)
+        if m:
+            return f"{parts.scheme}://{parts.netloc}/ctm/Supplier/PublicPurchase/{m.group(1)}/0/0"
+
+    return url
+
+
 # ---------------------------------------------------------------------------
 # URL-level fingerprints  (checked before any HTTP request)
 # ---------------------------------------------------------------------------

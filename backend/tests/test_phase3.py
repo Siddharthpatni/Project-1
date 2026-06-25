@@ -41,12 +41,32 @@ def test_learned_route_to_cua():
 
 
 def test_cua_disabled():
-    """With CUA disabled the cascade still reaches LEARNED_ROUTE (cheap, no CUA),
-    then stops there because the only remaining step (CUA) is gated off."""
+    """With CUA disabled the cascade still reaches LEARNED_ROUTE, then *skips* the
+    gated-off CUA and falls through to MANUAL — disabling CUA must not also
+    disable the free MANUAL fallback that follows it in the order."""
     out = StrategyOutcome(Strategy.LLM_GENERATED, success=False, downloaded=0)
     assert next_strategy(Strategy.LLM_GENERATED, out, enable_cua=False) is Strategy.LEARNED_ROUTE
     out2 = StrategyOutcome(Strategy.LEARNED_ROUTE, success=False, downloaded=0)
-    assert next_strategy(Strategy.LEARNED_ROUTE, out2, enable_cua=False) is None
+    # CUA is gated off, so the next runnable strategy is MANUAL (not None).
+    assert next_strategy(Strategy.LEARNED_ROUTE, out2, enable_cua=False) is Strategy.MANUAL
+    out3 = StrategyOutcome(Strategy.MANUAL, success=False, downloaded=0)
+    assert next_strategy(Strategy.MANUAL, out3, enable_cua=False) is None
+
+
+def test_next_strategy_follows_tuned_order_not_canonical():
+    """Regression: when MANUAL sits in the MIDDLE of a URL-type-specific order
+    (e.g. NetServer-public), failing MANUAL must advance to the LLM/CUA steps
+    that follow it in THAT order — not terminate just because MANUAL is last in
+    the canonical CASCADE_ORDER."""
+    tuned = [
+        Strategy.EXISTING, Strategy.DETERMINISTIC, Strategy.MANUAL,
+        Strategy.ADAPTIVE, Strategy.LLM_GENERATED, Strategy.LEARNED_ROUTE, Strategy.CUA,
+    ]
+    out = StrategyOutcome(Strategy.MANUAL, success=False, downloaded=0)
+    assert next_strategy(Strategy.MANUAL, out, enable_cua=True, order=tuned) is Strategy.ADAPTIVE
+    # ...and the tuned CUA at the end is terminal.
+    out2 = StrategyOutcome(Strategy.CUA, success=False, downloaded=0)
+    assert next_strategy(Strategy.CUA, out2, enable_cua=True, order=tuned) is None
 
 
 def test_cua_terminal():

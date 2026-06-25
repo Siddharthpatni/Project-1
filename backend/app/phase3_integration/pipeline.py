@@ -204,7 +204,12 @@ async def process_url(
     force_strategy: Strategy | None = None,
 ) -> PipelineResult:
     """Run the full cascade for a single URL and persist downloaded files."""
-    url = item.url
+    # Rewrite known login-entrance / landing URLs to the public page that
+    # actually serves documents (e.g. EU-Supply rwlentrance → PublicPurchase).
+    url = platform_classifier.normalize_url(item.url)
+    if url != item.url:
+        write_audit("pipeline.url_normalized", f"{item.url} → {url}", level=INFO,
+                    job_id=item.job_id, item_id=item.id, url=item.url)
     domain = urlparse(url).netloc
 
     result = PipelineResult(success=False, strategy_used=Strategy.NONE, downloaded=[])
@@ -428,7 +433,7 @@ async def process_url(
             },
         )
 
-        if next_strategy(strategy, outcome, settings.enable_fallback_cua) is None:
+        if next_strategy(strategy, outcome, settings.enable_fallback_cua, order=strategies) is None:
             break
 
     result.runtime_seconds = time.time() - t0
