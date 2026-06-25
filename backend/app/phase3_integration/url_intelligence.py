@@ -420,10 +420,13 @@ def _strategy_order_for_type(url_type: UrlType, platform: str, force: Strategy |
         return [force]
 
     if url_type == UrlType.SATELLITE:
-        # Deterministic first (fastest, free), then cached scraper as backup.
-        # Skip LLM and CUA — if deterministic and cached fail, the specific
-        # notice is likely expired or restricted.
-        return [Strategy.DETERMINISTIC, Strategy.EXISTING, Strategy.MANUAL]
+        # Deterministic first (fastest, free), then cached scraper, then the free
+        # ADAPTIVE heuristic as a last cheap shot for *live* notices where the ZIP
+        # builder misses (e.g. the page redirects to an overview that links the
+        # documents). Still skip the paid LLM/CUA — if all the free paths fail the
+        # notice is almost always expired/removed (HTTP 404), so spending LLM/CUA
+        # budget on it is wasted.
+        return [Strategy.DETERMINISTIC, Strategy.EXISTING, Strategy.ADAPTIVE, Strategy.MANUAL]
 
     if url_type == UrlType.NETSERVER_PUB:
         # Try existing scraper (may have domain-specific one) → deterministic →
