@@ -7,10 +7,12 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   async rewrites() {
-    // Server-side rewrites run INSIDE the Docker container, so we need
-    // the Docker service name ("api") not "localhost".
-    // INTERNAL_API_URL is set in docker-compose.yml for the container.
-    // NEXT_PUBLIC_API_URL is for browser-side requests (localhost:8000).
+    // IMPORTANT: with `output: "standalone"` this function runs at BUILD time
+    // and the destination is baked into the bundle — setting INTERNAL_API_URL
+    // on the running container does NOT change it (verified live). The Docker
+    // builder stage must set INTERNAL_API_URL (it does: http://api:8000).
+    // In the prod stack nginx serves /api/backend/* directly anyway, so this
+    // rewrite only carries dev traffic and container-internal SSR fetches.
     const backendUrl =
       process.env.INTERNAL_API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||

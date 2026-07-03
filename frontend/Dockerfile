@@ -26,7 +26,9 @@ COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
 
-# Keep at runtime too (Next.js re-evaluates rewrites on each request)
+# NOTE: rewrites are baked at BUILD time in standalone mode — the builder
+# stage's INTERNAL_API_URL is what counts. This runtime copy only serves any
+# server code that reads process.env directly.
 ENV INTERNAL_API_URL=http://api:8000
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000

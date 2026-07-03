@@ -62,6 +62,32 @@ _CAPTCHA_MARKERS = re.compile(
     r"recaptcha|hcaptcha|cf-turnstile|cf_chl|captcha", re.IGNORECASE
 )
 
+# Auth requirement stated in prose rather than as an embedded form — common on
+# NetServer procedure pages where the login form lives on a separate page.
+_TEXT_GATED = re.compile(
+    r"(anmeldung|registrierung)\s+(ist\s+)?(erforderlich|notwendig|ben[oö]tigt)"
+    r"|nur\s+(f[uü]r\s+)?(registrierte|angemeldete)"
+    r"|(um|zum)\s+[^.<]{0,80}(herunterzuladen|einzusehen|teilzunehmen)[^.<]{0,60}(anmelden|registrieren)"
+    r"|m[uü]ssen\s+sie\s+sich\s+[^.<]{0,40}(anmelden|registrieren)"
+    r"|(please|must)\s+(log\s?in|sign\s?in|register)\s+to\s+(view|download|access)",
+    re.IGNORECASE,
+)
+
+# Explicit expiry / visibility notices — observed verbatim on live NetServer
+# portals ("Der Sichtbarkeitszeitraum dieser Vergabe ist abgelaufen oder noch
+# nicht erreicht.") and EU-Supply deleted tenders. 3/20 benchmark domains were
+# expired; without this the LLM still burned iterations against them.
+_EXPIRED_NOTICE = re.compile(
+    r"sichtbarkeitszeitraum[^.<]{0,60}(abgelaufen|nicht\s+erreicht)"
+    r"|(vergabe|ausschreibung|verfahren|angebotsfrist|frist)[^.<]{0,40}"
+    r"(abgelaufen|beendet|abgeschlossen|geschlossen|archiviert)"
+    r"|nicht\s+(mehr\s+)?verf[uü]gbar"
+    r"|tender\s+(has\s+)?(expired|closed|ended|been\s+(deleted|removed))"
+    r"|no\s+longer\s+available"
+    r"|TENDERLITE\.DELETED",
+    re.IGNORECASE,
+)
+
 # ── Negative signals — public documents on the page ─────────────────────────
 
 _DOC_LINK = re.compile(
@@ -83,6 +109,8 @@ class LoginWallVerdict:
     def as_error(self) -> str:
         """Format so classify_error() maps to the matching failure category."""
         detail = "; ".join(self.evidence[:3]) or "auth wall detected"
+        if self.kind == "expired":
+            return f"tender expired: {detail}"
         if self.kind == "captcha":
             return f"captcha detected: {detail}"
         if self.kind == "registration":
@@ -100,6 +128,17 @@ def detect_login_wall(html: str | None) -> LoginWallVerdict:
     evidence: list[str] = []
     score = 0.0
     kind: str | None = None
+
+    # Explicit expiry notice wins outright — the portal states the tender is
+    # gone, so document links / login boxes elsewhere on the page are noise.
+    m = _EXPIRED_NOTICE.search(sample)
+    if m:
+        return LoginWallVerdict(
+            is_wall=True,
+            kind="expired",
+            confidence=0.9,
+            evidence=[f"expiry notice on page: \"{m.group(0)[:100]}\""],
+        )
 
     if _PASSWORD_INPUT.search(sample):
         score += 0.55
@@ -122,6 +161,13 @@ def detect_login_wall(html: str | None) -> LoginWallVerdict:
         if kind is None:
             kind = "registration"
         evidence.append("registration prompt present")
+
+    if _TEXT_GATED.search(sample):
+        # "Registrierung erforderlich" / "must sign in to download" — the wall
+        # is stated in prose even though the form lives on another page.
+        score += 0.45
+        kind = kind or "login"
+        evidence.append("page text states documents require login/registration")
 
     if _CAPTCHA_MARKERS.search(sample):
         score += 0.35

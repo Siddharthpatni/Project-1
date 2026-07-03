@@ -66,6 +66,34 @@ def test_empty_or_plain_page_is_not_a_wall():
     assert not detect_login_wall("<html><body><p>Ausschreibung 2026</p></body></html>").is_wall
 
 
+def test_expired_visibility_notice_detected():
+    # Verbatim text observed live on beschaffungen.barmer.de and
+    # deutsche-rentenversicherung-bund.de NetServer procedure pages (2026-07-03).
+    html = """<html><body><a href="/login">Anmelden</a> Mein Konto Registrierung
+    <h2>Bundesweite Lieferung mit Büromöbeln (0020-Büromöbel-2026)</h2>
+    <p>Der Sichtbarkeitszeitraum dieser Vergabe ist abgelaufen oder noch nicht erreicht.</p>
+    </body></html>"""
+    v = detect_login_wall(html)
+    assert v.is_wall and v.kind == "expired" and v.confidence >= 0.8
+    assert classify_error(v.as_error()) == "expired"
+
+
+def test_text_gated_documents_detected_without_form():
+    # NetServer-style prose wall: no password input on the page, the form
+    # lives one click away — the gating is stated in text.
+    html = """<html><body><h1>Vergabeunterlagen</h1>
+    <p>Um die Vergabeunterlagen herunterzuladen, müssen Sie sich zunächst anmelden.</p>
+    <p>Registrierung ist erforderlich. Anmelden</p></body></html>"""
+    v = detect_login_wall(html)
+    assert v.is_wall
+    assert v.kind in ("login", "registration")
+
+
+def test_eu_supply_deleted_marker_is_expired():
+    v = detect_login_wall("<html><body>Error B=TENDERLITE.DELETED</body></html>")
+    assert v.is_wall and v.kind == "expired"
+
+
 # ---------------------------------------------------------------------------
 # CUA route learner
 # ---------------------------------------------------------------------------
