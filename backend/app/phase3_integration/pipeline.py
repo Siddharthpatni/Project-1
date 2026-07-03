@@ -121,6 +121,7 @@ from app.phase2_cua.route_learner import learn_from_cua, replay as replay_learne
 from app.phase3_integration import platform_classifier, scraper_registry
 from app.phase3_integration.adaptive_scraper import run_adaptive
 from app.phase3_integration.deterministic import try_deterministic
+from app.phase3_integration.login_detector import detect_login_wall
 from app.phase3_integration.fallback import StrategyOutcome, next_strategy
 from app.phase3_integration.url_intelligence import (
     classify_url_type, get_strategy_order, circuit_breaker, rate_limiter, UrlType,
@@ -570,6 +571,7 @@ async def _try_manual(
     tmp_id = uuid.uuid4().hex[:8]
     tmp_dir = Path(tempfile.gettempdir()) / f"vergabepilot-manual-{tmp_id}"
     tmp_dir.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
     try:
         # manual_scrape uses playwright.sync_api → run off the event loop.
         files = await asyncio.to_thread(manual_scrape, url, str(tmp_dir))
@@ -581,12 +583,28 @@ async def _try_manual(
             # appears in the frontend and is not lost across sessions.
             _register_manual_scraper(db, domain)
             return StrategyOutcome(Strategy.MANUAL, True, len(moved))
+        _record_manual_failure(db, domain, time.time() - t0)
         return StrategyOutcome(Strategy.MANUAL, False, 0, "no files found")
     except Exception as e:  # noqa: BLE001
         log.warning("phase3.manual.error", url=url, error=str(e))
+        _record_manual_failure(db, domain, time.time() - t0)
         return StrategyOutcome(Strategy.MANUAL, False, 0, str(e))
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _record_manual_failure(db: Session, domain: str, runtime: float) -> None:
+    """Count a MANUAL miss on the registered manual template (if any).
+
+    Successes were already recorded via _register_manual_scraper, but misses
+    never were — so the manual scraper's health always showed 100 %.
+    """
+    try:
+        tpl = scraper_registry.get_for_domain(db, domain)
+        if tpl is not None and tpl.source == "manual":
+            scraper_registry.record_outcome(db, tpl, success=False, runtime=runtime)
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.manual.record_failure_failed", domain=domain, error=str(e))
 
 
 def _register_manual_scraper(db: Session, domain: str) -> None:
@@ -766,6 +784,19 @@ async def _try_llm_generated(
         cleanup_output_dir(det.output_dir)
 
     resolved_platform = platform if platform != "unknown" else None
+
+    # 4b. Structural login-wall parse — when the fetched page is a hard auth
+    # wall with no public document links, skip the paid LLM step entirely and
+    # report the wall honestly. The CUA (which can sometimes pass walls
+    # visually) still runs later in the cascade.
+    if html_snippet:
+        wall = detect_login_wall(html_snippet)
+        if wall.is_wall and wall.confidence >= 0.8:
+            log.info(
+                "phase3.llm.login_wall_skip",
+                url=url, kind=wall.kind, confidence=wall.confidence,
+            )
+            return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, wall.as_error())
 
     # 5. Best-effort route learning (Playwright traces the click path).
     # Only runs when explicitly enabled — disabled by default because it adds

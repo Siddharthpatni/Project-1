@@ -84,11 +84,21 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Portals commonly serve documents from suffix-less endpoints
+# (/download?id=…, GetDocumentFile, …) — suffix matching alone missed them all.
+_DOWNLOADISH_RE = re.compile(
+    r"download|getdocument|documentfile|getfile|attachment|docid=|unterlagen",
+    re.IGNORECASE,
+)
+
+
 def _is_document_url(url: str) -> bool:
     if not url:
         return False
     low = url.lower().split("?", 1)[0]
-    return low.endswith(_DOC_SUFFIXES)
+    if low.endswith(_DOC_SUFFIXES):
+        return True
+    return bool(_DOWNLOADISH_RE.search(url))
 
 
 def _salvage_links_from_outcome(outcome) -> list[str]:
@@ -120,6 +130,27 @@ def _salvage_links_from_outcome(outcome) -> list[str]:
             _add(m)
 
     return found
+
+
+def _salvage_page_urls_from_outcome(outcome, domain: str) -> list[str]:
+    """Same-domain page URLs from the CUA trace, in visit order.
+
+    The agent's raw state strings record where it navigated. The deepest page
+    it reached is where the documents were — replaying a plain goto there and
+    re-harvesting is often all a replay needs.
+    """
+    pages: list[str] = []
+    for step in getattr(outcome, "trace", None) or []:
+        text = str(step.get("state") or step.get("description") or step.get("url") or "") \
+            if isinstance(step, dict) else str(step)
+        for m in _URL_RE.findall(text):
+            cleaned = m.rstrip(".,;")
+            host = urlparse(cleaned).netloc
+            if host != domain or _is_document_url(cleaned):
+                continue
+            if cleaned not in pages:
+                pages.append(cleaned)
+    return pages
 
 
 def learn_from_cua(url: str, outcome) -> LearnedRoute | None:
@@ -181,6 +212,29 @@ def learn_from_cua(url: str, outcome) -> LearnedRoute | None:
         log.info("cua_route_learner.learned_links_only", url=url, docs=len(salvaged))
         return route
 
+    # 3) Last resort: replay a goto to the deepest same-domain page the agent
+    # reached and re-harvest there. Before this fallback existed the learner
+    # returned None for most CUA wins (the fresh unauthenticated re-trace in
+    # step 1 fails on exactly the portals only the CUA could crack), so the
+    # LEARNED_ROUTE strategy never had anything to replay.
+    pages = _salvage_page_urls_from_outcome(outcome, domain)
+    final_page = pages[-1] if pages else None
+    if final_page and final_page.rstrip("/") != url.rstrip("/"):
+        route = LearnedRoute(
+            domain=domain,
+            start_url=url,
+            steps=[
+                {"action": "goto", "selector": None, "text": None, "url": url},
+                {"action": "goto", "selector": None, "text": None, "url": final_page},
+            ],
+            document_links=[],
+            learned_via="cua_final_page",
+            confidence=0.2,
+            learned_at=_now_iso(),
+        )
+        log.info("cua_route_learner.learned_final_page", url=url, page=final_page)
+        return route
+
     log.info("cua_route_learner.nothing_replayable", url=url)
     return None
 
@@ -199,16 +253,25 @@ def replay(route: dict, dest_dir: str) -> list[str]:
         with BrowserSession() as session:
             session.goto(lr.start_url)
 
-            # Re-walk the recorded click steps to reach the document page.
+            # Re-walk the recorded steps to reach the document page. Both
+            # navigation (goto) and click steps must execute — goto steps were
+            # previously skipped, which broke every cua_final_page route.
             for step in lr.steps:
-                if step.get("action") != "click":
-                    continue
-                text = step.get("text")
-                if text:
-                    try:
-                        session.click_text(text, wait_ms=3000)
-                    except Exception:  # noqa: BLE001
-                        continue
+                action = step.get("action")
+                if action == "goto":
+                    target = step.get("url")
+                    if target and target.rstrip("/") != lr.start_url.rstrip("/"):
+                        try:
+                            session.goto(target)
+                        except Exception:  # noqa: BLE001
+                            continue
+                elif action == "click":
+                    text = step.get("text")
+                    if text:
+                        try:
+                            session.click_text(text, wait_ms=3000)
+                        except Exception:  # noqa: BLE001
+                            continue
 
             # Prefer the document links we recorded; re-harvest if they're gone
             # (the portal may have changed or the links were session-scoped).
@@ -223,6 +286,12 @@ def replay(route: dict, dest_dir: str) -> list[str]:
                 cookies = []
 
             saved = download_documents(links, dest_dir, cookies)
+            if not saved and lr.document_links:
+                # Recorded links can be session-scoped tokens that expired —
+                # fall back to whatever the live page offers now.
+                fresh = harvest_documents(session)
+                if fresh:
+                    saved = download_documents(fresh, dest_dir, cookies)
             log.info(
                 "cua_route_learner.replay_done",
                 url=lr.start_url, links=len(links), saved=len(saved),

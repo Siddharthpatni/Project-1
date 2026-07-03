@@ -109,7 +109,7 @@ def pipeline_stats(db: Session = Depends(get_db)):
 
     if not items:
         return {
-            "by_strategy": [], "by_platform": [], "by_failure": [],
+            "by_strategy": [], "by_attempts": [], "by_platform": [], "by_failure": [],
             "totals": {"total": 0, "success": 0, "success_rate": 0, "total_cost": 0},
         }
 
@@ -176,6 +176,36 @@ def pipeline_stats(db: Session = Depends(get_db)):
         })
     by_platform.sort(key=lambda x: -x["total"])
 
+    # ── Attempt-level success ratio per strategy ──────────────────────────────
+    # by_strategy above only counts each item's WINNING strategy, which biases
+    # the picture toward CUA/EXISTING. This counts every attempt in every
+    # cascade, so MANUAL / DETERMINISTIC / LLM_GENERATED get an honest
+    # success ratio even when a later strategy took the win.
+    attempt_buckets: dict[str, dict] = defaultdict(
+        lambda: {"attempts": 0, "successes": 0, "duration_sum": 0.0}
+    )
+    for item in items:
+        for a in (item.attempts_detail or []):
+            b = attempt_buckets[a.get("strategy") or "none"]
+            b["attempts"] += 1
+            b["successes"] += 1 if a.get("success") else 0
+            try:
+                b["duration_sum"] += float(a.get("duration_s") or 0.0)
+            except (TypeError, ValueError):
+                pass
+
+    by_attempts = []
+    for strat, b in sorted(attempt_buckets.items(), key=lambda x: -x[1]["attempts"]):
+        n = max(b["attempts"], 1)
+        by_attempts.append({
+            "strategy":       strat,
+            "label":          _STRATEGY_LABELS.get(strat, strat.replace("_", " ").title()),
+            "attempts":       b["attempts"],
+            "successes":      b["successes"],
+            "success_ratio":  round(b["successes"] / n, 3),
+            "avg_duration_s": round(b["duration_sum"] / n, 2),
+        })
+
     # ── By failure category ───────────────────────────────────────────────────
     fail_counts: dict[str, int] = defaultdict(int)
     for item in items:
@@ -194,6 +224,7 @@ def pipeline_stats(db: Session = Depends(get_db)):
 
     return {
         "by_strategy": by_strategy,
+        "by_attempts": by_attempts,
         "by_platform": by_platform,
         "by_failure":  by_failure,
         "totals": {

@@ -111,6 +111,7 @@ function PipelineTab() {
   );
 
   const { totals, by_strategy, by_platform, by_failure } = pipeline;
+  const by_attempts: any[] = pipeline.by_attempts ?? [];
 
   return (
     <div className="space-y-8">
@@ -188,6 +189,52 @@ function PipelineTab() {
           </div>
         </div>
       </div>
+
+      {/* Attempt-level success ratios — every strategy tried, not just winners */}
+      {by_attempts.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+            <Zap className="w-5 h-5 text-emerald-500" />
+            <h2 className="font-bold text-slate-800">Attempt-Level Success Ratios</h2>
+            <span className="ml-auto text-[10px] text-slate-400 font-medium">
+              every cascade attempt — manual, deterministic &amp; LLM included, not only winning strategies
+            </span>
+          </div>
+          <div className="p-6 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  {["Strategy", "Attempts", "Successes", "Success Ratio", "Avg Time"].map(h => (
+                    <th key={h} className="pb-2 font-bold text-slate-400 uppercase tracking-wide text-left first:pl-0 pl-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {by_attempts.map((s: any) => (
+                  <tr key={s.strategy} className="hover:bg-slate-50/50">
+                    <td className="py-2 font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ background: STRATEGY_COLORS[s.strategy] ?? "#64748b" }} />
+                        {s.label}
+                      </span>
+                    </td>
+                    <td className="py-2 pl-3 font-mono text-slate-600">{s.attempts}</td>
+                    <td className="py-2 pl-3 font-mono text-slate-600">{s.successes}</td>
+                    <td className="py-2 pl-3">
+                      <span className={`px-1.5 py-0.5 rounded font-bold ${
+                        s.success_ratio >= 0.7 ? "bg-emerald-50 text-emerald-700" :
+                        s.success_ratio >= 0.4 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-600"
+                      }`}>{pct(s.success_ratio)}</span>
+                    </td>
+                    <td className="py-2 pl-3 font-mono text-slate-500">{s.avg_duration_s}s</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Platform + Failure side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
