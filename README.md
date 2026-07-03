@@ -11,7 +11,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-225%20passing-success)
+![Tests](https://img.shields.io/badge/tests-238%20passing-success)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 </div>

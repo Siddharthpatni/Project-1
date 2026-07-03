@@ -42,7 +42,12 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.llm_client import LLMClient
-from app.core.security import is_url_allowed, classify_risk, detect_prompt_injection
+from app.core.security import (
+    classify_error,
+    classify_risk,
+    detect_prompt_injection,
+    is_url_allowed,
+)
 from app.core.storage import ObjectStorage
 from app.models import Document, JobItem, JobStatus, Strategy
 from app.utils.audit import CRITICAL, ERROR, INFO, WARNING, write_audit
@@ -693,19 +698,22 @@ async def _try_llm_generated(
     sanitized_snippet: str | None = None
     try:
         import httpx
-        from app.core.security import detect_prompt_injection, sanitize_web_content
+        from app.core.security import redact_injections, sanitize_web_content, strip_html_noise
         async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
             r = await client.get(url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
             })
             html_snippet = r.text
-        hits = detect_prompt_injection(html_snippet)
+        # Strip script/style noise (the main injection false-positive source),
+        # then redact any remaining injection patterns instead of dropping the
+        # page — the AST validator + sandbox still constrain the generated code.
+        cleaned = strip_html_noise(html_snippet)
+        cleaned, hits = redact_injections(cleaned)
         if hits:
-            log.warning("phase3.llm.prompt_injection_in_html", url=url, patterns=hits[:3])
-            html_snippet = None
-        else:
-            sanitized_snippet = sanitize_web_content(html_snippet, max_length=20_000)
+            log.warning("phase3.llm.prompt_injection_redacted", url=url, patterns=hits[:3])
+        html_snippet = cleaned
+        sanitized_snippet = sanitize_web_content(cleaned, max_length=20_000)
     except httpx.ConnectError as e:
         log.warning("phase3.llm.html_fetch_connect_error", url=url, error=str(e))
     except httpx.SSLError as e:
@@ -918,39 +926,64 @@ async def _try_learned_route(
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+# Failure categories where a CUA retry cannot help: the wall is deterministic,
+# so a second vision-agent run only doubles the cost.
+_CUA_NO_RETRY = {
+    "login_required", "registration_required", "captcha",
+    "not_found", "expired", "blocked_url",
+}
+
+
 async def _try_cua(
     db: Session, url: str, domain: str, scratch: Path, result: PipelineResult,
 ) -> StrategyOutcome:
-    outcome = await run_agent(
-        "playwright_cua", url=url, max_steps=settings.cua_max_steps,
-    )
-    result.cost_usd += outcome.cost_usd
+    attempts = max(1, settings.cua_attempts)
+    last_error: str | None = None
 
-    # Always persist the CUA interaction trace as a domain hint, regardless of
-    # success/failure. Even a failed trace encodes which steps were tried,
-    # which selectors were found, and where the agent got stuck — this is
-    # valuable context for the next LLM generation attempt on this domain.
-    if outcome.trace:
-        hint = _format_cua_hint(url, outcome)
-        scraper_registry.store_cua_hint(db, domain, hint)
+    for attempt in range(1, attempts + 1):
+        outcome = await run_agent(
+            "playwright_cua", url=url, max_steps=settings.cua_max_steps,
+        )
+        result.cost_usd += outcome.cost_usd
 
-    if outcome.success and outcome.downloaded_files:
-        moved = _move_into(scratch, outcome.downloaded_files)
-        for f in outcome.downloaded_files:
-            cua_dir = str(Path(f).parent)
-            if cua_dir and cua_dir != str(scratch):
-                cleanup_output_dir(cua_dir)
+        # Always persist the CUA interaction trace as a domain hint, regardless of
+        # success/failure. Even a failed trace encodes which steps were tried,
+        # which selectors were found, and where the agent got stuck — this is
+        # valuable context for the next LLM generation attempt on this domain.
+        if outcome.trace:
+            hint = _format_cua_hint(url, outcome)
+            scraper_registry.store_cua_hint(db, domain, hint)
+
+        if outcome.success and outcome.downloaded_files:
+            moved = _move_into(scratch, outcome.downloaded_files)
+            for f in outcome.downloaded_files:
+                cua_dir = str(Path(f).parent)
+                if cua_dir and cua_dir != str(scratch):
+                    cleanup_output_dir(cua_dir)
+                    break
+            if moved:
+                result.downloaded.extend(moved)
+                # ── CUA route learning ───────────────────────────────────────
+                # The CUA succeeded. If every cheaper strategy already failed for
+                # this URL (i.e. CUA was the only thing that worked), learn the route
+                # so the next visit to this domain replays it cheaply instead of
+                # paying the full CUA cost again. Never let learning break the win.
+                await _maybe_learn_route(db, url, domain, outcome, result)
+                return StrategyOutcome(Strategy.CUA, True, len(moved))
+
+        last_error = outcome.error or "agent failed"
+        # The visual agent is stochastic — benchmarks showed the same portal
+        # flipping between success and failure across runs, so one retry buys
+        # real coverage. Deterministic walls are exempt (see _CUA_NO_RETRY).
+        if attempt < attempts:
+            if classify_error(last_error) in _CUA_NO_RETRY:
                 break
-        if moved:
-            result.downloaded.extend(moved)
-            # ── CUA route learning ───────────────────────────────────────────
-            # The CUA succeeded. If every cheaper strategy already failed for
-            # this URL (i.e. CUA was the only thing that worked), learn the route
-            # so the next visit to this domain replays it cheaply instead of
-            # paying the full CUA cost again. Never let learning break the win.
-            await _maybe_learn_route(db, url, domain, outcome, result)
-            return StrategyOutcome(Strategy.CUA, True, len(moved))
-    return StrategyOutcome(Strategy.CUA, False, 0, outcome.error or "agent failed")
+            log.info(
+                "phase3.cua.retry",
+                url=url, attempt=attempt, of=attempts, error=last_error[:200],
+            )
+
+    return StrategyOutcome(Strategy.CUA, False, 0, last_error or "agent failed")
 
 
 async def _maybe_learn_route(

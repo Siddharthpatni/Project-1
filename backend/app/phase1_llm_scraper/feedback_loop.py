@@ -111,6 +111,9 @@ async def run_feedback_loop(
                 expected_docs=truth.expected_doc_count,
                 downloaded=metrics.downloaded_count if metrics else 0,
                 model=model,
+                # Without the failing code the model regenerates blind — pass
+                # it so "self-healing" is an actual targeted fix.
+                previous_code=scraper.code,
             )
 
         loop.total_cost_usd += scraper.cost_usd

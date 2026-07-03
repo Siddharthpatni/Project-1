@@ -26,7 +26,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.core.llm_client import LLMClient, LLMResponse
-from app.core.security import detect_prompt_injection, sanitize_web_content
+from app.core.security import redact_injections, sanitize_web_content, strip_html_noise
 from app.phase1_llm_scraper.prompts import (
     SYSTEM_PROMPT,
     build_feedback_prompt,
@@ -129,6 +129,7 @@ class ScraperGenerator:
         expected_docs: int,
         downloaded: int,
         model: str | None = None,
+        previous_code: str = "",
     ) -> GeneratedScraper:
         user_msg = build_feedback_prompt(
             iteration=iteration,
@@ -138,6 +139,7 @@ class ScraperGenerator:
             error=error,
             expected_docs=expected_docs,
             downloaded=downloaded,
+            previous_code=previous_code,
         )
         resp = await self.llm.chat(system=SYSTEM_PROMPT, user=user_msg, model=model)
         return self._parse(resp)
@@ -165,21 +167,32 @@ class ScraperGenerator:
             log.warning("phase1.snippet_fetch_failed", url=url, error=str(e))
             return "<!-- could not fetch page -->"
 
-        # Scan for prompt injection in fetched HTML
-        injection_hits = detect_prompt_injection(raw)
+        # Script/style blocks carry no scraping signal and are where minified
+        # JS false-positives the injection guard — drop them before scanning.
+        cleaned = strip_html_noise(raw)
+        cleaned, injection_hits = redact_injections(cleaned)
         if injection_hits:
-            log.error(
-                "phase1.prompt_injection_detected",
+            # Redact-and-continue: the AST validator + sandbox still constrain
+            # whatever code the LLM produces, so a suspicious page is degraded,
+            # not fatal (hard-failing blocked legitimate portals 5/100 runs).
+            log.warning(
+                "phase1.prompt_injection_redacted",
                 url=url,
                 patterns=injection_hits[:5],
             )
-            raise ValueError(f"prompt injection detected: HTML payload matches forbidden patterns {injection_hits[:5]}")
 
-        return sanitize_web_content(raw, max_length=20_000)
+        return sanitize_web_content(cleaned, max_length=20_000)
 
     def _parse(self, resp: LLMResponse) -> GeneratedScraper:
-        match = _CODE_FENCE.search(resp.text)
-        code = match.group(1).strip() if match else resp.text.strip()
+        # Models sometimes emit several fenced blocks (explanation snippets,
+        # then the real module). Taking the first block truncated the scraper;
+        # prefer the block that defines scrape(), largest first.
+        blocks = [m.group(1).strip() for m in _CODE_FENCE.finditer(resp.text)]
+        if blocks:
+            candidates = [b for b in blocks if "def scrape" in b] or blocks
+            code = max(candidates, key=len)
+        else:
+            code = resp.text.strip()
         return GeneratedScraper(
             code=code,
             model=resp.model,

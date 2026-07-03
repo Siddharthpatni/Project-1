@@ -23,8 +23,9 @@ _INJECTION_PATTERNS = [
     # "system prompt" only when revealing its content — tightened from
     # the original `system prompt[: ]` which matched "System: Prompt zur Vergabe".
     # Matches: "system prompt is:", "system prompt:", "my system prompt is 'X'"
+    # (a bare "system prompt" mention is NOT flagged — it appears in legitimate
+    # docs/blog HTML and caused whole domains to be blocked)
     re.compile(r"\bsystem\s+prompt\b[\s:]*(is|was|says|=|:)\s*[\"'`]", re.IGNORECASE),
-    re.compile(r"\bsystem\s+prompt\b", re.IGNORECASE),  # catch all uses of "system prompt"
 
     # XML-style system tag (not used in German procurement HTML)
     re.compile(r"<\s*system\s*>", re.IGNORECASE),
@@ -76,6 +77,39 @@ def detect_prompt_injection(text: str) -> list[str]:
         if pat.search(text):
             hits.append(pat.pattern)
     return hits
+
+
+# Blocks that carry no signal for scraper generation but are the #1 source of
+# injection false positives: minified JS is full of `\x..` escapes, base64
+# helpers, and prompt-like strings (SharePoint/SPA bundles tripped the guard
+# 5/5 times in the 100-run benchmark on legitimate pages).
+_HTML_NOISE = re.compile(
+    r"<script\b[^>]*>.*?</script\s*>"
+    r"|<style\b[^>]*>.*?</style\s*>"
+    r"|<noscript\b[^>]*>.*?</noscript\s*>"
+    r"|<!--.*?-->",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def strip_html_noise(html: str) -> str:
+    """Remove script/style/noscript blocks and comments from an HTML payload."""
+    return _HTML_NOISE.sub(" ", html)
+
+
+def redact_injections(text: str) -> tuple[str, list[str]]:
+    """Neutralize injection matches in untrusted content instead of rejecting it.
+
+    Returns (redacted_text, hit_patterns). Rejecting the whole page on a match
+    punishes legitimate portals; redaction keeps the page usable while the
+    generated code is still constrained by the AST validator + sandbox.
+    """
+    hits: list[str] = []
+    for pat in _INJECTION_PATTERNS:
+        if pat.search(text):
+            hits.append(pat.pattern)
+            text = pat.sub("[REDACTED:injection]", text)
+    return text, hits
 
 
 # ---------------------------------------------------------------------------

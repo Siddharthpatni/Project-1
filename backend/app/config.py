@@ -54,14 +54,23 @@ class Settings(BaseSettings):
     s3_region: str = "eu-central-1"
 
     # --- Phase 1 ---
-    # 45s allows Angular/Cosinex portals that require 5-8s JS wait + download.
-    # The previous 25s was too tight and caused valid scrapers to be rejected.
-    sandbox_timeout_seconds: int = 45
+    # 90s with a 75s in-scraper deadline: the prompt tells generated code to
+    # self-terminate at 75s and return partial results, so the sandbox kill is
+    # a backstop, not the norm. The previous 45s (with a prompt that promised
+    # 60s!) killed multi-step JS portals before result.json was written —
+    # the benchmark's biggest crash bucket.
+    sandbox_timeout_seconds: int = 90
     sandbox_memory_mb: int = 512
     max_feedback_iterations: int = 3
+    # Per-URL hard cap for benchmark/evaluation runs (LLM + sandbox + retries).
+    evaluation_run_timeout_seconds: int = 600
 
     # --- Phase 2 ---
     cua_max_steps: int = 15
+    # The CUA is stochastic — the same portal can succeed on a second attempt
+    # (benchmarks showed run-to-run variance is the main driver of CUA misses).
+    # Deterministic walls (login/CAPTCHA/404/expired) are never retried.
+    cua_attempts: int = 2
     cua_screenshot_dir: str = "/tmp/vergabepilot-screenshots"
 
     # --- Phase 3 ---

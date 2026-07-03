@@ -429,22 +429,28 @@ def run_evaluation_task(dataset_path: str, models: list[str], max_iterations: in
 
 
 async def _run_evaluation_async(dataset, models: list[str], max_iterations: int) -> dict:
-    db = SessionLocal()
     # LLMClient created inside the event loop so its httpx.AsyncClient is
     # bound to the correct loop for the full duration of the eval run.
     llm = LLMClient()
     results = []
+    from app.config import settings as cfg
+    per_run_timeout = cfg.evaluation_run_timeout_seconds
 
     for model in models:
         for truth in dataset:
             t0 = time.time()
             try:
-                loop_result = await run_feedback_loop(
-                    url=truth.url,
-                    llm=llm,
-                    ground_truth=truth,
-                    model=model,
-                    max_iterations=max_iterations,
+                # Hard cap per URL: one slow auth portal must not stall the
+                # batch (a 361s portal killed the original 100-run eval).
+                loop_result = await asyncio.wait_for(
+                    run_feedback_loop(
+                        url=truth.url,
+                        llm=llm,
+                        ground_truth=truth,
+                        model=model,
+                        max_iterations=max_iterations,
+                    ),
+                    timeout=per_run_timeout,
                 )
                 run = EvaluationRun(
                     model=model,
@@ -456,6 +462,22 @@ async def _run_evaluation_async(dataset, models: list[str], max_iterations: int)
                     runtime_seconds=time.time() - t0,
                     cost_usd=loop_result.total_cost_usd,
                     notes=(loop_result.final_execution.error if loop_result.final_execution else None) or "",
+                )
+            except TimeoutError:
+                log.warning(
+                    "evaluation.run_timeout",
+                    model=model, url=truth.url, timeout=per_run_timeout,
+                )
+                run = EvaluationRun(
+                    model=model,
+                    url=truth.url,
+                    expected_docs=truth.expected_doc_count,
+                    downloaded_docs=0,
+                    success=False,
+                    iterations=0,
+                    runtime_seconds=time.time() - t0,
+                    cost_usd=0.0,
+                    notes=f"hard timeout >{per_run_timeout}s",
                 )
             except Exception as e:  # noqa: BLE001
                 log.exception("evaluation.run_failed", model=model, url=truth.url)
@@ -470,11 +492,17 @@ async def _run_evaluation_async(dataset, models: list[str], max_iterations: int)
                     cost_usd=0.0,
                     notes=str(e)[:1000],
                 )
-            db.add(run)
-            db.commit()
+            # Short-lived session per insert: holding one session across the
+            # whole batch tripped Postgres' idle-in-transaction timeout on the
+            # first slow portal and killed the run at #5.
+            db = SessionLocal()
+            try:
+                db.add(run)
+                db.commit()
+            finally:
+                db.close()
             results.append({"model": model, "url": truth.url, "success": run.success})
 
-    db.close()
     return {"runs": len(results), "results": results}
 
 
