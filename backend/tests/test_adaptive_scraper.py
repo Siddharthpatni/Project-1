@@ -160,11 +160,14 @@ def test_strategy_order_injects_adaptive_before_llm():
     assert order.index(Strategy.ADAPTIVE) < order.index(Strategy.LLM_GENERATED)
 
 
-def test_strategy_order_no_adaptive_when_no_llm():
-    # SATELLITE order is deliberately minimal (no LLM) → ADAPTIVE not injected.
+def test_strategy_order_satellite_free_paths_only():
+    # SATELLITE order stays free: ADAPTIVE is a deliberate cheap fallback after
+    # DETERMINISTIC/EXISTING, but the paid LLM/CUA steps are never reached.
     order = ui.get_strategy_order(ui.UrlType.SATELLITE, "dtvp")
     assert Strategy.LLM_GENERATED not in order
-    assert Strategy.ADAPTIVE not in order
+    assert Strategy.CUA not in order
+    assert Strategy.ADAPTIVE in order
+    assert order.index(Strategy.DETERMINISTIC) < order.index(Strategy.ADAPTIVE)
 
 
 # ---------------------------------------------------------------------------

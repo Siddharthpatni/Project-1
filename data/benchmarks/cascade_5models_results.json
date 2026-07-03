@@ -1,0 +1,742 @@
+{
+  "google/gemini-2.5-flash-lite": {
+    "job_id": "59ee3974-8c36-4097-9e85-f6e905d46d45",
+    "status": "partial",
+    "success": 10,
+    "total": 20,
+    "items": [
+      {
+        "domain": "ausschreibungen.kfw.de",
+        "url": "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/355e983a-8a38-445e-85bb-e3479ec032f7",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.noncd.db.de",
+        "url": "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/ed6f02c1-f53f-4e0c-b646-0570c8e2e487",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bi-medien.de",
+        "url": "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461882996",
+        "success": true,
+        "strategy": "adaptive_universal",
+        "failure_category": null
+      },
+      {
+        "domain": "deutsche-rentenversicherung-bund.de",
+        "url": "https://deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19e8da7bf89-45714cf0edb9ac34&PublicationType=0",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.servicecenter-khs.e-va.eu",
+        "url": "https://bieterportal.servicecenter-khs.e-va.eu/bundde?data=eyJ0IjoxMDAxMDA4MCwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMn0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "eu.eu-supply.com",
+        "url": "http://eu.eu-supply.com/app/rfq/rwlentrance_s.asp?PID=455767&B=TENDERLITE.DELETED",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eliagroup.sharepoint.com",
+        "url": "https://eliagroup.sharepoint.com/:f:/s/Filebox/IgBqXyGLSWEbRY59VAXQ5AkzAcLp3Tfa5H3dwDzW6zx34Hc?e=psL3n8",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.de",
+        "url": "https://bieterportal.dfg.de/?tid=6e5deec75ee686d1da73a231bf06ba38",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.pd-g.e-va.eu",
+        "url": "https://bieterportal.pd-g.e-va.eu/?tid=b3aa7724b1d4a1b7eebaed145bcb709a",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "eom-vp-prod.ai-hosting.de",
+        "url": "https://eom-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19e1c982554-cd59efa34325e02",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterzugang.deutsche-evergabe.de",
+        "url": "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/6394f6fd-3d92-42cf-ae08-caceca8b97d9",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ec.europa.eu",
+        "url": "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/tender-details/eb17be93-9fe1-4870-bd29-af840fe5422a-CN?#anchorDocuments",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "box.fu-berlin.de",
+        "url": "https://box.fu-berlin.de/s/9kFLkiP96Xws4R6",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.landbw.de",
+        "url": "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YYVY46G",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibung.halle.de",
+        "url": "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19eb0ddd104-4e06ded9da44769d&PublicationType=0",
+        "success": true,
+        "strategy": "existing_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.giz.de",
+        "url": "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTVGFLGE9/documents",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "beschaffungen.barmer.de",
+        "url": "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dcf082db4-410a6c915fbff59c",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieter.ehealth-evergabe.de",
+        "url": "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/32d3dc51-1269-48e3-ac8c-8a0813afb89c",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.e-va.eu",
+        "url": "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTUzNywidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bund.vergabe24.de",
+        "url": "https://bund.vergabe24.de/?hash=6163d768ece158578de5fddc92c281ac",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      }
+    ]
+  },
+  "openai/gpt-4.1-nano": {
+    "job_id": "6ccacc25-5731-4f84-8e9e-dac2916def32",
+    "status": "partial",
+    "success": 9,
+    "total": 20,
+    "items": [
+      {
+        "domain": "bieterportal.dfg.de",
+        "url": "https://bieterportal.dfg.de/?tid=6e5deec75ee686d1da73a231bf06ba38",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bund.vergabe24.de",
+        "url": "https://bund.vergabe24.de/?hash=6163d768ece158578de5fddc92c281ac",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "deutsche-rentenversicherung-bund.de",
+        "url": "https://deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19e8da7bf89-45714cf0edb9ac34&PublicationType=0",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ec.europa.eu",
+        "url": "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/tender-details/eb17be93-9fe1-4870-bd29-af840fe5422a-CN?#anchorDocuments",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eliagroup.sharepoint.com",
+        "url": "https://eliagroup.sharepoint.com/:f:/s/Filebox/IgBqXyGLSWEbRY59VAXQ5AkzAcLp3Tfa5H3dwDzW6zx34Hc?e=psL3n8",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eu.eu-supply.com",
+        "url": "http://eu.eu-supply.com/app/rfq/rwlentrance_s.asp?PID=455767&B=TENDERLITE.DELETED",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibung.halle.de",
+        "url": "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19eb0ddd104-4e06ded9da44769d&PublicationType=0",
+        "success": true,
+        "strategy": "existing_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.giz.de",
+        "url": "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTVGFLGE9/documents",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.kfw.de",
+        "url": "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/355e983a-8a38-445e-85bb-e3479ec032f7",
+        "success": true,
+        "strategy": "manual_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "beschaffungen.barmer.de",
+        "url": "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dcf082db4-410a6c915fbff59c",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.e-va.eu",
+        "url": "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTUzNywidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.landbw.de",
+        "url": "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YYVY46G",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.pd-g.e-va.eu",
+        "url": "https://bieterportal.pd-g.e-va.eu/?tid=b3aa7724b1d4a1b7eebaed145bcb709a",
+        "success": true,
+        "strategy": "manual_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.noncd.db.de",
+        "url": "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/ed6f02c1-f53f-4e0c-b646-0570c8e2e487",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bi-medien.de",
+        "url": "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461882996",
+        "success": true,
+        "strategy": "adaptive_universal",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.servicecenter-khs.e-va.eu",
+        "url": "https://bieterportal.servicecenter-khs.e-va.eu/bundde?data=eyJ0IjoxMDAxMDA4MCwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMn0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "eom-vp-prod.ai-hosting.de",
+        "url": "https://eom-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19e1c982554-cd59efa34325e02",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterzugang.deutsche-evergabe.de",
+        "url": "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/6394f6fd-3d92-42cf-ae08-caceca8b97d9",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "box.fu-berlin.de",
+        "url": "https://box.fu-berlin.de/s/9kFLkiP96Xws4R6",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieter.ehealth-evergabe.de",
+        "url": "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/32d3dc51-1269-48e3-ac8c-8a0813afb89c",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      }
+    ]
+  },
+  "deepseek/deepseek-chat-v3-0324": {
+    "job_id": "014a32b2-bd14-43e4-b764-a9f97fe2c59c",
+    "status": "partial",
+    "success": 8,
+    "total": 20,
+    "items": [
+      {
+        "domain": "eu.eu-supply.com",
+        "url": "http://eu.eu-supply.com/app/rfq/rwlentrance_s.asp?PID=455767&B=TENDERLITE.DELETED",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "beschaffungen.barmer.de",
+        "url": "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dcf082db4-410a6c915fbff59c",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "box.fu-berlin.de",
+        "url": "https://box.fu-berlin.de/s/9kFLkiP96Xws4R6",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "deutsche-rentenversicherung-bund.de",
+        "url": "https://deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19e8da7bf89-45714cf0edb9ac34&PublicationType=0",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.landbw.de",
+        "url": "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YYVY46G",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.giz.de",
+        "url": "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTVGFLGE9/documents",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "bieter.ehealth-evergabe.de",
+        "url": "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/32d3dc51-1269-48e3-ac8c-8a0813afb89c",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.de",
+        "url": "https://bieterportal.dfg.de/?tid=6e5deec75ee686d1da73a231bf06ba38",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eliagroup.sharepoint.com",
+        "url": "https://eliagroup.sharepoint.com/:f:/s/Filebox/IgBqXyGLSWEbRY59VAXQ5AkzAcLp3Tfa5H3dwDzW6zx34Hc?e=psL3n8",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ec.europa.eu",
+        "url": "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/tender-details/eb17be93-9fe1-4870-bd29-af840fe5422a-CN?#anchorDocuments",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bi-medien.de",
+        "url": "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461882996",
+        "success": true,
+        "strategy": "adaptive_universal",
+        "failure_category": null
+      },
+      {
+        "domain": "bund.vergabe24.de",
+        "url": "https://bund.vergabe24.de/?hash=6163d768ece158578de5fddc92c281ac",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.e-va.eu",
+        "url": "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTUzNywidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.pd-g.e-va.eu",
+        "url": "https://bieterportal.pd-g.e-va.eu/?tid=b3aa7724b1d4a1b7eebaed145bcb709a",
+        "success": true,
+        "strategy": "manual_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterzugang.deutsche-evergabe.de",
+        "url": "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/6394f6fd-3d92-42cf-ae08-caceca8b97d9",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eom-vp-prod.ai-hosting.de",
+        "url": "https://eom-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19e1c982554-cd59efa34325e02",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibung.halle.de",
+        "url": "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19eb0ddd104-4e06ded9da44769d&PublicationType=0",
+        "success": true,
+        "strategy": "existing_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.kfw.de",
+        "url": "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/355e983a-8a38-445e-85bb-e3479ec032f7",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.servicecenter-khs.e-va.eu",
+        "url": "https://bieterportal.servicecenter-khs.e-va.eu/bundde?data=eyJ0IjoxMDAxMDA4MCwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMn0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.noncd.db.de",
+        "url": "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/ed6f02c1-f53f-4e0c-b646-0570c8e2e487",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      }
+    ]
+  },
+  "openai/gpt-4o-mini": {
+    "job_id": "7df25f73-0441-4f20-8de9-8750ed3a8eb2",
+    "status": "partial",
+    "success": 7,
+    "total": 20,
+    "items": [
+      {
+        "domain": "eom-vp-prod.ai-hosting.de",
+        "url": "https://eom-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19e1c982554-cd59efa34325e02",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ec.europa.eu",
+        "url": "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/tender-details/eb17be93-9fe1-4870-bd29-af840fe5422a-CN?#anchorDocuments",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eu.eu-supply.com",
+        "url": "http://eu.eu-supply.com/app/rfq/rwlentrance_s.asp?PID=455767&B=TENDERLITE.DELETED",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "beschaffungen.barmer.de",
+        "url": "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dcf082db4-410a6c915fbff59c",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.de",
+        "url": "https://bieterportal.dfg.de/?tid=6e5deec75ee686d1da73a231bf06ba38",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.pd-g.e-va.eu",
+        "url": "https://bieterportal.pd-g.e-va.eu/?tid=b3aa7724b1d4a1b7eebaed145bcb709a",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterzugang.deutsche-evergabe.de",
+        "url": "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/6394f6fd-3d92-42cf-ae08-caceca8b97d9",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.servicecenter-khs.e-va.eu",
+        "url": "https://bieterportal.servicecenter-khs.e-va.eu/bundde?data=eyJ0IjoxMDAxMDA4MCwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMn0%3D",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "deutsche-rentenversicherung-bund.de",
+        "url": "https://deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19e8da7bf89-45714cf0edb9ac34&PublicationType=0",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bund.vergabe24.de",
+        "url": "https://bund.vergabe24.de/?hash=6163d768ece158578de5fddc92c281ac",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eliagroup.sharepoint.com",
+        "url": "https://eliagroup.sharepoint.com/:f:/s/Filebox/IgBqXyGLSWEbRY59VAXQ5AkzAcLp3Tfa5H3dwDzW6zx34Hc?e=psL3n8",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "box.fu-berlin.de",
+        "url": "https://box.fu-berlin.de/s/9kFLkiP96Xws4R6",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.noncd.db.de",
+        "url": "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/ed6f02c1-f53f-4e0c-b646-0570c8e2e487",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibung.halle.de",
+        "url": "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19eb0ddd104-4e06ded9da44769d&PublicationType=0",
+        "success": true,
+        "strategy": "existing_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.giz.de",
+        "url": "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTVGFLGE9/documents",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "bi-medien.de",
+        "url": "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461882996",
+        "success": true,
+        "strategy": "adaptive_universal",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.e-va.eu",
+        "url": "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTUzNywidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.landbw.de",
+        "url": "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YYVY46G",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.kfw.de",
+        "url": "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/355e983a-8a38-445e-85bb-e3479ec032f7",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieter.ehealth-evergabe.de",
+        "url": "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/32d3dc51-1269-48e3-ac8c-8a0813afb89c",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      }
+    ]
+  },
+  "meta-llama/llama-4-maverick": {
+    "job_id": "987fc132-82da-4531-ace5-409be2090092",
+    "status": "partial",
+    "success": 13,
+    "total": 20,
+    "items": [
+      {
+        "domain": "bieterportal.dfg.de",
+        "url": "https://bieterportal.dfg.de/?tid=6e5deec75ee686d1da73a231bf06ba38",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibung.halle.de",
+        "url": "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19eb0ddd104-4e06ded9da44769d&PublicationType=0",
+        "success": true,
+        "strategy": "existing_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.giz.de",
+        "url": "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTVGFLGE9/documents",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.landbw.de",
+        "url": "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YYVY46G",
+        "success": true,
+        "strategy": "deterministic_template",
+        "failure_category": null
+      },
+      {
+        "domain": "bund.vergabe24.de",
+        "url": "https://bund.vergabe24.de/?hash=6163d768ece158578de5fddc92c281ac",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eu.eu-supply.com",
+        "url": "http://eu.eu-supply.com/app/rfq/rwlentrance_s.asp?PID=455767&B=TENDERLITE.DELETED",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.dfg.e-va.eu",
+        "url": "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTUzNywidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "ausschreibungen.kfw.de",
+        "url": "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/355e983a-8a38-445e-85bb-e3479ec032f7",
+        "success": true,
+        "strategy": "manual_scraper",
+        "failure_category": null
+      },
+      {
+        "domain": "bi-medien.de",
+        "url": "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461882996",
+        "success": true,
+        "strategy": "adaptive_universal",
+        "failure_category": null
+      },
+      {
+        "domain": "beschaffungen.barmer.de",
+        "url": "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dcf082db4-410a6c915fbff59c",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eliagroup.sharepoint.com",
+        "url": "https://eliagroup.sharepoint.com/:f:/s/Filebox/IgBqXyGLSWEbRY59VAXQ5AkzAcLp3Tfa5H3dwDzW6zx34Hc?e=psL3n8",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieter.ehealth-evergabe.de",
+        "url": "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/32d3dc51-1269-48e3-ac8c-8a0813afb89c",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.servicecenter-khs.e-va.eu",
+        "url": "https://bieterportal.servicecenter-khs.e-va.eu/bundde?data=eyJ0IjoxMDAxMDA4MCwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMn0%3D",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "ec.europa.eu",
+        "url": "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/tender-details/eb17be93-9fe1-4870-bd29-af840fe5422a-CN?#anchorDocuments",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "box.fu-berlin.de",
+        "url": "https://box.fu-berlin.de/s/9kFLkiP96Xws4R6",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.noncd.db.de",
+        "url": "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/ed6f02c1-f53f-4e0c-b646-0570c8e2e487",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "eom-vp-prod.ai-hosting.de",
+        "url": "https://eom-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19e1c982554-cd59efa34325e02",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterzugang.deutsche-evergabe.de",
+        "url": "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/6394f6fd-3d92-42cf-ae08-caceca8b97d9",
+        "success": true,
+        "strategy": "computer_use_agent",
+        "failure_category": null
+      },
+      {
+        "domain": "deutsche-rentenversicherung-bund.de",
+        "url": "https://deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19e8da7bf89-45714cf0edb9ac34&PublicationType=0",
+        "success": false,
+        "strategy": null,
+        "failure_category": null
+      },
+      {
+        "domain": "bieterportal.pd-g.e-va.eu",
+        "url": "https://bieterportal.pd-g.e-va.eu/?tid=b3aa7724b1d4a1b7eebaed145bcb709a",
+        "success": true,
+        "strategy": "manual_scraper",
+        "failure_category": null
+      }
+    ]
+  }
+}
