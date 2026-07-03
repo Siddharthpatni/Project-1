@@ -10,6 +10,7 @@ Regression tests for the benchmark-driven reliability fixes:
 - Config: sandbox timeout leaves headroom over the prompt's 75s deadline.
 """
 import ast
+from pathlib import Path
 
 from app.config import settings
 from app.core.llm_client import LLMResponse
@@ -127,3 +128,139 @@ def test_sandbox_timeout_exceeds_prompt_deadline():
 
 def test_cua_retry_knob():
     assert settings.cua_attempts >= 1
+
+
+# ---------------------------------------------------------------------------
+# Cascade abort policy (classify_risk)
+# ---------------------------------------------------------------------------
+
+def test_auth_and_sandbox_do_not_abort_cascade():
+    # "high" risk aborts the whole cascade. 403s and sandbox limits are
+    # strategy-local failures — CUA/MANUAL must still get their turn.
+    from app.core.security import classify_risk
+    assert classify_risk("HTTP 403 Forbidden — access denied") != "high"
+    assert classify_risk("sandbox memory limit exceeded, killed") != "high"
+    assert classify_risk("prompt injection detected in page") == "high"
+    assert classify_risk("url not allowed: private network blocked: 10.0.0.1") == "high"
+
+
+def test_verfuegbar_alone_is_not_expired():
+    # Bare "verfügbar" means "available" — only the negated form is expiry.
+    assert classify_error("Dokumente sind verfügbar") != "expired"
+    assert classify_error("Unterlagen nicht mehr verfügbar") == "expired"
+
+
+# ---------------------------------------------------------------------------
+# Domain rate limiter accounting
+# ---------------------------------------------------------------------------
+
+class _FakeRedis:
+    def __init__(self):
+        self.counters: dict[str, int] = {}
+
+    def incr(self, key):
+        self.counters[key] = self.counters.get(key, 0) + 1
+        return self.counters[key]
+
+    def decr(self, key):
+        self.counters[key] = self.counters.get(key, 0) - 1
+        return self.counters[key]
+
+    def expire(self, key, seconds):
+        pass
+
+    def delete(self, key):
+        self.counters.pop(key, None)
+
+
+def test_rate_limiter_denied_acquire_does_not_leak_slots():
+    from app.phase3_integration.url_intelligence import DomainRateLimiter
+
+    rl = DomainRateLimiter(max_concurrent=2, window_seconds=30)
+    rl._redis = _FakeRedis()
+    assert rl.acquire("x.de") is True
+    assert rl.acquire("x.de") is True
+    # Denied attempts must not consume capacity …
+    for _ in range(5):
+        assert rl.acquire("x.de") is False
+    key = f"{rl.key_prefix}x.de"
+    assert rl._redis.counters[key] == 2
+    # … and releases bring it back to zero, never negative.
+    rl.release("x.de")
+    rl.release("x.de")
+    rl.release("x.de")  # unpaired release must not go below zero
+    assert rl._redis.counters.get(key, 0) >= 0
+    assert rl.acquire("x.de") is True
+
+
+# ---------------------------------------------------------------------------
+# Sandbox environment stripping
+# ---------------------------------------------------------------------------
+
+def test_sandbox_strips_secrets_keeps_path(monkeypatch, tmp_path):
+    from app.core.sandbox import _build_env
+
+    monkeypatch.setenv("POSTGRES_PASSWORD", "s3cret")
+    monkeypatch.setenv("GEMINI_API_KEY", "g-key")
+    monkeypatch.setenv("MY_PORTAL_TOKEN", "tok")
+    monkeypatch.setenv("SOME_HARMLESS_VAR", "ok")
+
+    env = _build_env(str(tmp_path))
+    assert "POSTGRES_PASSWORD" not in env
+    assert "GEMINI_API_KEY" not in env
+    assert "MY_PORTAL_TOKEN" not in env
+    assert env.get("SOME_HARMLESS_VAR") == "ok"
+    assert "PATH" in env
+
+
+# ---------------------------------------------------------------------------
+# ZIP expansion junk filtering
+# ---------------------------------------------------------------------------
+
+def test_zip_expander_skips_os_junk(tmp_path):
+    import zipfile
+    from app.core.zip_expander import expand_zips
+
+    fake_pdf = b"%PDF-1.4\n" + b"x" * 500
+    zpath = tmp_path / "docs.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("angebot.pdf", fake_pdf)
+        zf.writestr("Thumbs.db", b"junk" * 100)
+        zf.writestr(".DS_Store", b"junk" * 100)
+        zf.writestr("__MACOSX/angebot.pdf", b"junk" * 100)
+
+    out = expand_zips([str(zpath)])
+    names = {Path(p).name.lower() for p in out}
+    assert any("angebot" in n and n.endswith(".pdf") for n in names)
+    assert "thumbs.db" not in names
+    assert ".ds_store" not in names
+
+
+# ---------------------------------------------------------------------------
+# Evaluation dataset loading
+# ---------------------------------------------------------------------------
+
+def test_load_dataset_csv_no_hidden_cap(tmp_path):
+    from app.phase1_llm_scraper.evaluator import load_dataset
+
+    rows = ["url,state,domain"]
+    for i in range(8):
+        rows.append(f"https://portal{i}.de/tender,COMPLETED,portal{i}.de")
+    csv_path = tmp_path / "export.csv"
+    csv_path.write_text("\n".join(rows), encoding="utf-8")
+
+    assert len(load_dataset(str(csv_path))) == 8          # previously silently 5
+    assert len(load_dataset(str(csv_path), max_entries=3)) == 3
+
+
+# ---------------------------------------------------------------------------
+# Feedback loop hard-wall categories
+# ---------------------------------------------------------------------------
+
+def test_hard_wall_categories_map_from_blocked_reason():
+    from app.phase1_llm_scraper.feedback_loop import _HARD_WALL_CATEGORIES
+
+    assert classify_error("login_required: login form, no public docs") in _HARD_WALL_CATEGORIES
+    assert classify_error("HTTP 404 page not found") in _HARD_WALL_CATEGORIES
+    # An ordinary selector miss must keep iterating.
+    assert classify_error("scraper produced no valid documents (rejected 0)") not in _HARD_WALL_CATEGORIES

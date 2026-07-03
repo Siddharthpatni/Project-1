@@ -259,8 +259,11 @@ async def process_url(
     # async function blocks the entire event loop and freezes all concurrent
     # coroutines. Run it in a thread pool so other URLs keep processing.
     import socket as _socket
+    # Resolve the bare hostname — netloc may carry a port ("host:8443") or
+    # userinfo, which getaddrinfo rejects and would misreport as a DNS failure.
+    _dns_host = urlparse(url).hostname or domain
     try:
-        await asyncio.to_thread(_socket.getaddrinfo, domain, None, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
+        await asyncio.to_thread(_socket.getaddrinfo, _dns_host, None, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
     except OSError:
         # Catch all socket resolution failures: gaierror (NXDOMAIN), herror
         # (SERVFAIL), and OSError (resolver timeout, network unreachable).
@@ -305,9 +308,13 @@ async def process_url(
     # ── Domain rate limiter ───────────────────────────────────────────────────
     # Prevent hammering the same portal from multiple concurrent workers.
     # If we can't acquire a slot, back off briefly and try one more time.
-    if not rate_limiter.acquire(domain):
+    # Track whether we actually hold a slot: releasing a slot we never took
+    # would corrupt the shared counter and allow over-concurrency later.
+    have_rl_slot = rate_limiter.acquire(domain)
+    if not have_rl_slot:
         await asyncio.sleep(5)
-        if not rate_limiter.acquire(domain):
+        have_rl_slot = rate_limiter.acquire(domain)
+        if not have_rl_slot:
             write_audit("rate_limiter.backoff", f"Rate limit hit for {domain}",
                         level=WARNING, job_id=item.job_id, item_id=item.id, domain=domain)
 
@@ -322,7 +329,7 @@ async def process_url(
                 f"URL type={_url_type.value} platform={_quick_platform} strategies={[s.value for s in strategies]}",
                 level=INFO, job_id=item.job_id, item_id=item.id, domain=domain, url=url)
 
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     from app.core.security import classify_error as _classify_error
 
     last_outcome: StrategyOutcome | None = None
@@ -353,7 +360,7 @@ async def process_url(
             "success":        outcome.success,
             "downloaded":     outcome.downloaded,
             "duration_s":     strategy_elapsed,
-            "timestamp":      _dt.utcnow().isoformat(),
+            "timestamp":      _dt.now(_tz.utc).isoformat(),
             "error_raw":      (outcome.error or "")[:500],
             "error_category": error_category,
             "error_reason":   error_reason,
@@ -388,10 +395,16 @@ async def process_url(
                         log.info("phase3.pipeline.self_healing_success", strategy=strategy.value)
                         write_audit("self_heal.success", f"Auto-recovered {strategy.value}", level=INFO,
                                     job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
+                        healed_from = attempt_record["error_raw"]
                         outcome = retry_outcome
                         last_outcome = outcome
+                        # Keep the attempt record consistent with the final
+                        # outcome, otherwise analytics count a healed win as a
+                        # failure of this strategy.
                         attempt_record["healed"] = True
-                        item.error_message = f"[SELF-HEALED] Automatically resolved: {retry_outcome.error}"
+                        attempt_record["success"] = True
+                        attempt_record["downloaded"] = retry_outcome.downloaded
+                        item.error_message = f"[SELF-HEALED] Automatically resolved: {healed_from}"
                     else:
                         log.warning("phase3.pipeline.self_healing_failed", strategy=strategy.value)
                         write_audit("self_heal.failed", f"Self-heal retry failed for {strategy.value}", level=WARNING,
@@ -414,7 +427,8 @@ async def process_url(
             result.strategy_used = outcome.strategy
             # Feed success back to circuit breaker and rate limiter
             circuit_breaker.record_success(domain)
-            rate_limiter.release(domain)
+            if have_rl_slot:
+                rate_limiter.release(domain)
             write_audit(
                 "pipeline.success",
                 f"Strategy {outcome.strategy.value} succeeded — {outcome.downloaded} doc(s) downloaded in {strategy_elapsed}s",
@@ -475,7 +489,8 @@ async def process_url(
     if not result.success:
         final_error_category = _classify_error(result.error) if result.error else "unknown"
         circuit_breaker.record_failure(domain, final_error_category)
-        rate_limiter.release(domain)
+        if have_rl_slot:
+            rate_limiter.release(domain)
 
     # Final outcome audit
     if not result.success:
@@ -622,6 +637,15 @@ async def _try_existing(
     if tpl.source == "cua":
         return StrategyOutcome(Strategy.EXISTING, success=False, downloaded=0, error="no real scraper (cua hint only)")
 
+    # A scraper below the retirement threshold (<20% success over 10+ runs)
+    # wastes a sandbox run on every URL and blocks the cascade from generating
+    # a better one; skip it so LLM_GENERATED can overwrite it on success.
+    if scraper_registry.should_retire(tpl):
+        log.info("phase3.existing.retired_skip", domain=domain,
+                 success=tpl.success_count, failures=tpl.failure_count)
+        return StrategyOutcome(Strategy.EXISTING, success=False, downloaded=0,
+                               error="cached scraper retired (success rate below threshold)")
+
     # executor is sync; run in thread pool
     ex = await asyncio.to_thread(exec_scraper, tpl.code, url)
     scraper_registry.record_outcome(db, tpl, success=ex.success, runtime=ex.runtime_seconds)
@@ -704,7 +728,9 @@ async def _try_llm_generated(
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
             })
-            html_snippet = r.text
+            # Cap before regex passes: a multi-MB page would burn CPU in
+            # strip/redact only to be truncated to 20k chars anyway.
+            html_snippet = r.text[:300_000]
         # Strip script/style noise (the main injection false-positive source),
         # then redact any remaining injection patterns instead of dropping the
         # page — the AST validator + sandbox still constrain the generated code.

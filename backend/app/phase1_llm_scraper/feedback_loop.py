@@ -37,6 +37,13 @@ from app.utils.logger import get_logger
 
 log = get_logger(__name__)
 
+# Failure categories no regenerated scraper can fix: the wall is on the portal
+# side (credentials, CAPTCHA, gone content), so further iterations only burn
+# LLM budget re-discovering the same wall.
+_HARD_WALL_CATEGORIES = {
+    "login_required", "registration_required", "captcha", "not_found", "expired",
+}
+
 
 @dataclass
 class LoopResult:
@@ -173,6 +180,16 @@ async def run_feedback_loop(
             cleanup_output_dir(exec_result.output_dir)
             # Don't re-clean it later — wipe the field
             exec_result.output_dir = None
+
+        # Hard access wall (scraper-reported blocked_reason or classified
+        # error) → stop iterating. No rewrite gets past missing credentials.
+        from app.core.security import classify_error
+        if exec_result.error and classify_error(exec_result.error) in _HARD_WALL_CATEGORIES:
+            log.info(
+                "phase1.loop.hard_wall_stop",
+                url=url, iteration=i, error=exec_result.error[:200],
+            )
+            break
 
     loop.final_scraper = scraper
     loop.final_execution = exec_result

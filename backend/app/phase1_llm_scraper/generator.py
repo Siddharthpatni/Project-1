@@ -162,7 +162,9 @@ class ScraperGenerator:
                         "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
                     },
                 )
-                raw = r.text
+                # Cap before regex passes — a multi-MB page would burn CPU in
+                # strip/redact only to be truncated to 20k chars anyway.
+                raw = r.text[:300_000]
         except Exception as e:  # noqa: BLE001
             log.warning("phase1.snippet_fetch_failed", url=url, error=str(e))
             return "<!-- could not fetch page -->"

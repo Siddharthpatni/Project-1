@@ -331,7 +331,8 @@ def build_generation_prompt(
     hint = hint_for_platform(platform)
     platform_section = f"Platform-specific guidance ({platform}):\n{hint}" if hint else ""
     platform_section += build_cua_hint_section(cua_hint)
-    chars = len(html_snippet)
+    # Report the size the model actually receives, not the pre-truncation size.
+    chars = min(len(html_snippet), 20_000)
     return GENERATION_USER_PROMPT.format(
         url=url,
         domain=domain,

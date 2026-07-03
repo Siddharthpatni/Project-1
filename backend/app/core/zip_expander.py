@@ -51,9 +51,13 @@ _KEEP_EXTENSIONS = frozenset({
 
 # Extensions to always skip (signatures, thumbs, system files)
 _SKIP_EXTENSIONS = frozenset({
-    ".ds_store", ".thumbs.db", ".lnk", ".url",
+    ".lnk", ".url",
     ".exe", ".dll", ".bat", ".sh", ".js", ".vbs",
 })
+
+# OS junk identified by basename, not extension — Path("Thumbs.db").suffix is
+# ".db" and Path(".DS_Store").suffix is "", so an extension set can't catch them.
+_SKIP_BASENAMES = frozenset({"thumbs.db", ".ds_store", "desktop.ini"})
 
 
 def _safe_extract_name(member_name: str, dest_dir: Path, depth: int, index: int) -> Path:
@@ -103,8 +107,11 @@ def _expand_one(
                     continue
 
                 ext = Path(info.filename).suffix.lower()
+                base = Path(info.filename.replace("\\", "/")).name.lower()
 
-                # Skip junk extensions entirely
+                # Skip OS junk and junk extensions entirely
+                if base in _SKIP_BASENAMES or "__macosx" in info.filename.lower():
+                    continue
                 if ext in _SKIP_EXTENSIONS:
                     continue
 

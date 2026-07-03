@@ -154,8 +154,10 @@ _ERROR_CATEGORIES = [
 
     # --- Tender-specific states ------------------------------------------------
     # expired: tender period ended, content archived/removed
+    # NOTE: must be "nicht (mehr) verfügbar" — bare "verfügbar" means
+    # "available" and misclassified ordinary messages as expired.
     (re.compile(
-        r"archiviert|archiv(ed|ierung)|abgelaufen|verf.?gbar|vergabeverfahren.*(beendet|abgeschlossen)"
+        r"archiviert|archiv(ed|ierung)|abgelaufen|nicht (mehr )?verf.?gbar|vergabeverfahren.*(beendet|abgeschlossen)"
         r"|tender.*(expired|closed|ended)|ausschreibung.*(beendet|abgelaufen)|frist.*abgelaufen",
         re.I), "expired"),
     # maintenance: site under maintenance
@@ -225,9 +227,17 @@ def is_url_allowed(url: str) -> tuple[bool, str]:
 
 
 def classify_risk(error_msg: str | None) -> str:
-    """Classify risk of an error message into low, moderate, or high."""
+    """Classify risk of an error message into low, moderate, or high.
+
+    "high" aborts the whole strategy cascade, so it is reserved for genuine
+    security events. auth (401/403) and sandbox limits are NOT high risk:
+    an early strategy hitting a "403 Forbidden" used to kill the cascade
+    before CUA/MANUAL ran — yet benchmarks show CUA winning exactly those
+    auth-gated portals. A sandbox OOM is an LLM-strategy-local failure and
+    must not prevent the remaining strategies from trying.
+    """
     cat = classify_error(error_msg)
-    if cat in {"prompt_injection", "blocked_url", "auth", "sandbox"}:
+    if cat in {"prompt_injection", "blocked_url"}:
         return "high"
     if cat in {"timeout", "network", "code_validation"}:
         return "moderate"

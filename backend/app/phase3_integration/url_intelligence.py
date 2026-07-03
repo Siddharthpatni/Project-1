@@ -721,19 +721,26 @@ class DomainRateLimiter:
                 r.expire(key, self.window_seconds)
             allowed = current <= self.max_concurrent
             if not allowed:
+                # A denied acquire must not consume a slot — without this
+                # decrement every rejected attempt leaked +1 into the window
+                # and busy domains starved until the key expired.
+                r.decr(key)
                 _rl_hit()
             return allowed
         except Exception:
             return True
 
     def release(self, domain: str) -> None:
-        """Release a slot (decrement counter)."""
+        """Release a slot (decrement counter, floored at zero)."""
         r = self._get_redis()
         if not r:
             return
         try:
             key = f"{self.key_prefix}{domain}"
-            r.decr(key)
+            # Floor at 0: an unpaired release would drive the counter negative
+            # and let a later burst exceed max_concurrent by that amount.
+            if r.decr(key) < 0:
+                r.delete(key)
         except Exception:
             pass
 

@@ -50,9 +50,15 @@ IS_WINDOWS = platform.system() == "Windows"
 # Anything that looks like a secret should not be visible to untrusted
 # generated code.
 _SENSITIVE_ENV_PREFIXES = (
-    "AWS_", "ANTHROPIC_", "OPENAI_", "GOOGLE_", "OPENROUTER_",
+    "AWS_", "ANTHROPIC_", "OPENAI_", "GOOGLE_", "GEMINI_", "OPENROUTER_",
     "MINIO_", "DATABASE_URL", "REDIS_", "SECRET_", "S3_",
+    "POSTGRES_", "CELERY_", "AZURE_", "COHERE_", "MISTRAL_", "DEEPSEEK_",
+    "GROQ_", "TOGETHER_", "HF_", "HUGGINGFACE_", "SENTRY_",
 )
+
+# Substrings that mark a variable as secret regardless of its prefix
+# (e.g. MY_APP_PASSWORD, PORTAL_TOKEN).
+_SENSITIVE_ENV_SUBSTRINGS = ("PASSWORD", "TOKEN", "APIKEY", "API_KEY", "CREDENTIAL", "PRIVATE_KEY")
 
 
 @dataclass
@@ -143,10 +149,12 @@ def _build_env(workdir: str) -> dict[str, str]:
     """
     inherit = {}
     for k, v in os.environ.items():
-        if any(k.upper().startswith(prefix) for prefix in _SENSITIVE_ENV_PREFIXES):
+        k_upper = k.upper()
+        if any(k_upper.startswith(prefix) for prefix in _SENSITIVE_ENV_PREFIXES):
             continue
-        # Filter explicit secrets that don't share a prefix.
-        if k.upper() in {"API_KEY", "ACCESS_TOKEN", "AUTH_TOKEN"}:
+        # Filter secrets that don't share a known prefix (MY_APP_PASSWORD,
+        # PORTAL_ACCESS_TOKEN, …) by name substring.
+        if any(marker in k_upper for marker in _SENSITIVE_ENV_SUBSTRINGS):
             continue
         inherit[k] = v
 
