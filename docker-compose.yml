@@ -65,10 +65,12 @@ services:
 
   redis:
     image: redis:7-alpine
+    # noeviction: Redis is the Celery broker + circuit-breaker state — with
+    # allkeys-lru, memory pressure silently evicted queued jobs.
     command: >
       redis-server
       --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
       --save ""
     ports:
       - "6379:6379"
