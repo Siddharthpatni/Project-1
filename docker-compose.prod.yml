@@ -4,14 +4,37 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vergabepilot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vergabepilot}
+      # Fail fast: a production stack must never boot with a default password.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       POSTGRES_DB: ${POSTGRES_DB:-vergabepilot}
+    # Sized for the API (4 web workers × pool 20+20) + Celery workers, with an
+    # idle-in-transaction guard so a stuck session can't hold locks forever.
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c idle_in_transaction_session_timeout=300000
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vergabepilot} -d ${POSTGRES_DB:-vergabepilot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     restart: always
+    # noeviction: Redis is the Celery broker + circuit-breaker state — evicting
+    # keys under memory pressure would silently drop queued jobs.
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   minio:
     image: minio/minio:latest
@@ -19,62 +42,121 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD required}
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   api:
-    build: 
+    build:
       context: ./backend
       target: runner
     restart: always
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-vergabepilot}
       REDIS_URL: redis://redis:6379/0
       S3_ENDPOINT: http://minio:9000
+      # uvicorn worker processes — one per core is a good starting point.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-4}
     depends_on:
-      - postgres
-      - redis
-      - minio
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   worker:
-    build: 
+    build:
       context: ./backend
       target: runner
     restart: always
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-vergabepilot}
       REDIS_URL: redis://redis:6379/0
       S3_ENDPOINT: http://minio:9000
     depends_on:
-      - api
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # max-tasks-per-child recycles workers so Playwright/Chromium leaks can't
+    # accumulate; prefetch 1 keeps long scrape tasks fairly distributed.
+    command: >
+      celery -A app.workers.celery_app worker
+      --loglevel=info
+      --concurrency=4
+      --max-tasks-per-child=25
+      --prefetch-multiplier=1
+    stop_grace_period: 45s
 
   beat:
-    build: 
+    build:
       context: ./backend
       target: runner
     restart: always
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-vergabepilot}
       REDIS_URL: redis://redis:6379/0
     depends_on:
       - worker
     command: celery -A app.workers.celery_app beat --loglevel=info
 
   frontend:
-    build: 
+    build:
       context: ./frontend
       target: runner
     restart: always
     environment:
-      NEXT_PUBLIC_API_URL: http://api:8000 # Use internal Docker network name
+      # Server-side rewrite target only; browsers always call same-origin
+      # /api/backend/* (served directly by nginx in this stack).
+      INTERNAL_API_URL: http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      # - "443:443"   # enable together with the TLS block in deploy/nginx.conf
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      # - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
+  redis_data:
   minio_data:

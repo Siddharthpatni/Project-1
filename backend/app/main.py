@@ -8,7 +8,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text as _sa_text
 
 from app.api import (
     routes_agents,
@@ -57,9 +59,24 @@ def _run_schema_migrations() -> None:
         log.warning("db.alembic_unavailable_using_create_all", error=str(e))
 
 
+_STARTUP_LOCK_ID = 727442  # arbitrary app-wide advisory lock key
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("vergabepilot.starting", version="0.2.0")
+    # Serialize startup init across uvicorn worker processes: with
+    # WEB_CONCURRENCY > 1 every worker runs this lifespan, and concurrent
+    # create_all/alembic/seed calls race each other on first boot.
+    _init_lock = None
+    if engine.dialect.name == "postgresql":
+        try:
+            _init_lock = engine.connect()
+            _init_lock.execute(_sa_text(f"SELECT pg_advisory_lock({_STARTUP_LOCK_ID})"))
+        except Exception as e:  # noqa: BLE001
+            log.warning("startup.advisory_lock_unavailable", error=str(e))
+            _init_lock = None
+
     Base.metadata.create_all(bind=engine)
     _run_schema_migrations()
 
@@ -114,6 +131,12 @@ async def lifespan(app: FastAPI):
     finally:
         seed_db.close()
 
+    if _init_lock is not None:
+        try:
+            _init_lock.execute(_sa_text(f"SELECT pg_advisory_unlock({_STARTUP_LOCK_ID})"))
+        finally:
+            _init_lock.close()
+
     yield
     write_audit("system.shutdown", "Vergabepilot.AI API shutting down", level=INFO)
     log.info("vergabepilot.shutdown")
@@ -136,6 +159,23 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
+
+# Dashboard payloads (audit trails, analytics) compress 5-10x.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    # Only meaningful over TLS; the proxy sets X-Forwarded-Proto.
+    if request.headers.get("x-forwarded-proto") == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    return response
 
 
 # --- Global unhandled exception handler → writes to audit log ---

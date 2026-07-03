@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Self-contained server bundle: the Docker runner ships only
+  // .next/standalone + static assets instead of full node_modules.
+  output: "standalone",
+  poweredByHeader: false,
+  compress: true,
   async rewrites() {
     // Server-side rewrites run INSIDE the Docker container, so we need
     // the Docker service name ("api") not "localhost".
