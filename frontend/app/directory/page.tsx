@@ -42,14 +42,14 @@ export default function DirectoryPage() {
       ) : domains.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
           {domains.map((d) => (
             <li key={d.domain}>
               <a
                 href={d.site_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="card card-hover block p-5 group"
+                className="card card-hover block p-4 group"
                 aria-label={`Open the official ${d.domain} tender portal in a new tab (${d.open_count} open tender${d.open_count === 1 ? "" : "s"})`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -67,7 +67,7 @@ export default function DirectoryPage() {
                     aria-hidden="true"
                   />
                 </div>
-                <div className="mt-4 flex items-center gap-2">
+                <div className="mt-3 flex items-center gap-2">
                   {d.open_count > 0 ? (
                     <span className="badge bg-emerald-50 text-emerald-700 border-emerald-200">
                       {d.open_count} open

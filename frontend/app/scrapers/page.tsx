@@ -66,6 +66,17 @@ export default function ScrapersPage() {
   const [learnResult, setLearnResult] = useState<any>(null);
   const [learnError, setLearnError] = useState<string | null>(null);
 
+  // Which rows have their code/trace panel open (collapsed by default so the
+  // table stays scannable instead of every row spawning a full-width bar).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  function toggleRow(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
   async function startLearning() {
     if (!learnUrl.trim()) return;
     setLearning(true);
@@ -277,11 +288,10 @@ export default function ScrapersPage() {
         <div className="overflow-y-auto max-h-[600px] custom-scrollbar">
           <table className="w-full text-sm table-fixed">
             <colgroup>
-              <col className="w-[22%]" />
-              <col className="w-[12%]" />
-              <col className="w-[14%]" />
+              <col className="w-[30%]" />
+              <col className="w-[16%]" />
               <col className="w-[10%]" />
-              <col className="w-[18%]" />
+              <col className="w-[20%]" />
               <col className="w-[10%]" />
               <col className="w-[14%]" />
             </colgroup>
@@ -289,7 +299,6 @@ export default function ScrapersPage() {
               <tr>
                 <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider">Domain</th>
                 <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider">Source</th>
-                <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider">Platform</th>
                 <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider text-center">Flags</th>
                 <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider text-center">Success Rate</th>
                 <th className="px-4 py-3 font-bold text-xs uppercase tracking-wider text-center">Runtime</th>
@@ -299,7 +308,7 @@ export default function ScrapersPage() {
             <tbody>
               {scrapers?.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-semibold">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-semibold">
                     Registry is empty. Run a compilation above to build your first template.
                   </td>
                 </tr>
@@ -307,11 +316,27 @@ export default function ScrapersPage() {
               {scrapers?.map((s: any) => {
                 const total = s.success_count + s.failure_count;
                 const rate = total ? Math.round((s.success_count / total) * 100) : 0;
+                const hasPanel = Boolean(s.code || s.cua_hint);
+                const isOpen = expanded.has(s.id);
                 return (
                   <Fragment key={s.id}>
-                    <tr className="border-t border-slate-100 hover:bg-slate-50/30 transition-colors">
+                    <tr
+                      className={`border-t border-slate-100 transition-colors ${hasPanel ? "cursor-pointer hover:bg-indigo-50/30" : "hover:bg-slate-50/30"}`}
+                      onClick={hasPanel ? () => toggleRow(s.id) : undefined}
+                    >
+                      {/* Domain + platform stacked — reclaims the mostly-empty Platform column */}
                       <td className="px-4 py-3">
-                        <span title={s.domain} className="block font-mono text-xs font-bold text-slate-700 truncate">{s.domain}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {hasPanel && (
+                            <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                          )}
+                          <div className="min-w-0">
+                            <span title={s.domain} className="block font-mono text-xs font-bold text-slate-700 truncate">{s.domain}</span>
+                            {s.platform && (
+                              <span className="block font-mono text-[10px] text-slate-400 truncate">{s.platform}</span>
+                            )}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${
@@ -323,9 +348,6 @@ export default function ScrapersPage() {
                         }`}>
                           {s.source === 'disk' ? '💾 disk' : s.source}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-slate-500 truncate">
-                        {s.platform ?? <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
@@ -357,29 +379,27 @@ export default function ScrapersPage() {
                         {new Date(s.created_at).toLocaleDateString()}
                       </td>
                     </tr>
-                    {(s.code || s.cua_hint) && (
+                    {hasPanel && isOpen && (
                       <tr className="bg-slate-50/30 border-b border-slate-100">
-                        <td colSpan={7} className="px-4 py-3 space-y-2">
+                        <td colSpan={6} className="px-4 py-3 space-y-2">
                           {s.cua_hint && (
-                            <details className="text-xs group border border-rose-100 rounded-xl bg-white p-3 shadow-inner">
-                              <summary className="cursor-pointer font-bold text-rose-600 hover:text-rose-700 select-none flex items-center gap-1.5 active:scale-95 transition-transform">
-                                <span className="group-open:hidden">▶</span><span className="hidden group-open:inline">▼</span>
-                                <Cpu className="w-3.5 h-3.5"/>CUA Interaction Trace <span className="font-normal text-rose-400 ml-1">(used to guide LLM generation)</span>
-                              </summary>
-                              <div className="mt-3 p-4 bg-slate-950 text-slate-200 rounded-xl overflow-x-auto max-h-64 custom-scrollbar shadow-inner border border-slate-800">
+                            <div className="text-xs border border-rose-100 rounded-xl bg-white p-3 shadow-inner">
+                              <div className="font-bold text-rose-600 flex items-center gap-1.5 mb-2">
+                                <Cpu className="w-3.5 h-3.5"/>CUA Interaction Trace
+                                <span className="font-normal text-rose-400">(used to guide LLM generation)</span>
+                              </div>
+                              <div className="p-4 bg-slate-950 text-slate-200 rounded-xl overflow-x-auto max-h-64 custom-scrollbar shadow-inner border border-slate-800">
                                 <pre className="font-mono leading-relaxed text-[11px] whitespace-pre-wrap">{s.cua_hint}</pre>
                               </div>
-                            </details>
+                            </div>
                           )}
                           {s.code && (
-                            <details className="text-xs group border border-slate-100 rounded-xl bg-white p-3 shadow-inner">
-                              <summary className="cursor-pointer font-bold text-indigo-600 hover:text-indigo-700 select-none flex items-center gap-1 active:scale-95 transition-transform">
-                                <span className="group-open:hidden">▶</span><span className="hidden group-open:inline">▼</span> View Template Python Code
-                              </summary>
-                              <div className="mt-3 p-4 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto shadow-inner border border-slate-800">
+                            <div className="text-xs border border-slate-100 rounded-xl bg-white p-3 shadow-inner">
+                              <div className="font-bold text-indigo-600 mb-2">Template Python Code</div>
+                              <div className="p-4 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto shadow-inner border border-slate-800">
                                 <pre className="font-mono leading-relaxed text-[11px]">{s.code}</pre>
                               </div>
-                            </details>
+                            </div>
                           )}
                         </td>
                       </tr>
