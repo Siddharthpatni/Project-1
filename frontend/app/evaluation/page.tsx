@@ -23,6 +23,7 @@
 import useSWR from "swr";
 import { useState } from "react";
 import { api, fetcher, postJSON } from "@/lib/api";
+import { usd } from "@/lib/format";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie, Legend,
@@ -70,7 +71,6 @@ const FAILURE_COLORS = [
 ];
 
 function pct(v: number) { return `${Math.round(v * 100)}%`; }
-function usd(v: number) { return `$${v.toFixed(4)}`; }
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
@@ -135,11 +135,12 @@ function PipelineTab() {
           {/* Bar chart */}
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={by_strategy} layout="vertical" margin={{ left: 80, right: 20 }}>
+              <BarChart data={by_strategy} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" domain={[0, 1]} tickFormatter={v => `${Math.round(v*100)}%`}
                        fontSize={10} stroke="#94a3b8" />
-                <YAxis type="category" dataKey="label" fontSize={10} stroke="#94a3b8" width={80} />
+                {/* width 80 wrapped "Existing (Cached)" / "Universal Adaptive" into two cramped lines */}
+                <YAxis type="category" dataKey="label" fontSize={10} stroke="#94a3b8" width={120} />
                 <Tooltip
                   formatter={(v: number) => [`${Math.round(v*100)}%`, "Success Rate"]}
                   contentStyle={{ background: "#0f172a", borderRadius: "10px", border: "none", color: "#f8fafc", fontSize: "11px" }}

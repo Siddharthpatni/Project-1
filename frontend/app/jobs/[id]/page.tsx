@@ -26,6 +26,7 @@
 import useSWR from "swr";
 import { useParams, useRouter } from "next/navigation";
 import { api, fetcher } from "@/lib/api";
+import { usd } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import Link from "next/link";
 import {
@@ -926,7 +927,7 @@ export default function JobDetailPage() {
             [Layers, `${job.completed}/${job.total_urls} URLs`],
             [FileText, `${totalDocs} docs`],
             [Globe, `${domains.length} domain${domains.length!==1?"s":""}`],
-            [DollarSign, `$${(job.cost_usd??0).toFixed(4)}`],
+            [DollarSign, usd(job.cost_usd)],
             [Clock, new Date(job.created_at).toLocaleString()],
           ].map(([Icon,label]:any,i)=>(
             <span key={i} className="badge bg-slate-100 text-slate-600 border-slate-200">
@@ -1067,7 +1068,7 @@ export default function JobDetailPage() {
                       {label:"Succeeded", value:diag.succeeded, color:"text-emerald-600"},
                       {label:"Failed",    value:diag.failed,    color:"text-rose-600"},
                       {label:"Pending",   value:diag.pending,   color:"text-amber-600"},
-                      {label:"Cost",      value:`$${diag.cost_usd}`, color:"text-slate-700"},
+                      {label:"Cost",      value:usd(diag.cost_usd), color:"text-slate-700"},
                     ].map(({label,value,color})=>(
                       <div key={label} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>

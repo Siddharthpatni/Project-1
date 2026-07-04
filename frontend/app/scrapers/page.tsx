@@ -20,6 +20,7 @@
 
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
+import { usd } from "@/lib/format";
 import { Fragment, useState } from "react";
 import { Loader2, Search, ArrowRight, FileText, CheckCircle2, XCircle, Layers, Compass, DollarSign, ListOrdered, ChevronRight, Cpu, CheckCircle } from "lucide-react";
 
@@ -197,7 +198,7 @@ export default function ScrapersPage() {
                 <div className="text-slate-400 font-bold text-xs uppercase tracking-wider flex items-center gap-1">
                   <DollarSign className="w-3.5 h-3.5 text-emerald-500" /> LLM Cost
                 </div>
-                <div className="text-2xl font-extrabold text-emerald-700 mt-1">${(learnResult.cost_usd || 0).toFixed(4)}</div>
+                <div className="text-2xl font-extrabold text-emerald-700 mt-1">{usd(learnResult.cost_usd)}</div>
               </div>
             </div>
 

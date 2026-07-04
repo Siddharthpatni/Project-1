@@ -17,6 +17,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { fetcher, api } from "@/lib/api";
+import { usd } from "@/lib/format";
 import JobSubmitForm from "@/components/JobSubmitForm";
 import { KpiCard, SectionHeader, Empty, Skeleton } from "@/components/ui";
 import {
@@ -167,7 +168,7 @@ export default function HomePage() {
         />
         <KpiCard
           label="LLM Cost (USD)"
-          value={`$${(stats?.total_cost_usd ?? 0).toFixed(3)}`}
+          value={usd(stats?.total_cost_usd)}
           icon={<DollarSign className="w-5 h-5" />}
           loading={isLoading}
           color="warning"

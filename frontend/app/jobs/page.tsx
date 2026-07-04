@@ -18,6 +18,7 @@ import useSWR from "swr";
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { api, fetcher } from "@/lib/api";
+import { usd } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import { SearchInput, KpiCard, Empty, Skeleton, Tabs, SectionHeader } from "@/components/ui";
 import { Activity, FolderCheck, DollarSign, Compass, ArrowRight, FileStack, Zap } from "lucide-react";
@@ -77,7 +78,7 @@ function JobCard({ job }: { job: Job }) {
         {active
           ? <ProgressPill completed={job.completed} total={job.total_urls} />
           : <span className="font-mono text-xs" style={{ color: "var(--fg-subtle)" }}>{job.completed}/{job.total_urls} URLs</span>}
-        <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>${(job.cost_usd ?? 0).toFixed(4)}</span>
+        <span className="font-mono text-xs" style={{ color: "var(--fg-muted)" }}>{usd(job.cost_usd)}</span>
       </div>
     </Link>
   );
@@ -153,7 +154,7 @@ export default function JobsPage() {
         <KpiCard label="Total Jobs"    value={metrics.total}                     icon={<FileStack className="w-4 h-4" />}   loading={isLoading} color="brand" />
         <KpiCard label="Active"        value={metrics.active}                    icon={<Compass className="w-4 h-4" />}    loading={isLoading} color={metrics.active > 0 ? "warning" : "default"} />
         <KpiCard label="Success Rate"  value={`${metrics.successRate}%`}         icon={<FolderCheck className="w-4 h-4" />} loading={isLoading} color="success" />
-        <KpiCard label="LLM Cost"      value={`$${metrics.totalCost.toFixed(3)}`} icon={<DollarSign className="w-4 h-4" />} loading={isLoading} color="warning" />
+        <KpiCard label="LLM Cost"      value={usd(metrics.totalCost)} icon={<DollarSign className="w-4 h-4" />} loading={isLoading} color="warning" />
       </div>
 
       {/* Filters */}
@@ -260,7 +261,7 @@ export default function JobsPage() {
                     )}
                   </td>
                   <td className="hidden md:table-cell font-mono text-xs" style={{ color: "var(--fg-muted)" }}>
-                    ${(job.cost_usd ?? 0).toFixed(4)}
+                    {usd(job.cost_usd)}
                   </td>
                   <td className="hidden lg:table-cell text-xs" style={{ color: "var(--fg-subtle)" }}>
                     {new Date(job.created_at).toLocaleString(undefined, {

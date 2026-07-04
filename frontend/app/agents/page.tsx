@@ -23,6 +23,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
+import { usd } from "@/lib/format";
 import Link from "next/link";
 import {
   Bot, CheckCircle2, XCircle, Search, Cpu, Activity, Clock,
@@ -115,7 +116,7 @@ export default function AgentsPage() {
           <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
             <DollarSign className="w-4 h-4" /> Total LLM Cost
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-800">${totalCost.toFixed(4)}</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-800">{usd(totalCost)}</div>
         </div>
       </div>
 
@@ -264,7 +265,7 @@ export default function AgentsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center font-bold text-slate-500">{s.avg_steps}</td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-800">${s.total_cost_usd?.toFixed(4)}</td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-800">{usd(s.total_cost_usd)}</td>
                     </tr>
                   ))
                 )}
@@ -305,7 +306,7 @@ export default function AgentsPage() {
                     </div>
                     <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono font-bold">
                       <DollarSign className="w-3.5 h-3.5" />
-                      {r.cost_usd?.toFixed(4)}
+                      {usd(r.cost_usd).replace("$", "")}
                     </span>
                   </div>
                   <div className="text-[11px] font-mono font-bold text-slate-500 truncate w-full" title={r.url}>
