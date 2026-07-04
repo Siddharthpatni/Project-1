@@ -110,15 +110,14 @@ export default function HomePage() {
   return (
     <div className="space-y-8 animate-fade-up">
 
-      {/* Header */}
-      <header className="flex flex-col gap-2">
-        <p className="text-label">Agentic Cascade Scraper</p>
-        <h1 className="text-display" style={{ color: "var(--fg)" }}>
-          Vergabepilot<span style={{ color: "var(--brand)" }}>.AI</span>
+      {/* Header — compact: the navbar already carries the brand, so the page
+          leads with what the user came to do, not a hero block. */}
+      <header className="flex flex-col gap-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "var(--fg)" }}>
+          Dashboard
         </h1>
-        <p className="text-sm sm:text-base leading-relaxed max-w-2xl" style={{ color: "var(--fg-muted)" }}>
-          Automated public procurement document scraper. Enter any notice URL — the cascade
-          handles route discovery, agent execution, and document extraction.
+        <p className="text-sm max-w-2xl" style={{ color: "var(--fg-muted)" }}>
+          Paste any notice URL — the cascade handles discovery, execution, and extraction.
         </p>
       </header>
 

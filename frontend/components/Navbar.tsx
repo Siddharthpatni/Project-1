@@ -4,32 +4,42 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Menu, X, Zap, Moon, Sun } from "lucide-react";
+import { ChevronDown, Menu, X, Zap, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/lib/hooks";
 
-const NAV_LINKS = [
+// Five destinations cover day-to-day use; the rest live under "More" so the
+// bar stays quiet instead of a wall of eleven links.
+const PRIMARY_LINKS = [
   { href: "/",           label: "Dashboard",  exact: true },
-  { href: "/directory",  label: "Directory" },
   { href: "/jobs",       label: "Jobs" },
-  { href: "/extraction", label: "Extraction" },
   { href: "/scrapers",   label: "Scrapers" },
-  { href: "/audit",      label: "Audit" },
-  { href: "/tests",      label: "Tests" },
   { href: "/evaluation", label: "Benchmarks" },
-  { href: "/agents",     label: "CUA Agents" },
-  { href: "/excel",      label: "Excel" },
   { href: "/admin",      label: "Admin" },
 ];
+
+const MORE_LINKS = [
+  { href: "/directory",  label: "Directory" },
+  { href: "/extraction", label: "Extraction" },
+  { href: "/audit",      label: "Audit" },
+  { href: "/tests",      label: "Tests" },
+  { href: "/agents",     label: "CUA Agents" },
+  { href: "/excel",      label: "Excel" },
+];
+
+const NAV_LINKS = [...PRIMARY_LINKS, ...MORE_LINKS];
 
 export default function Navbar() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const { dark, toggle } = useTheme();
 
   function isActive(link: { href: string; exact?: boolean }) {
     if (link.exact) return path === link.href;
     return path.startsWith(link.href);
   }
+
+  const moreActive = MORE_LINKS.some(isActive);
 
   return (
     <nav
@@ -60,9 +70,9 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex flex-1 overflow-x-auto no-scrollbar">
+        <div className="hidden md:flex flex-1">
           <ul className="flex items-center gap-0.5 text-sm whitespace-nowrap">
-            {NAV_LINKS.map((link) => {
+            {PRIMARY_LINKS.map((link) => {
               const active = isActive(link);
               return (
                 <li key={link.href}>
@@ -85,6 +95,59 @@ export default function Navbar() {
                 </li>
               );
             })}
+
+            {/* "More" dropdown for secondary pages */}
+            <li className="relative">
+              <button
+                onClick={() => setMoreOpen((v) => !v)}
+                className={clsx(
+                  "flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150",
+                  moreActive ? "font-semibold" : "hover:opacity-80",
+                )}
+                style={{
+                  background: moreActive ? "var(--brand-light)" : "transparent",
+                  color: moreActive ? "var(--brand)" : "var(--fg-muted)",
+                }}
+                aria-haspopup="menu"
+                aria-expanded={moreOpen}
+              >
+                More
+                <ChevronDown className={clsx("w-3.5 h-3.5 transition-transform", moreOpen && "rotate-180")} />
+              </button>
+
+              {moreOpen && (
+                <>
+                  {/* click-outside backdrop */}
+                  <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
+                  <ul
+                    className="absolute right-0 top-full mt-1.5 z-50 min-w-[11rem] py-1.5 rounded-xl shadow-lg animate-fade-up"
+                    style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)" }}
+                    role="menu"
+                  >
+                    {MORE_LINKS.map((link) => {
+                      const active = isActive(link);
+                      return (
+                        <li key={link.href} role="none">
+                          <Link
+                            href={link.href}
+                            role="menuitem"
+                            onClick={() => setMoreOpen(false)}
+                            className="block px-4 py-2 text-sm font-medium transition-colors hover:opacity-80"
+                            style={{
+                              background: active ? "var(--brand-light)" : "transparent",
+                              color: active ? "var(--brand)" : "var(--fg-muted)",
+                            }}
+                            aria-current={active ? "page" : undefined}
+                          >
+                            {link.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
+            </li>
           </ul>
         </div>
 
