@@ -27,7 +27,7 @@ import { usd } from "@/lib/format";
 import Link from "next/link";
 import {
   Bot, CheckCircle2, XCircle, Search, Cpu, Activity, Clock,
-  DollarSign, ArrowLeft, X, Sparkles, Zap, Timer, Hash,
+  DollarSign, X, Sparkles, Zap, Timer, Hash,
   RefreshCcw, Globe, ExternalLink, FileText
 } from "lucide-react";
 
@@ -68,20 +68,11 @@ export default function AgentsPage() {
 
   return (
     <div className="space-y-8">
-      {/* ── Navigation ── */}
-      <Link 
-        href="/" 
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all hover:translate-x-[-2px] duration-200"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Back to Dashboard
-      </Link>
 
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-3 text-slate-900 tracking-tight">
-            <Bot className="w-8 h-8 text-indigo-600" />
-            Phase 2 — Computer-Use Agents
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Computer-Use Agents
           </h1>
           <p className="text-slate-500 text-sm sm:text-base font-medium mt-1">
             GUI-based autonomous agent that visually navigates procurement portals to discover and download tender files.

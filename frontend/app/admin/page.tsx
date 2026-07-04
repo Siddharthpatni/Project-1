@@ -33,7 +33,6 @@ import {
   ChevronRight,
   Filter,
   XCircle,
-  ArrowLeft,
   Trash2,
 } from "lucide-react";
 import {
@@ -205,14 +204,6 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-8">
-      {/* ── Navigation / Back Button ── */}
-      <Link 
-        href="/" 
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all hover:translate-x-[-2px] duration-200"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Back to Dashboard
-      </Link>
 
       {/* ── Backend Offline Warning ── */}
       {(statsError || errorsError) && (
@@ -228,8 +219,7 @@ export default function AdminPage() {
       {/* ── Header ── */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-3 text-slate-900 tracking-tight">
-            <ShieldAlert className="w-8 h-8 text-rose-500" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Admin &amp; Pipeline Control Center
           </h1>
           <p className="text-slate-500 text-sm sm:text-base font-medium mt-1">

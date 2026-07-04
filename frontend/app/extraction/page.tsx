@@ -527,8 +527,7 @@ export default function ExtractionPage() {
       {/* Header */}
       <header className="section-header">
         <div>
-          <h1 className="text-display flex items-center gap-3" style={{ color: "var(--fg)" }}>
-            <ScanSearch className="w-8 h-8 text-indigo-600" aria-hidden="true" />
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--fg)" }}>
             Ausschreibungsanalyse
           </h1>
           <p className="mt-1.5 text-sm sm:text-base font-medium" style={{ color: "var(--fg-muted)" }}>

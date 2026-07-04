@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import {
-  Play, CheckCircle2, XCircle, AlertTriangle, ArrowLeft,
+  Play, CheckCircle2, XCircle, AlertTriangle,
   Loader2, FlaskConical, SkipForward, Clock, RefreshCcw,
   Terminal, ChevronDown, ChevronRight, BarChart2,
 } from "lucide-react";
@@ -102,13 +102,9 @@ export default function TestsPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
-      </Link>
-
       <header className="border-b border-slate-100 pb-5">
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-          <FlaskConical className="w-7 h-7 text-indigo-600" /> Test Runner
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          Test Runner
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
           Execute the backend pytest suite from the UI. Results include per-test status, duration, and full error output.

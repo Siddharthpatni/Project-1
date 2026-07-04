@@ -27,7 +27,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, fetcher } from "@/lib/api";
 import {
-  ShieldAlert, Info, AlertTriangle, XCircle, ArrowLeft,
+  ShieldAlert, Info, AlertTriangle, XCircle,
   Search, RefreshCcw, Trash2, ChevronDown, ChevronRight,
   Activity, Clock, Filter,
 } from "lucide-react";
@@ -177,14 +177,10 @@ function AuditPageInner() {
 
   return (
     <div className="space-y-6">
-      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
-      </Link>
-
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <Activity className="w-7 h-7 text-indigo-600" /> Audit Log
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Audit Log
           </h1>
           <p className="text-slate-500 mt-1 text-sm">Structured event trail for every pipeline operation, security event, and system action.</p>
         </div>

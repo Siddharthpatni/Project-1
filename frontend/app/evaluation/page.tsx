@@ -30,7 +30,7 @@ import {
 } from "recharts";
 import Link from "next/link";
 import {
-  Loader2, Play, CheckCircle2, XCircle, ArrowLeft, Award, Layers,
+  Loader2, Play, CheckCircle2, XCircle, Award, Layers,
   DollarSign, Activity, TrendingUp, Database, Zap, AlertTriangle,
   CheckCircle, Clock, ShieldCheck, RefreshCcw,
 } from "lucide-react";
@@ -582,14 +582,9 @@ export default function EvaluationPage() {
 
   return (
     <div className="space-y-8">
-      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all">
-        <ArrowLeft className="w-3.5 h-3.5" />Back to Dashboard
-      </Link>
-
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <Award className="w-8 h-8 text-indigo-600" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Evaluation & Benchmarking
           </h1>
           <p className="text-slate-500 mt-1.5 text-sm font-medium">
