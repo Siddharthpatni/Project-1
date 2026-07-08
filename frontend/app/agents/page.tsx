@@ -141,6 +141,7 @@ export default function AgentsPage() {
                   <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
                   <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
                   <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+                  <option value="ollama/gemma4:12b">Gemma 4 12B · Local, free</option>
                 </select>
               </div>
             </div>

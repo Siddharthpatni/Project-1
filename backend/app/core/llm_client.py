@@ -1,6 +1,10 @@
 """
 Unified LLM client — OpenRouter by default, direct providers as fallback.
 
+Model ids prefixed "ollama/" (e.g. "ollama/qwen2.5-coder:7b") are routed to a
+local Ollama server (settings.ollama_base_url) instead: same OpenAI-compatible
+wire format, no API key, zero cost.
+
 Exposes two high-level methods:
     chat(system, user)                → text completion
     chat_with_image(system, user, b64) → vision completion (for Phase 2)
@@ -30,6 +34,10 @@ _COSTS = {
     "google/gemini-2.5-flash":     (0.15, 0.6),
     "google/gemini-2.5-flash-lite": (0.0, 0.0),  # free tier
 }
+
+
+# Model ids with this prefix are served by the local Ollama server.
+OLLAMA_PREFIX = "ollama/"
 
 
 @dataclass
@@ -92,20 +100,39 @@ class LLMClient:
         }
         return await self._call(payload, model)
 
+    def _route(self, model: str, payload: dict) -> tuple[dict, str, dict, int]:
+        """Resolve (payload, url, headers, timeout) for a model id.
+
+        "ollama/<name>" goes to the local Ollama server (no auth, bare model
+        name on the wire, longer timeout — local generation is slow);
+        everything else goes to OpenRouter.
+        """
+        if model.startswith(OLLAMA_PREFIX):
+            payload = {**payload, "model": model[len(OLLAMA_PREFIX):]}
+            url = f"{settings.ollama_base_url.rstrip('/')}/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            timeout = settings.ollama_timeout_seconds
+        else:
+            payload = {**payload, "model": model}
+            url = f"{self.base_url}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "HTTP-Referer": "https://vergabepilot.ai",
+                "X-Title": "Vergabepilot.AI",
+                "Content-Type": "application/json",
+            }
+            timeout = 120
+        return payload, url, headers, timeout
+
     async def _call(self, payload: dict, model: str) -> LLMResponse:
-        if not self.api_key:
+        is_local = bool(model) and model.startswith(OLLAMA_PREFIX)
+        if not is_local and not self.api_key:
             log.warning("llm.no_api_key", note="returning stub response")
             return LLMResponse(text="```python\n# stub: no API key configured\n```", model=model)
 
-        import asyncio
+        payload, url, headers, timeout = self._route(model, payload)
 
-        url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://vergabepilot.ai",
-            "X-Title": "Vergabepilot.AI",
-            "Content-Type": "application/json",
-        }
+        import asyncio
 
         # Retry policy per HTTP status:
         #   429 Rate-limit  → wait longer (10s, 20s, 30s) then retry same model
@@ -121,21 +148,21 @@ class LLMClient:
         last_error: Exception | None = None
         data = None
 
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient() as client:
             for attempt in range(1, max_retries + 1):
                 try:
-                    r = await client.post(url, json=payload, headers=headers)
+                    r = await client.post(url, json=payload, headers=headers, timeout=timeout)
 
                     # 403: OpenRouter concurrent-call cap or key issue.
                     # Switch to fallback model and retry once — do NOT re-hit
                     # the same model because it will 403 again immediately.
                     if r.status_code == _FORBIDDEN_CODE:
                         fallback = settings.llm_model_fallback
-                        if fallback and fallback != payload.get("model"):
+                        if fallback and fallback != model:
                             log.warning("llm.403_switching_to_fallback",
-                                        primary=payload.get("model"), fallback=fallback)
-                            payload = {**payload, "model": fallback}
+                                        primary=model, fallback=fallback)
                             model = fallback
+                            payload, url, headers, timeout = self._route(model, payload)
                             await asyncio.sleep(2)
                             continue
                         # No usable fallback — raise

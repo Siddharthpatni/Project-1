@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     llm_model_fallback: str = "google/gemini-2.5-flash-lite"
     llm_model_vision: str = "google/gemini-2.5-flash-lite"
 
+    # Local LLM via Ollama (OpenAI-compatible endpoint). Any model id prefixed
+    # "ollama/" (e.g. "ollama/qwen2.5-coder:7b") is routed here instead of
+    # OpenRouter — no API key, zero cost, works offline. Inside Docker the
+    # compose file overrides this to http://host.docker.internal:11434/v1.
+    ollama_base_url: str = "http://localhost:11434/v1"
+    # Local generation is much slower than hosted APIs (model load + CPU/GPU
+    # limits), so it gets its own, longer timeout.
+    ollama_timeout_seconds: int = 600
+
     # --- Database ---
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./vergabepilot.db")
 

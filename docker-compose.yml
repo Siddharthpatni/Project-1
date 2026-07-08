@@ -31,6 +31,11 @@ x-worker-common: &worker-common
     ENABLE_ROUTE_LEARNING: ${ENABLE_ROUTE_LEARNING:-false}
     ANONYMIZED_TELEMETRY: "false"
     BROWSER_USE_LOGGING_LEVEL: "warning"
+    # Ollama runs on the host (Metal GPU is unavailable inside containers);
+    # host.docker.internal reaches it from any container.
+    OLLAMA_BASE_URL: ${OLLAMA_BASE_URL_DOCKER:-http://host.docker.internal:11434/v1}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   depends_on:
     - api
   volumes:
@@ -110,6 +115,9 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER required}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD required}
       VERGABEPILOT_ENV: ${VERGABEPILOT_ENV:-development}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL_DOCKER:-http://host.docker.internal:11434/v1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

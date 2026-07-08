@@ -45,6 +45,8 @@ const AVAILABLE_MODELS = [
   { value: "anthropic/claude-haiku-4.5",   label: "Claude Haiku" },
   { value: "openai/gpt-4o",                label: "GPT-4o" },
   { value: "openai/gpt-4o-mini",           label: "GPT-4o Mini" },
+  { value: "ollama/qwen2.5-coder:7b",      label: "Qwen2.5 Coder 7B (local)" },
+  { value: "ollama/qwen2.5-coder:1.5b",    label: "Qwen2.5 Coder 1.5B (local)" },
 ];
 
 const STRATEGY_COLORS: Record<string, string> = {

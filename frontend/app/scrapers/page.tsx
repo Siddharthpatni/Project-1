@@ -147,6 +147,8 @@ export default function ScrapersPage() {
                 <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
                 <option value="openai/gpt-4o">GPT-4o</option>
                 <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+                <option value="ollama/qwen2.5-coder:7b">Qwen2.5 Coder 7B · Local, free</option>
+                <option value="ollama/qwen2.5-coder:1.5b">Qwen2.5 Coder 1.5B · Local, free</option>
               </select>
 
               <button
