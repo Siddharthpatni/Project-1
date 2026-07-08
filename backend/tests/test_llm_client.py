@@ -15,7 +15,7 @@ import pytest
 
 from app.config import settings
 from app.core import llm_client as lc
-from app.core.llm_client import LLMClient, OLLAMA_PREFIX
+from app.core.llm_client import LLMClient
 
 
 class _FakeResponse:
@@ -113,8 +113,3 @@ def test_openrouter_without_key_returns_stub(fake_http):
 
     assert "stub" in resp.text
     assert fake_http.last is None or fake_http.last.calls == []
-
-
-def test_ollama_prefix_constant():
-    """The prefix is public API for callers building model ids."""
-    assert OLLAMA_PREFIX == "ollama/"

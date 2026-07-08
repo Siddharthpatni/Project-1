@@ -9,11 +9,12 @@ Exposes two high-level methods:
     chat(system, user)                → text completion
     chat_with_image(system, user, b64) → vision completion (for Phase 2)
 
-Cost is estimated from usage tokens using a small static price table.
-Override via environment variables or extend as needed.
+Cost is estimated from usage tokens via live OpenRouter pricing; local
+models cost $0.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 
 import httpx
@@ -22,19 +23,6 @@ from app.config import settings
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
-
-# Very rough cost table in USD per 1M tokens (input, output).
-# Used only for rough tracking; real billing comes from OpenRouter.
-_COSTS = {
-    "anthropic/claude-sonnet-4.5": (3.0, 15.0),
-    "anthropic/claude-haiku-4.5":  (1.0, 5.0),
-    "openai/gpt-4o":               (2.5, 10.0),
-    "openai/gpt-4o-mini":          (0.15, 0.6),
-    "google/gemini-2.5-pro":       (1.25, 5.0),
-    "google/gemini-2.5-flash":     (0.15, 0.6),
-    "google/gemini-2.5-flash-lite": (0.0, 0.0),  # free tier
-}
-
 
 # Model ids with this prefix are served by the local Ollama server.
 OLLAMA_PREFIX = "ollama/"
@@ -121,18 +109,15 @@ class LLMClient:
                 "X-Title": "Vergabepilot.AI",
                 "Content-Type": "application/json",
             }
-            timeout = 120
+            timeout = settings.llm_timeout_seconds
         return payload, url, headers, timeout
 
     async def _call(self, payload: dict, model: str) -> LLMResponse:
-        is_local = bool(model) and model.startswith(OLLAMA_PREFIX)
-        if not is_local and not self.api_key:
+        if not model.startswith(OLLAMA_PREFIX) and not self.api_key:
             log.warning("llm.no_api_key", note="returning stub response")
             return LLMResponse(text="```python\n# stub: no API key configured\n```", model=model)
 
         payload, url, headers, timeout = self._route(model, payload)
-
-        import asyncio
 
         # Retry policy per HTTP status:
         #   429 Rate-limit  → wait longer (10s, 20s, 30s) then retry same model
@@ -205,8 +190,11 @@ class LLMClient:
         usage = data.get("usage", {})
         in_tok = usage.get("prompt_tokens", 0)
         out_tok = usage.get("completion_tokens", 0)
-        from app.phase1_llm_scraper.pricing import calc_cost
-        cost = calc_cost(in_tok, out_tok, model)
+        if model.startswith(OLLAMA_PREFIX):
+            cost = 0.0  # local models are free — skip the live-pricing lookup
+        else:
+            from app.phase1_llm_scraper.pricing import calc_cost
+            cost = calc_cost(in_tok, out_tok, model)
 
         return LLMResponse(
             text=content,
