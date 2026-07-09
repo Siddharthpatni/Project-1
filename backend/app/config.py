@@ -102,8 +102,15 @@ class Settings(BaseSettings):
 
     # --- Security ---
     secret_key: str = ""
+    # Bearer key for /api/admin — required in production, optional in dev
+    # (empty ⇒ open, with a startup warning). Send as "Authorization: Bearer <key>"
+    # or "X-Admin-Key: <key>".
+    admin_api_key: str = ""
     # Per-IP request cap for the public (unauthenticated) tender directory, per minute.
     public_rate_limit_per_minute: int = 60
+    # Consult robots.txt before scraping and skip disallowed URLs (bucket:
+    # blocked). Flip off only for portals you have explicit permission to crawl.
+    respect_robots_txt: bool = True
 
     # --- Misc ---
     log_level: str = "INFO"
@@ -114,7 +121,7 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
 
     @model_validator(mode="after")
-    def _validate_secrets(self) -> "Settings":
+    def _validate_secrets(self) -> Settings:
         """Abort startup when secrets are missing or insecure."""
         errors: list[str] = []
 
@@ -143,12 +150,18 @@ class Settings(BaseSettings):
             errors.append("MINIO_ROOT_PASSWORD is not set.")
         elif self.minio_root_password.lower() in _INSECURE_DEFAULTS or len(self.minio_root_password) < 8:
             errors.append(
-                f"MINIO_ROOT_PASSWORD is insecure or too short (min 8 chars). "
+                "MINIO_ROOT_PASSWORD is insecure or too short (min 8 chars). "
                 "Set a strong password."
             )
 
+        _env = os.getenv("VERGABEPILOT_ENV", "").lower()
+        if not self.admin_api_key:
+            errors.append(
+                "ADMIN_API_KEY is not set — /api/admin is unauthenticated. "
+                "Generate one with: python3 -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+
         if errors:
-            _env = os.getenv("VERGABEPILOT_ENV", "").lower()
             if _env in ("production", "prod", "staging"):
                 # Hard fail in production
                 print("\n[VERGABEPILOT STARTUP ERROR] Insecure configuration:\n", file=sys.stderr)

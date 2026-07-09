@@ -20,7 +20,7 @@ library's own internal action parser — not by these classes directly.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 # ── Browser Action Types ───────────────────────────────────────────────────────

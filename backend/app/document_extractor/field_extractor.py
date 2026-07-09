@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -50,43 +49,43 @@ class TenderFields:
       kernpunkte         — LLM-generated key bullet points (filled by llm_enhancer)
     """
     # Reference numbers
-    vergabenummer: Optional[str] = None
-    aktenzeichen: Optional[str] = None
-    ted_reference: Optional[str] = None
+    vergabenummer: str | None = None
+    aktenzeichen: str | None = None
+    ted_reference: str | None = None
 
     # Parties
-    auftraggeber: Optional[str] = None
-    vergabestelle: Optional[str] = None
+    auftraggeber: str | None = None
+    vergabestelle: str | None = None
 
     # Tender description
-    titel: Optional[str] = None
-    leistungsbeschreibung: Optional[str] = None
-    vergabeverfahren: Optional[str] = None
-    auftragsart: Optional[str] = None
+    titel: str | None = None
+    leistungsbeschreibung: str | None = None
+    vergabeverfahren: str | None = None
+    auftragsart: str | None = None
 
     # Dates
-    veroeffentlichungsdatum: Optional[str] = None
-    abgabefrist: Optional[str] = None
-    bindefrist: Optional[str] = None
+    veroeffentlichungsdatum: str | None = None
+    abgabefrist: str | None = None
+    bindefrist: str | None = None
 
     # Classification
     cpv_codes: list[str] = field(default_factory=list)
     nuts_codes: list[str] = field(default_factory=list)
 
     # Value
-    auftragswert: Optional[str] = None
-    waehrung: Optional[str] = None
+    auftragswert: str | None = None
+    waehrung: str | None = None
 
     # Location & duration
-    leistungsort: Optional[str] = None
-    laufzeit: Optional[str] = None
+    leistungsort: str | None = None
+    laufzeit: str | None = None
 
     # Contact
-    ansprechpartner: Optional[str] = None
-    email: Optional[str] = None
-    telefon: Optional[str] = None
-    fax: Optional[str] = None
-    website: Optional[str] = None
+    ansprechpartner: str | None = None
+    email: str | None = None
+    telefon: str | None = None
+    fax: str | None = None
+    website: str | None = None
 
     # Award criteria
     zuschlagskriterien: list[str] = field(default_factory=list)
@@ -99,7 +98,7 @@ class TenderFields:
     additional_notes: list[str] = field(default_factory=list)
 
     # Generated summary — populated by llm_enhancer after regex extraction
-    zusammenfassung: Optional[str] = None        # executive summary paragraph
+    zusammenfassung: str | None = None        # executive summary paragraph
     kernpunkte: list[str] = field(default_factory=list)  # key bullet points
 
 
@@ -107,7 +106,7 @@ class TenderFields:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _first(text: str, patterns: list[str], flags: int = re.IGNORECASE | re.MULTILINE) -> Optional[str]:
+def _first(text: str, patterns: list[str], flags: int = re.IGNORECASE | re.MULTILINE) -> str | None:
     for pat in patterns:
         m = re.search(pat, text, flags)
         if m:
@@ -125,7 +124,7 @@ def _all(text: str, patterns: list[str], flags: int = re.IGNORECASE) -> list[str
     return found
 
 
-def _clean(s: Optional[str]) -> Optional[str]:
+def _clean(s: str | None) -> str | None:
     if not s:
         return None
     s = re.sub(r"\s+", " ", s).strip()
@@ -137,7 +136,7 @@ def _clean(s: Optional[str]) -> Optional[str]:
 # Individual field extractors
 # ---------------------------------------------------------------------------
 
-def _extract_vergabenummer(text: str) -> Optional[str]:
+def _extract_vergabenummer(text: str) -> str | None:
     return _clean(_first(text, [
         r"Vergabe(?:nr\.?|nummer|kennnummer)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-/_. ]{2,40})",
         r"Ausschreibungs(?:nr\.?|nummer)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\-/_. ]{2,40})",
@@ -148,7 +147,7 @@ def _extract_vergabenummer(text: str) -> Optional[str]:
     ]))
 
 
-def _extract_ted_reference(text: str) -> Optional[str]:
+def _extract_ted_reference(text: str) -> str | None:
     return _clean(_first(text, [
         r"TED[:\s-]*(\d{4}/S[-\s]\d{3}[-\s]\d{6,})",
         r"Supplement(?:ary)?\s+(?:to\s+)?(?:the\s+)?Official Journal[,\s]*(\d{4}/S[^\s,]+)",
@@ -156,7 +155,7 @@ def _extract_ted_reference(text: str) -> Optional[str]:
     ]))
 
 
-def _extract_auftraggeber(text: str) -> Optional[str]:
+def _extract_auftraggeber(text: str) -> str | None:
     return _clean(_first(text, [
         r"(?:Öffentlicher\s+)?Auftraggeber\s*[:\n]\s*(.+?)(?:\n|Anschrift|Postanschrift|Kontaktstelle|Tel\.?|Fax|$)",
         r"Vergabestelle\s*[:\n]\s*(.+?)(?:\n|Anschrift|Kontaktstelle|Tel\.?|Fax|$)",
@@ -165,7 +164,7 @@ def _extract_auftraggeber(text: str) -> Optional[str]:
     ]))
 
 
-def _extract_leistungsbeschreibung(text: str) -> Optional[str]:
+def _extract_leistungsbeschreibung(text: str) -> str | None:
     val = _clean(_first(text, [
         r"[Ll]eistungsbeschreibung\s*[:\n]\s*(.{20,500}?)(?:\n\n|\n[A-Z0-9]|$)",
         r"[Bb]eschreibung\s+(?:der\s+)?[Ll]eistung\s*[:\n]\s*(.{20,500}?)(?:\n\n|\n[A-Z0-9]|$)",
@@ -179,7 +178,7 @@ def _extract_leistungsbeschreibung(text: str) -> Optional[str]:
     return val
 
 
-def _extract_titel(text: str) -> Optional[str]:
+def _extract_titel(text: str) -> str | None:
     return _clean(_first(text, [
         r"(?:Auftrags|Ausschreibungs|Vergabe)gegenstand\s*[:\n]\s*(.+?)(?:\n\n|\n[A-Z]|$)",
         r"Auftragsbezeichnung\s*[:\n]\s*(.+?)(?:\n)",
@@ -190,7 +189,7 @@ def _extract_titel(text: str) -> Optional[str]:
     ]))
 
 
-def _extract_vergabeverfahren(text: str) -> Optional[str]:
+def _extract_vergabeverfahren(text: str) -> str | None:
     val = _clean(_first(text, [
         r"(?:Art\s+des\s+)?Vergabeverfahren\s*[:\n]\s*(.+?)(?:\n)",
         r"Verfahrensart\s*[:\n]\s*(.+?)(?:\n)",
@@ -216,7 +215,7 @@ def _extract_vergabeverfahren(text: str) -> Optional[str]:
     return None
 
 
-def _extract_auftragsart(text: str) -> Optional[str]:
+def _extract_auftragsart(text: str) -> str | None:
     kinds = [
         ("Bauauftrag", r"Bauauftrag|Bauleistung"),
         ("Lieferauftrag", r"Lieferauftrag|Lieferung"),
@@ -228,7 +227,7 @@ def _extract_auftragsart(text: str) -> Optional[str]:
     return None
 
 
-def _extract_dates(text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def _extract_dates(text: str) -> tuple[str | None, str | None, str | None]:
     # publication date
     pub = _clean(_first(text, [
         r"[Vv]er[öo]ffentlichungsdatum\s*[:\n]\s*(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})",
@@ -269,7 +268,7 @@ def _extract_nuts(text: str) -> list[str]:
     return found
 
 
-def _extract_value(text: str) -> tuple[Optional[str], Optional[str]]:
+def _extract_value(text: str) -> tuple[str | None, str | None]:
     patterns = [
         r"(?:Gesamtwert|Auftragswert|Schätzwert|Auftragswert|Gesamtvolumen|Auftragsvolumen)\s*[:\n]?\s*(?:(?:ca|circa|rund|etwa)\.?\s*)?(?:EUR|€|CHF|USD)?\s*([\d.,]+(?:\s*(?:Mio\.?|T(?:aus(?:end)?)?\.?|k))?)\s*(?:EUR|€|CHF|USD)?",
         r"(?:EUR|€)\s*([\d.,]+(?:\s*(?:Mio\.?|Tsd\.?))?)",
@@ -286,7 +285,7 @@ def _extract_value(text: str) -> tuple[Optional[str], Optional[str]]:
     return val_str, cur
 
 
-def _extract_leistungsort(text: str) -> Optional[str]:
+def _extract_leistungsort(text: str) -> str | None:
     return _clean(_first(text, [
         r"[Ee]rfüllungsort\s*[:\n]\s*(.+?)(?:\n|$)",
         r"[Ll]eistungsort\s*[:\n]\s*(.+?)(?:\n|$)",
@@ -296,7 +295,7 @@ def _extract_leistungsort(text: str) -> Optional[str]:
     ]))
 
 
-def _extract_laufzeit(text: str) -> Optional[str]:
+def _extract_laufzeit(text: str) -> str | None:
     return _clean(_first(text, [
         r"[Ll]aufzeit\s+(?:des\s+Auftrags|der\s+(?:Rahmenvereinbarung|Leistung))?\s*[:\n]\s*(.+?)(?:\n|$)",
         r"[Vv]ertragsdauer\s*[:\n]\s*(.+?)(?:\n|$)",
@@ -306,7 +305,7 @@ def _extract_laufzeit(text: str) -> Optional[str]:
     ]))
 
 
-def _extract_contact(text: str) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+def _extract_contact(text: str) -> tuple[str | None, str | None, str | None, str | None]:
     person = _clean(_first(text, [
         r"[Aa]nsprechpartner\s*[:\n]\s*(.+?)(?:\n|Tel|Fax|E-Mail|$)",
         r"[Kk]ontaktperson\s*[:\n]\s*(.+?)(?:\n|Tel|Fax|E-Mail|$)",
@@ -333,8 +332,8 @@ def _extract_zuschlagskriterien(text: str) -> list[str]:
     ], re.IGNORECASE | re.DOTALL)
     if not section:
         return []
-    lines = [l.strip(" \t-•*·") for l in section.split("\n") if l.strip(" \t-•*·")]
-    return [l for l in lines if 3 < len(l) < 200][:10]
+    lines = [ln.strip(" \t-•*·") for ln in section.split("\n") if ln.strip(" \t-•*·")]
+    return [ln for ln in lines if 3 < len(ln) < 200][:10]
 
 
 def _extract_lose(text: str) -> list[str]:

@@ -82,12 +82,12 @@ def _preexec(memory_mb: int):
                 bytes_cap = memory_mb * 1024 * 1024
                 resource.setrlimit(resource.RLIMIT_AS, (bytes_cap, bytes_cap))
             except Exception:
-                pass
+                pass  # post-fork context: logging is unsafe here; cap is best-effort
             # No core dumps
             try:
                 resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
             except Exception:
-                pass
+                pass  # post-fork context: logging is unsafe here
         # New process group so we can kill the whole tree
         os.setsid()
     return _apply
@@ -120,13 +120,13 @@ def _build_python_path(workdir: str) -> str:
     try:
         parts.extend(p for p in site.getsitepackages() if p)
     except Exception:
-        pass
+        pass  # some venvs lack getsitepackages(); sys.path below covers them
     try:
         usp = site.getusersitepackages()
         if usp:
             parts.append(usp)
     except Exception:
-        pass
+        pass  # user site-packages optional; sys.path below covers it
     # sys.path captures everything the running interpreter uses, including
     # virtualenv site-packages, dist-packages, etc.
     for p in sys.path:

@@ -271,7 +271,7 @@ def build_netserver_download_url(url: str) -> str | None:
       2. PublicationControllerServlet?function=Detail&TWOID=54321-Tender-...
          → TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID=...
     """
-    from urllib.parse import urlsplit, parse_qs, urlencode
+    from urllib.parse import urlsplit, parse_qs
 
     parts   = urlsplit(url)
     params  = parse_qs(parts.query, keep_blank_values=True)

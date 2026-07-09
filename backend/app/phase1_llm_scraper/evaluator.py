@@ -31,7 +31,7 @@ class GroundTruth:
     notes: str = ""
 
     @classmethod
-    def from_dict(cls, d: dict) -> "GroundTruth":
+    def from_dict(cls, d: dict) -> GroundTruth:
         return cls(
             url=d["url"],
             expected_doc_count=int(d.get("expected_doc_count", 0)),

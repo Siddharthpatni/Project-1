@@ -14,7 +14,6 @@ concurrent Chromium count capped across both implementations.
 """
 from __future__ import annotations
 
-import asyncio
 import time
 import uuid
 from pathlib import Path

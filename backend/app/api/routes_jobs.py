@@ -117,7 +117,7 @@ async def upload_job(
     """
     content = await file.read()
     filename = file.filename or "upload"
-    
+
     try:
         if filename.endswith(".csv"):
             df = pd.read_csv(io.BytesIO(content))
@@ -126,7 +126,7 @@ async def upload_job(
         else:
             raise HTTPException(400, "Unsupported file format. Use CSV or Excel.")
     except Exception as e:
-        raise HTTPException(400, f"Failed to parse file: {str(e)}")
+        raise HTTPException(400, f"Failed to parse file: {str(e)}") from e
 
     # Extract URLs
     url_col = None
@@ -134,7 +134,7 @@ async def upload_job(
         if str(col).lower() == "url":
             url_col = col
             break
-    
+
     if url_col is not None:
         urls = df[url_col].dropna().astype(str).tolist()
     else:
@@ -147,7 +147,7 @@ async def upload_job(
         u = u.strip()
         if u.startswith(("http://", "https://")):
             valid_urls.append(u)
-    
+
     if not valid_urls:
         raise HTTPException(400, "No valid URLs found in file.")
 
@@ -376,11 +376,11 @@ def get_job_documents(job_id: str, db: Session = Depends(get_db)):
 @router.get("/{job_id}/documents/{doc_id}/download")
 def download_document(job_id: str, doc_id: str, db: Session = Depends(get_db)):
     from app.core.storage import ObjectStorage
-    
+
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise HTTPException(404, "job not found")
-        
+
     target_doc = None
     for item in job.items:
         for doc in item.documents:
@@ -389,16 +389,16 @@ def download_document(job_id: str, doc_id: str, db: Session = Depends(get_db)):
                 break
         if target_doc:
             break
-            
+
     if not target_doc:
         raise HTTPException(404, "document not found")
-        
+
     storage = ObjectStorage()
     try:
         data = storage.get(target_doc.s3_key)
     except Exception as e:
-        raise HTTPException(500, f"Failed to fetch document from storage: {e}")
-        
+        raise HTTPException(500, f"Failed to fetch document from storage: {e}") from e
+
     return Response(
         content=data,
         media_type=target_doc.mime_type or "application/octet-stream",
@@ -504,7 +504,8 @@ def download_error_report(job_id: str, fmt: str = "json", db: Session = Depends(
     ?fmt=json  (default) — structured JSON with full attempt chain per URL
     ?fmt=csv            — flat CSV for import into Excel / Sheets
     """
-    import csv, io as _io
+    import csv
+    import io as _io
     from app.core.security import classify_error
 
     job = db.query(Job).filter(Job.id == job_id).first()

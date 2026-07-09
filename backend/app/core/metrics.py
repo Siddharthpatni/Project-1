@@ -17,7 +17,6 @@ try:
         Counter,
         Histogram,
         Gauge,
-        REGISTRY,
     )
     _AVAILABLE = True
 except ImportError:

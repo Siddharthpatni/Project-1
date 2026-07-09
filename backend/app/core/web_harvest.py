@@ -127,8 +127,8 @@ def harvest_documents(session) -> list[str]:
         zip_url = session.find_zip_or_download_all()
         if zip_url:
             return [zip_url]
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        log.debug("web_harvest.zip_probe_failed", error=str(e)[:120])
     try:
         links = session.get_download_links()
     except Exception:  # noqa: BLE001
@@ -328,8 +328,8 @@ def download_documents(
                     log.debug("web_harvest.rejected", link=link, reason=reason)
                     try:
                         out.unlink()
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        log.debug("web_harvest.cleanup_failed", path=str(out), error=str(e))
             except Exception as e:  # noqa: BLE001
                 log.debug("web_harvest.download_failed", link=link, error=str(e))
                 continue

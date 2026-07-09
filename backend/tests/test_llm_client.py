@@ -37,7 +37,7 @@ class _FakeResponse:
 class _FakeAsyncClient:
     """Records every POST; always answers 200 with a minimal completion."""
 
-    last: "_FakeAsyncClient | None" = None
+    last: _FakeAsyncClient | None = None
 
     def __init__(self, **kwargs):
         _FakeAsyncClient.last = self

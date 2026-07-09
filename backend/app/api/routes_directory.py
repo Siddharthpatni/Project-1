@@ -22,7 +22,7 @@ Endpoints (mounted at /api/directory; all per-IP rate limited)
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Query
@@ -48,7 +48,7 @@ _CLOSING_SOON_DAYS = 7
 
 def _now() -> datetime:
     """Naive UTC 'now', matching the naive datetimes stored in JobItem.deadline."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def _open_conditions(now: datetime):

@@ -28,8 +28,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime, UTC
 from urllib.parse import urlparse
 
 from app.core.browser_session import BrowserSession
@@ -63,7 +62,7 @@ class LearnedRoute:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict | None) -> "LearnedRoute | None":
+    def from_dict(cls, d: dict | None) -> LearnedRoute | None:
         if not d:
             return None
         try:
@@ -81,7 +80,7 @@ class LearnedRoute:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 # Portals commonly serve documents from suffix-less endpoints

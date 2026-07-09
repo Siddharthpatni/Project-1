@@ -35,6 +35,7 @@ import tempfile
 import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -42,6 +43,9 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.llm_client import LLMClient
+from app.core.metrics import (
+    SCRAPE_DURATION, SCRAPE_TOTAL, ZIP_EXPANSIONS, ZIP_FILES_EXTRACTED,
+)
 from app.core.security import (
     classify_error,
     classify_risk,
@@ -49,8 +53,29 @@ from app.core.security import (
     is_url_allowed,
 )
 from app.core.storage import ObjectStorage
+from app.core.zip_expander import expand_zips
 from app.models import Document, JobItem, JobStatus, Strategy
+from app.phase0_manual.v1_reference import scrape as manual_scrape
+from app.phase1_llm_scraper.executor import (
+    cleanup_output_dir,
+    execute as exec_scraper,
+)
+from app.phase1_llm_scraper.feedback_loop import run_feedback_loop
+from app.phase1_llm_scraper.route_learner import RouteMap, learn_route
+from app.phase2_cua.orchestrator import run_agent
+from app.phase2_cua.route_learner import learn_from_cua, replay as replay_learned_route
+from app.phase3_integration import platform_classifier, scraper_registry
+from app.phase3_integration.adaptive_scraper import run_adaptive
+from app.phase3_integration.deterministic import try_deterministic
+from app.phase3_integration.fallback import StrategyOutcome, next_strategy
+from app.phase3_integration.login_detector import detect_login_wall
+from app.phase3_integration.url_intelligence import (
+    classify_url_type, circuit_breaker, get_strategy_order, rate_limiter,
+)
 from app.utils.audit import CRITICAL, ERROR, INFO, WARNING, write_audit
+from app.utils.logger import get_logger
+
+log = get_logger(__name__)
 
 # Maps security.classify_error categories → plain-English reason shown in UI
 _ERROR_REASON_MAP: dict[str, str] = {
@@ -65,6 +90,7 @@ _ERROR_REASON_MAP: dict[str, str] = {
     "code_validation":       "Generated scraper failed validation — unsafe or wrong signature",
     "prompt_injection":      "Prompt injection pattern detected in URL or page content",
     "blocked_url":           "URL blocked — private network or disallowed scheme (SSRF protection)",
+    "blocked_robots":        "robots.txt disallows automated access — needs permission or manual review",
     "sandbox":               "Sandbox resource limit exceeded — scraper used too much memory/CPU",
     # Access / auth
     "login_required":        "Login required — portal shows a sign-in wall (no hard 401/403)",
@@ -95,40 +121,19 @@ _ERROR_REASON_MAP: dict[str, str] = {
 # in the same asyncio event loop (one per Celery worker task).
 # Without this, 8 concurrent URLs each spawn a thread that calls OpenRouter
 # simultaneously — triggering 403 rate-limit on most of them.
-import asyncio as _asyncio
-_LLM_GENERATION_SEM: _asyncio.Semaphore | None = None
+# Re-created per event loop: each Celery task runs asyncio.run() with a fresh
+# loop, and awaiting a semaphore bound to a previous (closed) loop raises
+# "bound to a different event loop".
+_LLM_GENERATION_SEM: asyncio.Semaphore | None = None
+_LLM_SEM_LOOP: asyncio.AbstractEventLoop | None = None
 
-def _get_llm_sem() -> _asyncio.Semaphore:
-    global _LLM_GENERATION_SEM
-    if _LLM_GENERATION_SEM is None:
-        _LLM_GENERATION_SEM = _asyncio.Semaphore(settings.llm_global_concurrency)
+def _get_llm_sem() -> asyncio.Semaphore:
+    global _LLM_GENERATION_SEM, _LLM_SEM_LOOP
+    loop = asyncio.get_running_loop()
+    if _LLM_GENERATION_SEM is None or _LLM_SEM_LOOP is not loop:
+        _LLM_GENERATION_SEM = asyncio.Semaphore(settings.llm_global_concurrency)
+        _LLM_SEM_LOOP = loop
     return _LLM_GENERATION_SEM
-
-from app.core.metrics import (
-    SCRAPE_TOTAL, SCRAPE_DURATION, DOCUMENTS_DOWNLOADED,
-    ZIP_EXPANSIONS, ZIP_FILES_EXTRACTED, JOB_URLS_PROCESSED,
-)
-from app.core.zip_expander import expand_zips
-from app.phase0_manual.v1_reference import scrape as manual_scrape
-from app.phase1_llm_scraper.executor import (
-    cleanup_output_dir,
-    execute as exec_scraper,
-)
-from app.phase1_llm_scraper.feedback_loop import run_feedback_loop
-from app.phase1_llm_scraper.route_learner import RouteMap, learn_route
-from app.phase2_cua.orchestrator import run_agent
-from app.phase2_cua.route_learner import learn_from_cua, replay as replay_learned_route
-from app.phase3_integration import platform_classifier, scraper_registry
-from app.phase3_integration.adaptive_scraper import run_adaptive
-from app.phase3_integration.deterministic import try_deterministic
-from app.phase3_integration.login_detector import detect_login_wall
-from app.phase3_integration.fallback import StrategyOutcome, next_strategy
-from app.phase3_integration.url_intelligence import (
-    classify_url_type, get_strategy_order, circuit_breaker, rate_limiter, UrlType,
-)
-from app.utils.logger import get_logger
-
-log = get_logger(__name__)
 
 
 @dataclass
@@ -236,11 +241,24 @@ async def process_url(
         db.commit()
         return result
 
+    # robots.txt compliance — skip URLs the portal explicitly forbids crawling
+    # (absent/unreachable robots.txt allows; see core/robots.py).
+    from app.core.robots import robots_allows
+    if not await robots_allows(url):
+        result.error = "robots.txt disallows automated access to this URL"
+        item.status = JobStatus.FAILED.value
+        item.strategy = Strategy.NONE.value
+        item.error_message = result.error
+        item.failure_category = "blocked_robots"
+        write_audit("security.blocked_robots", result.error, level=WARNING,
+                    job_id=item.job_id, item_id=item.id, domain=domain, url=url)
+        db.commit()
+        return result
+
     # 1. Prompt Injection check — only scan the URL path/query fragment, NOT
     #    the whole URL string (which may contain % encodings that look like hex
     #    sequences). URLs cannot inject into LLM prompts; only fetched HTML can.
     #    Prompt injection in fetched HTML is caught in generator._fetch_snippet().
-    from app.core.security import detect_prompt_injection
     from urllib.parse import unquote
     url_decoded = unquote(url)
     injection_hits = detect_prompt_injection(url_decoded)
@@ -330,7 +348,7 @@ async def process_url(
                 f"URL type={_url_type.value} platform={_quick_platform} strategies={[s.value for s in strategies]}",
                 level=INFO, job_id=item.job_id, item_id=item.id, domain=domain, url=url)
 
-    from datetime import datetime as _dt, timezone as _tz
+    from datetime import datetime as _dt
     from app.core.security import classify_error as _classify_error
 
     last_outcome: StrategyOutcome | None = None
@@ -361,7 +379,7 @@ async def process_url(
             "success":        outcome.success,
             "downloaded":     outcome.downloaded,
             "duration_s":     strategy_elapsed,
-            "timestamp":      _dt.now(_tz.utc).isoformat(),
+            "timestamp":      _dt.now(UTC).isoformat(),
             "error_raw":      (outcome.error or "")[:500],
             "error_category": error_category,
             "error_reason":   error_reason,

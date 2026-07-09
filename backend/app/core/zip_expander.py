@@ -24,7 +24,6 @@ document extracted from any ZIPs found.
 """
 from __future__ import annotations
 
-import os
 import zipfile
 from pathlib import Path
 

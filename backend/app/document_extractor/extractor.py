@@ -10,7 +10,7 @@ import json
 import time
 import uuid
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Literal
 
@@ -81,7 +81,7 @@ class DeepExtractor:
             fields=merged,
             parsed_docs=parsed_docs,
             runtime_seconds=round(time.time() - t0, 3),
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
         # Persist to DB if session provided
@@ -99,7 +99,7 @@ class DeepExtractor:
 
     def build_report(
         self,
-        result: "ExtractionResult",
+        result: ExtractionResult,
         fmt: Literal["pdf", "docx"] = "pdf",
     ) -> tuple[bytes, str]:
         return build_report(result.fields, result.parsed_docs, result.source_url, fmt)
@@ -162,7 +162,7 @@ def _persist(db: Session, result: ExtractionResult) -> None:
             existing.fields_json = fields_json
             existing.runtime_seconds = result.runtime_seconds
             existing.docs_parsed = len(result.parsed_docs)
-            existing.updated_at = datetime.now(timezone.utc)
+            existing.updated_at = datetime.now(UTC)
         else:
             record = ExtractionRecord(
                 id=result.id,

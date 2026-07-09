@@ -17,7 +17,7 @@ Design constraints
 from __future__ import annotations
 
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from app.utils.logger import get_logger
@@ -48,7 +48,7 @@ def write_audit(
         from app.models import AuditLog
 
         row = AuditLog(
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             level=level,
             event_type=event_type,
             job_id=job_id,

@@ -13,10 +13,10 @@ Tables:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import Enum as PyEnum
 
-from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -49,15 +49,15 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id:         Mapped[str]      = mapped_column(String, primary_key=True, default=_uuid)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     status:     Mapped[str]      = mapped_column(String, default=JobStatus.PENDING.value)
     submitted_by: Mapped[str | None] = mapped_column(String, nullable=True)
     total_urls:   Mapped[int]  = mapped_column(Integer, default=0)
     completed:    Mapped[int]  = mapped_column(Integer, default=0)
     cost_usd:     Mapped[float] = mapped_column(Float, default=0.0)
 
-    items: Mapped[list["JobItem"]] = relationship(back_populates="job", cascade="all, delete-orphan")
+    items: Mapped[list[JobItem]] = relationship(back_populates="job", cascade="all, delete-orphan")
 
 
 class JobItem(Base):
@@ -96,7 +96,7 @@ class JobItem(Base):
     deadline:         Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     job: Mapped[Job] = relationship(back_populates="items")
-    documents: Mapped[list["Document"]] = relationship(back_populates="job_item", cascade="all, delete-orphan")
+    documents: Mapped[list[Document]] = relationship(back_populates="job_item", cascade="all, delete-orphan")
 
     # Composite index for the directory queries: group/filter by domain, restrict
     # to published (status) tenders, and range-filter / order by deadline.
@@ -116,7 +116,7 @@ class Document(Base):
     size_bytes:  Mapped[int] = mapped_column(Integer, default=0)
     version:     Mapped[int] = mapped_column(Integer, default=1)
     checksum:    Mapped[str] = mapped_column(String, default="")
-    created_at:  Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at:  Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     job_item: Mapped[JobItem] = relationship(back_populates="documents")
 
@@ -144,8 +144,8 @@ class ScraperTemplate(Base):
     success_count: Mapped[int] = mapped_column(Integer, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_runtime:   Mapped[float] = mapped_column(Float, default=0.0)
-    created_at:    Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at:    Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at:    Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at:    Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class EvaluationRun(Base):
@@ -153,7 +153,7 @@ class EvaluationRun(Base):
     __tablename__ = "evaluation_runs"
 
     id:             Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    created_at:     Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at:     Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     model:          Mapped[str] = mapped_column(String, index=True)
     url:            Mapped[str] = mapped_column(Text)
     expected_docs:  Mapped[int] = mapped_column(Integer, default=0)
@@ -170,7 +170,7 @@ class AgentRun(Base):
     __tablename__ = "agent_runs"
 
     id:         Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     agent_name: Mapped[str] = mapped_column(String, index=True)
     url:        Mapped[str] = mapped_column(Text)
     steps:      Mapped[int] = mapped_column(Integer, default=0)
@@ -190,10 +190,10 @@ class ExtractionRecord(Base):
     fields_json:     Mapped[str]      = mapped_column(Text, default="{}")
     docs_parsed:     Mapped[int]      = mapped_column(Integer, default=0)
     runtime_seconds: Mapped[float]    = mapped_column(Float, default=0.0)
-    created_at:      Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at:      Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at:      Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at:      Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
-    job_item: Mapped["JobItem"] = relationship("JobItem", foreign_keys=[job_item_id])
+    job_item: Mapped[JobItem] = relationship("JobItem", foreign_keys=[job_item_id])
 
 
 class AuditLog(Base):
@@ -207,7 +207,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id:          Mapped[str]      = mapped_column(String, primary_key=True, default=_uuid)
-    created_at:  Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at:  Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
     level:       Mapped[str]      = mapped_column(String, default="info")   # info|warning|error|critical
     event_type:  Mapped[str]      = mapped_column(String, index=True)        # pipeline.start, strategy.attempt, …
     job_id:      Mapped[str | None] = mapped_column(String, nullable=True, index=True)

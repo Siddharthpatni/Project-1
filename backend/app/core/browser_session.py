@@ -21,6 +21,10 @@ from __future__ import annotations
 
 from urllib.parse import urljoin
 
+from app.utils.logger import get_logger
+
+log = get_logger(__name__)
+
 
 class BrowserSession:
     """
@@ -69,8 +73,8 @@ class BrowserSession:
                 self._browser.close()
             if self._pw:
                 self._pw.stop()
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("browser.close_failed", error=str(e)[:120])
         return False
 
     # ---- navigation --------------------------------------------------------
@@ -104,8 +108,8 @@ class BrowserSession:
                     if (el) el.remove();
                 }
             """)
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("browser.cookie_dismiss_failed", error=str(e)[:120])
 
     def content(self) -> str:
         return self.page.content()
@@ -126,7 +130,7 @@ class BrowserSession:
             try:
                 self.page.wait_for_load_state("networkidle", timeout=5000)
             except Exception:
-                pass
+                pass  # busy pages may never reach networkidle — proceed anyway
             return True
         except Exception:
             return False
@@ -140,7 +144,7 @@ class BrowserSession:
             try:
                 self.page.wait_for_load_state("networkidle", timeout=5000)
             except Exception:
-                pass
+                pass  # busy pages may never reach networkidle — proceed anyway
             return True
         except Exception:
             return False

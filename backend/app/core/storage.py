@@ -79,8 +79,8 @@ class ObjectStorage:
                 self._available = False
                 try:
                     self._local_fallback_dir.mkdir(parents=True, exist_ok=True)
-                except Exception:
-                    pass
+                except Exception as e3:
+                    log.warning("storage.local_fallback_mkdir_failed", error=str(e3))
 
     def _local_path(self, key: str) -> Path:
         # Sanitise: keep slashes as path separators, drop any traversal.
@@ -150,5 +150,5 @@ class ObjectStorage:
         if path.exists():
             try:
                 os.remove(path)
-            except OSError:
-                pass
+            except OSError as e:
+                log.debug("storage.local_delete_failed", key=key, error=str(e))

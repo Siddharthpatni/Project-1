@@ -16,8 +16,7 @@ and python-docx (DOCX).
 from __future__ import annotations
 
 import io
-from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Literal
 
 from app.document_extractor.field_extractor import TenderFields
@@ -42,7 +41,7 @@ def build_pdf(
             HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
         )
     except ImportError:
-        raise RuntimeError("reportlab is required: pip install reportlab")
+        raise RuntimeError("reportlab is required: pip install reportlab") from None
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -89,7 +88,7 @@ def build_pdf(
     story.append(Spacer(1, 0.4 * cm))
 
     meta_rows = [
-        ["Extrahiert am", datetime.now(timezone.utc).strftime("%d.%m.%Y %H:%M UTC")],
+        ["Extrahiert am", datetime.now(UTC).strftime("%d.%m.%Y %H:%M UTC")],
         ["Quell-URL", source_url or "—"],
         ["Quelldokumente", ", ".join(d.filename for d in source_docs) or "—"],
     ]
@@ -231,11 +230,9 @@ def build_docx(
 ) -> bytes:
     try:
         from docx import Document  # type: ignore
-        from docx.oxml.ns import qn  # type: ignore
         from docx.shared import Pt, RGBColor, Cm  # type: ignore
-        from docx.oxml import OxmlElement  # type: ignore
     except ImportError:
-        raise RuntimeError("python-docx is required: pip install python-docx")
+        raise RuntimeError("python-docx is required: pip install python-docx") from None
 
     doc = Document()
 
@@ -246,14 +243,13 @@ def build_docx(
         section.right_margin  = Cm(2.5)
 
     BRAND = RGBColor(0x1a, 0x3c, 0x5e)
-    ACCENT_RGB = RGBColor(0x3b, 0x7d, 0xd8)
 
     # ── Title ────────────────────────────────────────────────────────────────
     title_p = doc.add_heading("Vergabepilot.AI — Ausschreibungsdaten", level=0)
     if title_p.runs:
         title_p.runs[0].font.color.rgb = BRAND
 
-    doc.add_paragraph(f"Extrahiert: {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M UTC')}")
+    doc.add_paragraph(f"Extrahiert: {datetime.now(UTC).strftime('%d.%m.%Y %H:%M UTC')}")
     if source_url:
         doc.add_paragraph(f"Quelle: {source_url}")
     doc.add_paragraph(f"Dokumente: {', '.join(d.filename for d in source_docs) or '—'}")

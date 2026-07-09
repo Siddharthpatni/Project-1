@@ -11,11 +11,11 @@ import json
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Document, ExtractionRecord, Job, JobItem, JobStatus
+from app.models import Document, ExtractionRecord, Job, JobItem
 
 router = APIRouter(prefix="/extract", tags=["extraction"])
 
@@ -119,9 +119,9 @@ def download_report(
     try:
         report_bytes, mime = build_report(tf, parsed_docs, record.source_url, fmt)
     except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Report generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {e}") from e
 
     ext = "pdf" if fmt == "pdf" else "docx"
     filename = f"vergabepilot_extraction_{job_item_id[:8]}.{ext}"

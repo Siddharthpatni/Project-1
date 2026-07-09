@@ -58,7 +58,7 @@ def test_no_retry_on_404():
 
 def test_retries_transient_status_then_succeeds():
     client = _FakeClient([_Resp(503), _Resp(502), _Resp(200)])
-    with patch.object(hc.HTTP_RETRIES, "labels", return_value=hc.HTTP_RETRIES) as lbl, \
+    with patch.object(hc.HTTP_RETRIES, "labels", return_value=hc.HTTP_RETRIES), \
          patch.object(hc.HTTP_RETRIES, "inc") as inc:
         r = hc.get_with_retry(client, "https://x.test/flaky", max_attempts=3)
     assert r.status_code == 200

@@ -4,7 +4,6 @@ from __future__ import annotations
 import os
 
 # pyrefly: ignore [missing-import]
-import pytest
 
 from app.phase1_llm_scraper.document_validator import (
     is_document_url,

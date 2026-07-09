@@ -72,7 +72,7 @@ celery_app.conf.beat_schedule = {
     # Document versioning check every N hours
     "check-document-versions": {
         "task": "app.workers.tasks.check_document_versions_task",
-        "schedule": crontab(hour="*/{}".format(settings.versioning_check_interval_hours), minute=0),
+        "schedule": crontab(hour=f"*/{settings.versioning_check_interval_hours}", minute=0),
         "options": {"queue": "beat"},
     },
     # Hourly disk cleanup — removes stale download dirs older than 24h

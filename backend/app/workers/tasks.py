@@ -62,7 +62,6 @@ def process_job_task(
         except ValueError:
             log.warning("job.invalid_force_strategy", value=force_strategy)
 
-    item_ids = [item.id for item in job.items]
     total_urls = job.total_urls
 
     if total_urls <= cfg.job_chunk_size:
@@ -82,7 +81,7 @@ def process_job_task(
         #   Tier 2 — UNKNOWN + EVERGABE_WEB + SUBREPORT (moderate cost, ~35-50%)
         #   Tier 3 — NETSERVER_AUTH + EVERGABE_DEEP (login-gated, low success, skip LLM)
         # This means workers fill up on easy wins first, saving LLM budget.
-        from app.phase3_integration.url_intelligence import classify_url_type, UrlType, URL_TYPE_SUCCESS_RATE
+        from app.phase3_integration.url_intelligence import classify_url_type, URL_TYPE_SUCCESS_RATE
         from app.models import JobItem as _JobItem
 
         db.close()
@@ -203,7 +202,7 @@ def process_chunk_task(
 
     try:
         asyncio.run(_process_items_async(db, job, items, force_model, force))
-    except Exception as e:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         log.exception("chunk.failed", job_id=job_id, chunk_size=len(items))
     finally:
         db.close()
@@ -567,13 +566,12 @@ def crash_recovery_task() -> dict:
     stuck in 'running' are rescued.
     """
     import datetime
-    from app.models import JobItem
     from app.utils.audit import CRITICAL, WARNING, write_audit
 
     db = SessionLocal()
     rescued = 0
     aborted = 0
-    threshold = datetime.datetime.now(timezone.utc) - datetime.timedelta(minutes=30)
+    threshold = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=30)
     log.info("crash_recovery.tick")
 
     try:
@@ -605,7 +603,7 @@ def crash_recovery_task() -> dict:
 
         # Also mark jobs that have been PENDING for >2 hours without a worker
         # picking them up — this indicates queue overflow or worker crash.
-        lost_threshold = datetime.datetime.now(timezone.utc) - datetime.timedelta(hours=2)
+        lost_threshold = datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=2)
         lost_jobs = (
             db.query(Job)
             .filter(Job.status == JobStatus.PENDING.value)

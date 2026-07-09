@@ -8,8 +8,6 @@ as ground-truth guidance into the Phase-1 LLM scraper code generator.
 """
 from __future__ import annotations
 
-import asyncio
-from pathlib import Path
 from textwrap import dedent
 from urllib.parse import urlparse
 
@@ -28,7 +26,7 @@ def build_discovery_task(url: str) -> str:
     return dedent(f"""
         Your objective is to quickly explore the website at: {url}
         Identify and discover the interactive paths needed to download procurement documents.
-        
+
         Instructions:
         1. Navigate to the URL and dismiss any cookie banner (e.g. click 'Akzeptieren' or 'Zustimmen').
         2. Scan for buttons, links, tabs, or elements like 'Vergabeunterlagen', 'Dokumente', 'Ausschreibungsunterlagen', or 'Unterlagen'.
@@ -64,15 +62,15 @@ async def run_cua_preflight_discovery(url: str, max_steps: int = 8) -> RouteMap:
 
         if outcome.success or outcome.steps > 0:
             rm.learned = True
-            
+
             # Reconstruct exploration steps into RouteSteps
             report_lines = []
             report_lines.append(f"CUA pre-flight visited {url} and successfully completed discovery in {outcome.steps} steps.")
             if outcome.downloaded_files:
                 report_lines.append(f"Successfully initiated and downloaded {len(outcome.downloaded_files)} document files during discovery.")
-                
+
             report_lines.append("\nNavigation & Selector Interaction Trace:")
-            
+
             # outcome.trace holds the list of action states
             if outcome.trace:
                 for idx, t in enumerate(outcome.trace, 1):
@@ -98,7 +96,7 @@ async def run_cua_preflight_discovery(url: str, max_steps: int = 8) -> RouteMap:
             rm.error = outcome.error or "no discovery trace returned"
             rm.cua_discovery_report = f"CUA Pre-flight discovery could not complete: {rm.error}"
             log.warning("cua_discovery.preflight.no_trace", url=url, error=rm.error)
-            
+
     except Exception as e:
         log.exception("cua_discovery.preflight.failed", url=url)
         rm.error = str(e)

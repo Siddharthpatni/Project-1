@@ -128,6 +128,7 @@ _ERROR_CATEGORIES = [
     # --- Security / validation (must come before auth) --------------------------
     (re.compile(r"validation failed|forbidden (import|call)|missing required function", re.I), "code_validation"),
     (re.compile(r"prompt.?inject|injection detected", re.I), "prompt_injection"),
+    (re.compile(r"robots\.txt", re.I), "blocked_robots"),
     (re.compile(r"url not allowed|scheme|private network|ssrf", re.I), "blocked_url"),
     (re.compile(r"sandbox|memory limit|killed|oom", re.I), "sandbox"),
 

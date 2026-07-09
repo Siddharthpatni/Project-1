@@ -8,14 +8,13 @@ GET  /api/evaluation/pipeline     → real pipeline strategy performance from jo
 GET  /api/evaluation/scraper-health → scraper registry quality report
 """
 from collections import defaultdict
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import EvaluationRun, Job, JobItem, JobStatus, ScraperTemplate, Strategy
+from app.models import EvaluationRun, Job, JobItem, JobStatus, ScraperTemplate
 from app.schemas import EvaluationRequest, EvaluationRunRead
 from app.workers.tasks import run_evaluation_task
 

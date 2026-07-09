@@ -2,8 +2,9 @@
 Admin and operations endpoints for monitoring, diagnostics, and system control.
 
 These endpoints are intended for internal ops tooling, not end-user clients.
-No authentication is enforced here — deploy behind VPN or with a reverse-proxy
-auth layer (e.g. Nginx basic-auth) in production.
+When ADMIN_API_KEY is set (mandatory in production, warned-if-missing in dev),
+every route here requires it via "Authorization: Bearer <key>" or
+"X-Admin-Key: <key>".
 
 Endpoints
 ─────────
@@ -25,10 +26,13 @@ All failed items have their error message classified into one of ~15 error categ
 (network, rate-limit) from systematic ones (auth-gated portals, blocked URLs).
 Severity levels: info, warning, error, critical.
 """
-from fastapi import APIRouter, Depends
+import secrets
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.core.security import classify_error
 from app.database import get_db
 from app.models import (
@@ -41,7 +45,26 @@ from app.models import (
     Strategy,
 )
 
-router = APIRouter()
+
+def require_admin_key(
+    authorization: str | None = Header(None),
+    x_admin_key: str | None = Header(None),
+) -> None:
+    """Reject the request unless it carries the configured admin key.
+
+    No-op when ADMIN_API_KEY is unset (dev — the startup validator already
+    warns; production hard-fails on a missing key at boot).
+    """
+    if not settings.admin_api_key:
+        return
+    supplied = x_admin_key or ""
+    if not supplied and authorization and authorization.startswith("Bearer "):
+        supplied = authorization[len("Bearer "):].strip()
+    if not secrets.compare_digest(supplied, settings.admin_api_key):
+        raise HTTPException(status_code=403, detail="Admin API key required")
+
+
+router = APIRouter(dependencies=[Depends(require_admin_key)])
 
 
 # ---------------------------------------------------------------------------

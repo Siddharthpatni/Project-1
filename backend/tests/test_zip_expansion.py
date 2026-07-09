@@ -5,17 +5,14 @@ All tests use only stdlib and tmp_path; no external services required.
 """
 from __future__ import annotations
 
-import os
 import zipfile
 from pathlib import Path
 
-import pytest
 
 from app.core.zip_expander import (
     MAX_FILE_COUNT,
     MAX_TOTAL_BYTES,
     expand_zips,
-    _expand_zip_recursive,
 )
 
 
@@ -124,7 +121,6 @@ def test_nested_zip_expansion(tmp_path):
 def test_max_depth_respected(tmp_path):
     """Nesting deeper than MAX_DEPTH (3) does not cause infinite recursion."""
     # Build a 5-level nested ZIP: level5 → level4 → ... → level1
-    current_data = _FAKE_PDF
     for level in range(5, 0, -1):
         zp = tmp_path / f"level{level}.zip"
         if level == 5:

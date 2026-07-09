@@ -27,7 +27,6 @@ import sys
 import time
 
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
 from app.schemas import TestCaseResult, TestRunRequest, TestRunResult
 from app.utils.logger import get_logger

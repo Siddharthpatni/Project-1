@@ -40,6 +40,9 @@ from browser_use.llm.openrouter.chat import ChatOpenRouter
 
 from app.config import settings
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
+from app.utils.logger import get_logger
+
+log = get_logger(__name__)
 
 # ── Global browser semaphore ───────────────────────────────────────────────────
 # Limits simultaneous Chromium browsers across the entire worker process.
@@ -47,19 +50,23 @@ from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
 # trigger BrowserType.launch timeouts (the actual observed failure mode in load tests).
 # Max 2 concurrent per worker; with CUA worker concurrency=2 this caps at 4 system-wide.
 _BROWSER_SEM: asyncio.Semaphore | None = None
+_BROWSER_SEM_LOOP: asyncio.AbstractEventLoop | None = None
 
 
 def _get_browser_sem() -> asyncio.Semaphore:
-    """Lazy-initialise the browser semaphore (must happen inside an event loop)."""
-    global _BROWSER_SEM
-    if _BROWSER_SEM is None:
+    """Lazy-initialise the browser semaphore per event loop.
+
+    Each Celery task runs asyncio.run() with a fresh loop; a semaphore bound
+    to a previous (closed) loop raises "bound to a different event loop" when
+    contended, so re-create it whenever the running loop changes.
+    """
+    global _BROWSER_SEM, _BROWSER_SEM_LOOP
+    loop = asyncio.get_running_loop()
+    if _BROWSER_SEM is None or _BROWSER_SEM_LOOP is not loop:
         _BROWSER_SEM = asyncio.Semaphore(2)
+        _BROWSER_SEM_LOOP = loop
     return _BROWSER_SEM
 
-
-from app.utils.logger import get_logger
-
-log = get_logger(__name__)
 
 # File extensions we consider valid procurement documents.
 # Used to filter downloads — avoids counting CSS/JS/image files as documents.

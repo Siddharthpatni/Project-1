@@ -6,15 +6,14 @@ for the supported domains.
 """
 
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 # Import constants directly to avoid circular imports during seeding
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://vergabepilot:vergabepilot@localhost:5432/vergabepilot")
 
-# Use a local imports to avoid issues if the app isn't fully installed
-from app.database import SessionLocal
-from app.models import ScraperTemplate, Strategy
+# Deliberately imported after DATABASE_URL is set (avoids circular imports
+# during seeding) — hence the noqa.
+from app.database import SessionLocal  # noqa: E402
+from app.models import ScraperTemplate  # noqa: E402
 
 DOMAINS = [
     "evergabe-online.de",
@@ -32,7 +31,7 @@ def seed():
         print(f"Error: Reference scraper not found at {SCRAPER_PATH}")
         return
 
-    code = open(SCRAPER_PATH, "r").read()
+    code = open(SCRAPER_PATH).read()
     db = SessionLocal()
 
     print(f"Seeding {len(DOMAINS)} domains with V1 manual scraper baseline...")
@@ -52,7 +51,7 @@ def seed():
                 success_count=100, # Start with high confidence for the manual script
             )
             db.add(tpl)
-    
+
     db.commit()
     db.close()
     print("Done!")

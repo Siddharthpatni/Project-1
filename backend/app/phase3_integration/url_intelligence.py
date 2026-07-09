@@ -32,8 +32,8 @@ from __future__ import annotations
 import re
 import time
 from enum import Enum
-from typing import Optional
 
+from app.models import Strategy
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
@@ -355,8 +355,6 @@ URL_TYPE_SUCCESS_RATE: dict[UrlType, float] = {
 
 
 # ─── Optimised Strategy Ordering ─────────────────────────────────────────────
-
-from app.models import Strategy
 
 
 def _inject_adaptive(order: list[Strategy]) -> list[Strategy]:

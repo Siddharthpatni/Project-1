@@ -512,7 +512,7 @@ def build_route_guided_prompt(
         platform_hint = f"\nPlatform-specific guidance:\n{platform_hint}\n"
     platform_hint += build_cua_hint_section(cua_hint)
 
-    link_lines = "\n".join(f"  - {l}" for l in discovered_links[:20]) or "  (none)"
+    link_lines = "\n".join(f"  - {link}" for link in discovered_links[:20]) or "  (none)"
     if len(discovered_links) > 20:
         link_lines += f"\n  (+{len(discovered_links) - 20} more)"
 
