@@ -49,9 +49,8 @@ OUTCOME_BUCKETS: dict[str, str] = {
     "empty_page":            NO_DOCUMENTS,
     "js_required":           NO_DOCUMENTS,
     "no_strategy":           NO_DOCUMENTS,
-    # Security / compliance blocks (our own guards).
+    # Security blocks (our own guards).
     "blocked_url":           BLOCKED,
-    "blocked_robots":        BLOCKED,
     "prompt_injection":      BLOCKED,
     # Everything else is a genuine error to investigate.
     "code_validation":       ERROR,

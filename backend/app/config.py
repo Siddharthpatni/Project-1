@@ -108,9 +108,6 @@ class Settings(BaseSettings):
     admin_api_key: str = ""
     # Per-IP request cap for the public (unauthenticated) tender directory, per minute.
     public_rate_limit_per_minute: int = 60
-    # Consult robots.txt before scraping and skip disallowed URLs (bucket:
-    # blocked). Flip off only for portals you have explicit permission to crawl.
-    respect_robots_txt: bool = True
 
     # --- Misc ---
     log_level: str = "INFO"

@@ -11,7 +11,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-256%20passing-success)
+![Tests](https://img.shields.io/badge/tests-262%20passing-success)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 </div>
@@ -153,7 +153,7 @@ graph TB
     end
 
     subgraph Post["Post-processing"]
-        EX[Deep Extractor<br/>22 fields · regex + LLM]
+        EX[Deep Extractor<br/>32 fields · regex + LLM]
         OUT[Outcome buckets<br/>honest failure reporting]
     end
 
@@ -187,7 +187,7 @@ graph TB
 | **Object Storage** | MinIO (S3-compatible) | latest |
 | **Browser Automation** | Playwright | 1.47 |
 | **Visual Agents** | browser-use | 0.12 |
-| **LLM Provider** | OpenRouter → Gemini 2.5 Flash Lite | free tier |
+| **LLM Provider** | OpenRouter → Gemini 2.5 Flash Lite · optional local Ollama (`ollama/…` models, $0) | free tier |
 | **Resilience** | Redis circuit breaker · domain rate limiter · HTTP retry+backoff | — |
 | **Containerisation** | Docker Compose | — |
 | **Observability** | Prometheus · append-only audit log · structlog correlation IDs | — |
@@ -344,7 +344,7 @@ vergabepilot-ai/
 │   │   ├── models.py · schemas.py · config.py · database.py · main.py
 │   │
 │   ├── migrations/                 # Alembic: baseline → learned_route → directory fields
-│   └── tests/                      # pytest — 225 tests
+│   └── tests/                      # pytest — 262 tests
 │
 ├── frontend/
 │   ├── app/                        # Next.js App Router pages
@@ -390,7 +390,7 @@ Generated scraper code that fails is sent back to the LLM with the full error (c
 Per-domain Redis **circuit breaker** (trips after repeated failures, re-opens after 30 min), **domain rate limiter** (token bucket), a **domain LLM dedup lock** (so N workers don't all call the LLM for the same domain), a **global LLM semaphore**, resilient HTTP retry/backoff, job resumability, and hourly disk cleanup — all designed for 10,000-URL runs.
 
 ### 🔍 Deep Document Extraction
-After download, a second pipeline parses PDF/DOCX/XLSX and extracts **22 structured procurement fields** with German-language regex (optionally LLM-enhanced), then can render a branded PDF or DOCX report.
+After download, a second pipeline parses PDF/DOCX/XLSX and extracts **32 structured procurement fields** with German-language regex (optionally LLM-enhanced), then can render a branded PDF or DOCX report.
 
 | Field | Example |
 |---|---|
@@ -422,7 +422,7 @@ Live dashboard KPIs and strategy distribution, searchable append-only audit log,
 | Deterministic / cached hit | free, 1–50 s | No LLM, no browser |
 | LLM cost per URL | ~$0.00001 | Gemini 2.5 Flash Lite free tier |
 | Document extraction | < 5 s (regex) / 10–30 s (+LLM) | Runs after each successful download |
-| Test suite | **225 tests** | Backend pytest, SQLite, no external deps |
+| Test suite | **262 tests** | Backend pytest, SQLite, no external deps |
 
 **Scaling workers:**
 ```bash
@@ -456,12 +456,12 @@ How a large job flows: `POST /api/jobs` enqueues `process_job_task` → items ar
 The GitHub Actions pipeline runs on every push and pull request:
 
 ```
-git push → Backend Tests (225) → Frontend Build + TS Check → Security Scan → Docker Build
+git push → Backend Lint + Tests (262) → Frontend Build + TS Check → Security Scan → Docker Build
 ```
 
 ```yaml
 # .github/workflows/ci.yml stages:
-backend-test:   pytest (SQLite, no external deps)
+backend-test:   ruff check + pytest (SQLite, no external deps)
 frontend-check: tsc --noEmit + eslint + next build
 security-scan:  pip-audit (Python CVEs) + npm audit (Node CVEs)
 container-build: docker build backend + frontend images

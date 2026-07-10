@@ -90,7 +90,6 @@ _ERROR_REASON_MAP: dict[str, str] = {
     "code_validation":       "Generated scraper failed validation — unsafe or wrong signature",
     "prompt_injection":      "Prompt injection pattern detected in URL or page content",
     "blocked_url":           "URL blocked — private network or disallowed scheme (SSRF protection)",
-    "blocked_robots":        "robots.txt disallows automated access — needs permission or manual review",
     "sandbox":               "Sandbox resource limit exceeded — scraper used too much memory/CPU",
     # Access / auth
     "login_required":        "Login required — portal shows a sign-in wall (no hard 401/403)",
@@ -237,20 +236,6 @@ async def process_url(
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
         write_audit("security.blocked_url", reason, level=CRITICAL,
-                    job_id=item.job_id, item_id=item.id, domain=domain, url=url)
-        db.commit()
-        return result
-
-    # robots.txt compliance — skip URLs the portal explicitly forbids crawling
-    # (absent/unreachable robots.txt allows; see core/robots.py).
-    from app.core.robots import robots_allows
-    if not await robots_allows(url):
-        result.error = "robots.txt disallows automated access to this URL"
-        item.status = JobStatus.FAILED.value
-        item.strategy = Strategy.NONE.value
-        item.error_message = result.error
-        item.failure_category = "blocked_robots"
-        write_audit("security.blocked_robots", result.error, level=WARNING,
                     job_id=item.job_id, item_id=item.id, domain=domain, url=url)
         db.commit()
         return result
