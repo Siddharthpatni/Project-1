@@ -1,8 +1,8 @@
-# Vergabepilot.AI ⚡
+# Vergabepilot.AI
 **Autonomous Agentic AI for Procurement Document Extraction & Cascade Pipeline**
 
 *SoSe 2026 · CORE Research Group · in cooperation with Ciconia Systems GmbH*  
-*Developed by: **Siddharth Patni***
+
 
 ---
 
