@@ -14,11 +14,22 @@ class Base(DeclarativeBase):
     pass
 
 
+_is_sqlite = settings.database_url.startswith("sqlite")
+
+# Pool kwargs differ between SQLite (single-file, no overflow tuning needed)
+# and Postgres (needs a larger pool for concurrent workers).
+# Default pool_size=5 / max_overflow=10 = 15 max connections was exhausted
+# when job_concurrency=16 workers each held a session during LLM calls,
+# causing QueuePool timeouts that looked like 30s hangs on every URL.
+_pool_kwargs: dict = {"pool_timeout": 5, "pool_recycle": 1800}
+if not _is_sqlite:
+    _pool_kwargs.update({"pool_size": 20, "max_overflow": 20})  # 40 total for Postgres
+
 engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
-    # SQLite needs this for multi-threaded FastAPI
-    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    **_pool_kwargs,
 )
 
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

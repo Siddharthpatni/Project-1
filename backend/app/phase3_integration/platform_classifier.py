@@ -19,6 +19,39 @@ from __future__ import annotations
 import re
 from urllib.parse import urlsplit
 
+
+# ---------------------------------------------------------------------------
+# URL normalization  (run before classification / cascade)
+# ---------------------------------------------------------------------------
+
+def normalize_url(url: str) -> str:
+    """Rewrite known *login-entrance* / landing URLs to the public tender page
+    that actually exposes documents.
+
+    Some source URLs (e.g. exported lists) point at a portal's login entrance or
+    a redirect stub rather than the public page that serves the documents.
+    Scraping the entrance yields nothing; rewriting to the public page lets the
+    cascade (and the CUA) start where the documents actually are.
+
+    Handled today:
+      * EU-Supply CTM:  /app/rfq/rwlentrance_s.asp?PID=<id>   (login entrance)
+                     →  /ctm/Supplier/PublicPurchase/<id>/0/0  (public page)
+    """
+    try:
+        parts = urlsplit(url)
+    except Exception:  # noqa: BLE001
+        return url
+    host = (parts.netloc or "").lower()
+
+    # EU-Supply CTM family (eu.eu-supply.com, www.eu-supply.com, <tenant>.eu-supply.com)
+    if "eu-supply.com" in host and "rwlentrance" in parts.path.lower():
+        m = re.search(r"[?&]PID=(\d+)", url, re.IGNORECASE)
+        if m:
+            return f"{parts.scheme}://{parts.netloc}/ctm/Supplier/PublicPurchase/{m.group(1)}/0/0"
+
+    return url
+
+
 # ---------------------------------------------------------------------------
 # URL-level fingerprints  (checked before any HTTP request)
 # ---------------------------------------------------------------------------
@@ -29,9 +62,28 @@ _URL_PATTERNS: dict[str, list[str]] = {
         r"/VMPSatellite/public/company/project/",
         r"/Satellite/notice/",
         r"/VMPSatellite/notice/",
+        r"/Vergabe/notice/",          # blb.nrw and similar Satellite variants
+        r"/Vergabe/public/company/project/",
     ],
     "netserver": [
         r"/NetServer/",
+    ],
+    # eVergabe 4.9 / Cosinex deeplink API — used by kfw.de, db.de, ehealth portals etc.
+    # Path: /evergabe.bieter/api/supplier/external/deeplink/subproject/<uuid>
+    #   or: /bieter/api/supplier/external/deeplink/subproject/<uuid>
+    "evergabe_cosinex": [
+        r"/evergabe\.bieter/api/supplier/external/deeplink/",
+        r"/bieter/api/supplier/external/deeplink/",
+        r"evergabe\.bieter",
+        r"evergabe\.nrw",
+        r"evergabe\.bayern",
+        r"vergabemarktplatz\.brandenburg",
+        r"vergabe\.muenchen",
+    ],
+    # e-VA Bieterportal — bundde?data=<base64> format used by dfg.e-va.eu etc.
+    "e_va": [
+        r"e-va\.eu",
+        r"/bundde\?data=",
     ],
     "evergabe_de": [
         r"www\.evergabe\.de",
@@ -86,6 +138,17 @@ _HTML_PATTERNS: dict[str, list[str]] = {
         "NetServer",
         "TenderingProcedureDetails",
     ],
+    "evergabe_cosinex": [
+        "evergabe.bieter",
+        "Alle herunterladen",
+        "ng-version",   # Angular app marker
+        "cosinex",
+    ],
+    "e_va": [
+        "e-va.eu",
+        "bieterportal",
+        "bundde",
+    ],
     "ted_eu": [
         "TED Tenders Electronic Daily",
         "Publications Office of the EU",
@@ -103,7 +166,7 @@ _HTML_PATTERNS: dict[str, list[str]] = {
 # Platforms that have a deterministic URL template — no LLM needed.
 # For these, the platform classifier can construct the document/ZIP URL
 # directly from URL components.
-DETERMINISTIC_PLATFORMS = {"dtvp"}
+DETERMINISTIC_PLATFORMS = {"dtvp", "netserver"}
 
 
 def classify_url(url: str) -> str:
@@ -146,17 +209,25 @@ def is_deterministic(platform: str) -> bool:
 def extract_project_id(url: str) -> str | None:
     """
     Extract DTVP-style project ID from URL path.
-    Handles both forms:
+    Handles forms:
       /project/CXXX/de/...   (documents/overview URLs)
       /notice/CXXX            (notice listing URLs — the form used in CSVs)
+    Also handles IDs that contain lowercase or hyphens (some portals use these).
     """
-    m = re.search(r"/(?:project|notice)/([A-Z0-9]+)(?:/|$)", url, re.IGNORECASE)
+    m = re.search(r"/(?:project|notice)/([A-Z0-9a-z]+)(?:/|$)", url, re.IGNORECASE)
     return m.group(1) if m else None
 
 
 def _dtvp_prefix(url: str) -> str:
-    """Return 'VMPSatellite' or 'Satellite' based on URL path."""
-    return "VMPSatellite" if "/VMPSatellite/" in url else "Satellite"
+    """
+    Return the correct path prefix for this Satellite-family portal.
+    Handles VMPSatellite (NRW-style), standard Satellite, and Vergabe variants.
+    """
+    if "/VMPSatellite/" in url:
+        return "VMPSatellite"
+    if "/Vergabe/" in url:
+        return "Vergabe"
+    return "Satellite"
 
 
 def build_dtvp_documents_url(url: str) -> str | None:
@@ -175,7 +246,7 @@ def build_dtvp_documents_url(url: str) -> str | None:
 def build_dtvp_zip_url(url: str) -> str | None:
     """
     Construct the ZIP URL for a DTVP-family project URL using the known template.
-    Works for both Satellite (BW) and VMPSatellite (NRW) prefixes,
+    Works for Satellite, VMPSatellite (NRW), and Vergabe prefix variants,
     and from both /notice/ID and /project/ID/... URL forms.
     """
     parts = urlsplit(url)
@@ -190,6 +261,72 @@ def build_dtvp_zip_url(url: str) -> str | None:
     )
 
 
+def build_netserver_download_url(url: str) -> str | None:
+    """
+    Construct the _DownloadTenderDocuments URL for a NetServer portal.
+
+    Handles two URL forms:
+      1. TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-...
+         → TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID=...
+      2. PublicationControllerServlet?function=Detail&TWOID=54321-Tender-...
+         → TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID=...
+    """
+    from urllib.parse import urlsplit, parse_qs
+
+    parts   = urlsplit(url)
+    params  = parse_qs(parts.query, keep_blank_values=True)
+    base    = f"{parts.scheme}://{parts.netloc}"
+    netpath = re.search(r"(/.*?/NetServer/)", parts.path, re.IGNORECASE)
+    ns_base = f"{base}{netpath.group(1)}" if netpath else f"{base}/NetServer/"
+
+    # Extract TenderOID — may be under TenderOID or TWOID key
+    oid = (params.get("TenderOID") or params.get("TWOID") or [None])[0]
+    if not oid:
+        # Try to find a 54321-Tender-* pattern anywhere in the URL
+        m = re.search(r"(54321-(?:Tender|PublishingProcess)-[a-f0-9\-]+)", url, re.IGNORECASE)
+        oid = m.group(1) if m else None
+    if not oid:
+        return None
+
+    return f"{ns_base}TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID={oid}"
+
+
+def build_netserver_fallback_urls(url: str) -> list[str]:
+    """
+    Additional NetServer download URL patterns to try when the primary
+    _DownloadTenderDocuments endpoint returns an empty body (common on portals
+    that gate document access by session, or use a different endpoint path).
+
+    Tries in order:
+      1. PublicationControllerServlet GetDocumentFile (some portals serve
+         documents here without a session when the publication is public)
+      2. _DownloadPublicationDocuments (alternative NetServer function name)
+      3. _DownloadTenderDocuments with explicit DocumentType param
+    """
+    from urllib.parse import urlsplit, parse_qs
+
+    parts  = urlsplit(url)
+    params = parse_qs(parts.query, keep_blank_values=True)
+    base   = f"{parts.scheme}://{parts.netloc}"
+    netpath = re.search(r"(/.*?/NetServer/)", parts.path, re.IGNORECASE)
+    ns_base = f"{base}{netpath.group(1)}" if netpath else f"{base}/NetServer/"
+
+    oid = (params.get("TenderOID") or params.get("TWOID") or [None])[0]
+    if not oid:
+        m = re.search(r"(54321-(?:Tender|PublishingProcess)-[a-f0-9\-]+)", url, re.IGNORECASE)
+        oid = m.group(1) if m else None
+    if not oid:
+        return []
+
+    return [
+        # Alternate NetServer function names
+        f"{ns_base}TenderingProcedureDetails?function=_DownloadPublicationDocuments&TenderOID={oid}",
+        f"{ns_base}PublicationControllerServlet?function=GetDocumentFile&TWOID={oid}",
+        f"{ns_base}TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID={oid}&DocumentType=0",
+        f"{ns_base}TenderingProcedureDetails?function=_DownloadTenderDocuments&TenderOID={oid}&DocumentType=1",
+    ]
+
+
 def build_download_url(platform: str, url: str) -> str | None:
     """
     Dispatch to the right URL builder for the given deterministic platform.
@@ -198,4 +335,6 @@ def build_download_url(platform: str, url: str) -> str | None:
     """
     if platform == "dtvp":
         return build_dtvp_zip_url(url)
+    if platform == "netserver":
+        return build_netserver_download_url(url)
     return None

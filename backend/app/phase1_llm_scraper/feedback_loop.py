@@ -37,6 +37,13 @@ from app.utils.logger import get_logger
 
 log = get_logger(__name__)
 
+# Failure categories no regenerated scraper can fix: the wall is on the portal
+# side (credentials, CAPTCHA, gone content), so further iterations only burn
+# LLM budget re-discovering the same wall.
+_HARD_WALL_CATEGORIES = {
+    "login_required", "registration_required", "captcha", "not_found", "expired",
+}
+
 
 @dataclass
 class LoopResult:
@@ -61,6 +68,7 @@ async def run_feedback_loop(
     route_map=None,           # phase1_llm_scraper.route_learner.RouteMap | None
     platform: str | None = None,
     html_snippet: str | None = None,
+    cua_hint: str | None = None,
 ) -> LoopResult:
     """Generate → validate → execute → evaluate → retry until success.
 
@@ -90,6 +98,7 @@ async def run_feedback_loop(
             scraper = await generator.generate(
                 url, model=model, route_map=route_map, platform=platform,
                 html_snippet=html_snippet,  # skip re-fetch if caller supplied it
+                cua_hint=cua_hint,
             )
         else:
             outcome = (
@@ -109,6 +118,9 @@ async def run_feedback_loop(
                 expected_docs=truth.expected_doc_count,
                 downloaded=metrics.downloaded_count if metrics else 0,
                 model=model,
+                # Without the failing code the model regenerates blind — pass
+                # it so "self-healing" is an actual targeted fix.
+                previous_code=scraper.code,
             )
 
         loop.total_cost_usd += scraper.cost_usd
@@ -168,6 +180,16 @@ async def run_feedback_loop(
             cleanup_output_dir(exec_result.output_dir)
             # Don't re-clean it later — wipe the field
             exec_result.output_dir = None
+
+        # Hard access wall (scraper-reported blocked_reason or classified
+        # error) → stop iterating. No rewrite gets past missing credentials.
+        from app.core.security import classify_error
+        if exec_result.error and classify_error(exec_result.error) in _HARD_WALL_CATEGORIES:
+            log.info(
+                "phase1.loop.hard_wall_stop",
+                url=url, iteration=i, error=exec_result.error[:200],
+            )
+            break
 
     loop.final_scraper = scraper
     loop.final_execution = exec_result

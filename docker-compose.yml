@@ -14,14 +14,28 @@ x-worker-common: &worker-common
   build: ./backend
   env_file: .env
   environment:
-    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?POSTGRES_USER required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-vergabepilot}
     REDIS_URL: redis://redis:6379/0
     S3_ENDPOINT: http://minio:9000
-    # Tune these via .env for your hardware
-    JOB_CONCURRENCY: ${JOB_CONCURRENCY:-16}
+    SECRET_KEY: ${SECRET_KEY:?SECRET_KEY required}
+    MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER required}
+    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD required}
+    VERGABEPILOT_ENV: ${VERGABEPILOT_ENV:-development}
+    JOB_CONCURRENCY: ${JOB_CONCURRENCY:-8}
     JOB_CHUNK_SIZE: ${JOB_CHUNK_SIZE:-50}
     LLM_GLOBAL_CONCURRENCY: ${LLM_GLOBAL_CONCURRENCY:-8}
     DOMAIN_LLM_LOCK_TTL: ${DOMAIN_LLM_LOCK_TTL:-360}
+    # Cascade feature flags (workers run the pipeline, so these matter here)
+    ENABLE_FALLBACK_CUA: ${ENABLE_FALLBACK_CUA:-true}
+    ENABLE_CUA_ROUTE_LEARNING: ${ENABLE_CUA_ROUTE_LEARNING:-true}
+    ENABLE_ROUTE_LEARNING: ${ENABLE_ROUTE_LEARNING:-false}
+    ANONYMIZED_TELEMETRY: "false"
+    BROWSER_USE_LOGGING_LEVEL: "warning"
+    # Ollama runs on the host (Metal GPU is unavailable inside containers);
+    # host.docker.internal reaches it from any container.
+    OLLAMA_BASE_URL: ${OLLAMA_BASE_URL_DOCKER:-http://host.docker.internal:11434/v1}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   depends_on:
     - api
   volumes:
@@ -34,8 +48,8 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-vergabepilot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vergabepilot}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
       POSTGRES_DB: ${POSTGRES_DB:-vergabepilot}
     command: >
       postgres
@@ -43,6 +57,7 @@ services:
       -c shared_buffers=256MB
       -c effective_cache_size=1GB
       -c work_mem=4MB
+      -c idle_in_transaction_session_timeout=300000
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -55,10 +70,12 @@ services:
 
   redis:
     image: redis:7-alpine
+    # noeviction: Redis is the Celery broker + circuit-breaker state — with
+    # allkeys-lru, memory pressure silently evicted queued jobs.
     command: >
       redis-server
       --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
       --save ""
     ports:
       - "6379:6379"
@@ -72,8 +89,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD required}
     volumes:
       - minio_data:/data
     ports:
@@ -91,9 +108,16 @@ services:
     build: ./backend
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?POSTGRES_USER required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-vergabepilot}
       REDIS_URL: redis://redis:6379/0
       S3_ENDPOINT: http://minio:9000
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY required}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD required}
+      VERGABEPILOT_ENV: ${VERGABEPILOT_ENV:-development}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL_DOCKER:-http://host.docker.internal:11434/v1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -103,7 +127,13 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --timeout-keep-alive 75
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     volumes:
       - ./backend:/app
       - ./data:/app/data
@@ -150,8 +180,12 @@ services:
     build: ./backend
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vergabepilot}:${POSTGRES_PASSWORD:-vergabepilot}@postgres:5432/${POSTGRES_DB:-vergabepilot}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?POSTGRES_USER required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}@postgres:5432/${POSTGRES_DB:-vergabepilot}
       REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY required}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD required}
+      VERGABEPILOT_ENV: ${VERGABEPILOT_ENV:-development}
     depends_on:
       - worker-default
     command: >

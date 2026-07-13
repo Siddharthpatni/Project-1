@@ -1,15 +1,20 @@
 """
 Unified LLM client — OpenRouter by default, direct providers as fallback.
 
+Model ids prefixed "ollama/" (e.g. "ollama/qwen2.5-coder:7b") are routed to a
+local Ollama server (settings.ollama_base_url) instead: same OpenAI-compatible
+wire format, no API key, zero cost.
+
 Exposes two high-level methods:
     chat(system, user)                → text completion
     chat_with_image(system, user, b64) → vision completion (for Phase 2)
 
-Cost is estimated from usage tokens using a small static price table.
-Override via environment variables or extend as needed.
+Cost is estimated from usage tokens via live OpenRouter pricing; local
+models cost $0.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 
 import httpx
@@ -19,17 +24,8 @@ from app.utils.logger import get_logger
 
 log = get_logger(__name__)
 
-# Very rough cost table in USD per 1M tokens (input, output).
-# Used only for rough tracking; real billing comes from OpenRouter.
-_COSTS = {
-    "anthropic/claude-sonnet-4.5": (3.0, 15.0),
-    "anthropic/claude-haiku-4.5":  (1.0, 5.0),
-    "openai/gpt-4o":               (2.5, 10.0),
-    "openai/gpt-4o-mini":          (0.15, 0.6),
-    "google/gemini-2.5-pro":       (1.25, 5.0),
-    "google/gemini-2.5-flash":     (0.15, 0.6),
-    "google/gemini-2.5-flash-lite": (0.0, 0.0),  # free tier
-}
+# Model ids with this prefix are served by the local Ollama server.
+OLLAMA_PREFIX = "ollama/"
 
 
 @dataclass
@@ -92,38 +88,95 @@ class LLMClient:
         }
         return await self._call(payload, model)
 
+    def _route(self, model: str, payload: dict) -> tuple[dict, str, dict, int]:
+        """Resolve (payload, url, headers, timeout) for a model id.
+
+        "ollama/<name>" goes to the local Ollama server (no auth, bare model
+        name on the wire, longer timeout — local generation is slow);
+        everything else goes to OpenRouter.
+        """
+        if model.startswith(OLLAMA_PREFIX):
+            payload = {**payload, "model": model[len(OLLAMA_PREFIX):]}
+            url = f"{settings.ollama_base_url.rstrip('/')}/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            timeout = settings.ollama_timeout_seconds
+        else:
+            payload = {**payload, "model": model}
+            url = f"{self.base_url}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "HTTP-Referer": "https://vergabepilot.ai",
+                "X-Title": "Vergabepilot.AI",
+                "Content-Type": "application/json",
+            }
+            timeout = settings.llm_timeout_seconds
+        return payload, url, headers, timeout
+
     async def _call(self, payload: dict, model: str) -> LLMResponse:
-        if not self.api_key:
+        if not model.startswith(OLLAMA_PREFIX) and not self.api_key:
             log.warning("llm.no_api_key", note="returning stub response")
             return LLMResponse(text="```python\n# stub: no API key configured\n```", model=model)
 
-        import asyncio
+        payload, url, headers, timeout = self._route(model, payload)
 
-        url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://vergabepilot.ai",
-            "X-Title": "Vergabepilot.AI",
-            "Content-Type": "application/json",
-        }
+        # Retry policy per HTTP status:
+        #   429 Rate-limit  → wait longer (10s, 20s, 30s) then retry same model
+        #   403 Forbidden   → switch to fallback model immediately (concurrent-call limit hit)
+        #   5xx Server error → short retry (3s, 6s)
+        #   Network error   → short retry (2s, 4s)
+        # Never retry 401 (bad key) or 400 (bad request) — they won't fix themselves.
+        _NO_RETRY_CODES = {400, 401}
+        _RATE_LIMIT_CODE = 429
+        _FORBIDDEN_CODE  = 403
 
         max_retries = 3
         last_error: Exception | None = None
         data = None
 
-        # Re-use one connection for all retry attempts.
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient() as client:
             for attempt in range(1, max_retries + 1):
                 try:
-                    r = await client.post(url, json=payload, headers=headers)
+                    r = await client.post(url, json=payload, headers=headers, timeout=timeout)
+
+                    # 403: OpenRouter concurrent-call cap or key issue.
+                    # Switch to fallback model and retry once — do NOT re-hit
+                    # the same model because it will 403 again immediately.
+                    if r.status_code == _FORBIDDEN_CODE:
+                        fallback = settings.llm_model_fallback
+                        if fallback and fallback != model:
+                            log.warning("llm.403_switching_to_fallback",
+                                        primary=model, fallback=fallback)
+                            model = fallback
+                            payload, url, headers, timeout = self._route(model, payload)
+                            await asyncio.sleep(2)
+                            continue
+                        # No usable fallback — raise
+                        r.raise_for_status()
+
+                    # 429: rate limit — back off much longer than network errors
+                    if r.status_code == _RATE_LIMIT_CODE:
+                        wait = 10 * attempt   # 10s, 20s, 30s
+                        log.warning("llm.rate_limited", wait_s=wait, attempt=attempt)
+                        if attempt < max_retries:
+                            await asyncio.sleep(wait)
+                            continue
+                        r.raise_for_status()
+
+                    if r.status_code in _NO_RETRY_CODES:
+                        r.raise_for_status()   # raise immediately, no retry
+
                     r.raise_for_status()
                     data = r.json()
                     break
-                except (httpx.HTTPError, httpx.RemoteProtocolError, Exception) as e:
+
+                except httpx.HTTPStatusError:
+                    raise   # already logged above; let it propagate
+                except (httpx.RemoteProtocolError, httpx.TimeoutException,
+                        httpx.ConnectError, Exception) as e:
                     last_error = e
-                    log.warning("llm.call_retry", attempt=attempt, error=str(e))
+                    log.warning("llm.call_retry", attempt=attempt, error=str(e)[:200])
                     if attempt < max_retries:
-                        await asyncio.sleep(attempt * 1.5)
+                        await asyncio.sleep(attempt * 2)   # 2s, 4s
 
         if data is None:
             log.error("llm.call_failed", error=str(last_error))
@@ -137,8 +190,11 @@ class LLMClient:
         usage = data.get("usage", {})
         in_tok = usage.get("prompt_tokens", 0)
         out_tok = usage.get("completion_tokens", 0)
-        from app.phase1_llm_scraper.pricing import calc_cost
-        cost = calc_cost(in_tok, out_tok, model)
+        if model.startswith(OLLAMA_PREFIX):
+            cost = 0.0  # local models are free — skip the live-pricing lookup
+        else:
+            from app.phase1_llm_scraper.pricing import calc_cost
+            cost = calc_cost(in_tok, out_tok, model)
 
         return LLMResponse(
             text=content,

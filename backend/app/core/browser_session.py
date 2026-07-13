@@ -21,6 +21,10 @@ from __future__ import annotations
 
 from urllib.parse import urljoin
 
+from app.utils.logger import get_logger
+
+log = get_logger(__name__)
+
 
 class BrowserSession:
     """
@@ -34,7 +38,7 @@ class BrowserSession:
             links = session.get_all_links()
     """
 
-    def __init__(self, headless: bool = True, timeout: int = 20_000):
+    def __init__(self, headless: bool = True, timeout: int = 12_000):  # was 20_000
         self._headless = headless
         self._timeout = timeout
         self._pw = None
@@ -69,8 +73,8 @@ class BrowserSession:
                 self._browser.close()
             if self._pw:
                 self._pw.stop()
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("browser.close_failed", error=str(e)[:120])
         return False
 
     # ---- navigation --------------------------------------------------------
@@ -78,10 +82,8 @@ class BrowserSession:
     def goto(self, url: str, wait_until: str = "domcontentloaded") -> None:
         """Navigate to URL and wait for page load."""
         self.page.goto(url, wait_until=wait_until, timeout=self._timeout)
-        try:
-            self.page.wait_for_load_state("networkidle", timeout=10_000)
-        except Exception:
-            pass
+        # networkidle wait removed — it adds up to 10s per page load in the
+        # route learner and is not needed for link/button extraction.
         self._dismiss_cookie_banners()
 
     def _dismiss_cookie_banners(self) -> None:
@@ -106,8 +108,8 @@ class BrowserSession:
                     if (el) el.remove();
                 }
             """)
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("browser.cookie_dismiss_failed", error=str(e)[:120])
 
     def content(self) -> str:
         return self.page.content()
@@ -128,7 +130,7 @@ class BrowserSession:
             try:
                 self.page.wait_for_load_state("networkidle", timeout=5000)
             except Exception:
-                pass
+                pass  # busy pages may never reach networkidle — proceed anyway
             return True
         except Exception:
             return False
@@ -142,7 +144,7 @@ class BrowserSession:
             try:
                 self.page.wait_for_load_state("networkidle", timeout=5000)
             except Exception:
-                pass
+                pass  # busy pages may never reach networkidle — proceed anyway
             return True
         except Exception:
             return False

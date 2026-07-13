@@ -1,14 +1,38 @@
+/**
+ * Audit Log page — append-only structured event history of all pipeline activity.
+ *
+ * Every significant action the pipeline takes (job start, strategy attempt,
+ * success/failure, security event, manual stop) is written to the audit_logs
+ * table and surfaces here so ops can reconstruct exactly what happened for
+ * any job, URL, or incident.
+ *
+ * Features:
+ *   - Filterable table: by level (info/warning/error/critical), event type, domain
+ *   - URL and job_id deep-link from each row to the relevant job detail page
+ *   - Purge control: delete audit entries older than N days
+ *   - Live refresh: new events appear automatically
+ *
+ * Data source:
+ *   GET /api/audit          → paginated log entries (newest first)
+ *   DELETE /api/audit/purge → remove entries older than ?days=N
+ *
+ * Level color coding:
+ *   info → blue  |  warning → amber  |  error → rose  |  critical → red (bold)
+ */
 "use client";
 
 import useSWR from "swr";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api, fetcher } from "@/lib/api";
 import {
-  ShieldAlert, Info, AlertTriangle, XCircle, ArrowLeft,
+  ShieldAlert, Info, AlertTriangle, XCircle,
   Search, RefreshCcw, Trash2, ChevronDown, ChevronRight,
   Activity, Clock, Filter,
 } from "lucide-react";
+import { SearchInput, SectionHeader } from "@/components/ui";
+import { useToast } from "@/components/Toast";
 
 const LEVEL_STYLES: Record<string, string> = {
   info:     "bg-slate-100 text-slate-600 border-slate-200",
@@ -96,19 +120,20 @@ function AuditRow({ log }: { log: any }) {
   );
 }
 
-export default function AuditPage() {
+function AuditPageInner() {
+  const searchParams  = useSearchParams();
   const [search,      setSearch]      = useState("");
   const [levelFilter, setLevelFilter] = useState("");
-  const [jobFilter,   setJobFilter]   = useState("");
+  // Initialise jobFilter from ?job= query param (linked from job detail page)
+  const [jobFilter,   setJobFilter]   = useState(() => searchParams.get("job") ?? "");
   const [clearing,    setClearing]    = useState(false);
+  const toast = useToast();
 
-  // Job ID from query param (e.g. linked from job detail page)
-  const [mounted, setMounted] = useState(false);
-  if (typeof window !== "undefined" && !mounted) {
-    const p = new URLSearchParams(window.location.search).get("job");
-    if (p && !jobFilter) setJobFilter(p);
-    setMounted(true);
-  }
+  // Keep jobFilter in sync if the URL param changes (browser back/forward)
+  useEffect(() => {
+    const p = searchParams.get("job");
+    if (p) setJobFilter(p);
+  }, [searchParams]);
 
   const queryStr = new URLSearchParams({
     limit: "200",
@@ -134,26 +159,28 @@ export default function AuditPage() {
   }, [logs, search]);
 
   const handleClear = async () => {
-    if (!confirm("Purge all audit logs? This cannot be undone.")) return;
+    if (!window.confirm("Purge all audit logs? This cannot be undone.")) return;
     setClearing(true);
     try {
-      await fetch(api("/audit"), { method: "DELETE" });
+      const r = await fetch(api("/audit"), { method: "DELETE" });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       mutate([]);
-    } finally { setClearing(false); }
+      toast.success("Audit log cleared");
+    } catch (e: any) {
+      toast.error("Failed to clear audit log", e?.message);
+    } finally {
+      setClearing(false);
+    }
   };
 
   const levels = ["", "info", "warning", "error", "critical"];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
-      </Link>
-
+    <div className="space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <Activity className="w-7 h-7 text-indigo-600" /> Audit Log
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Audit Log
           </h1>
           <p className="text-slate-500 mt-1 text-sm">Structured event trail for every pipeline operation, security event, and system action.</p>
         </div>
@@ -186,8 +213,10 @@ export default function AuditPage() {
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="relative flex-1 self-start">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-slate-400" />
+          </div>
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search message, event type, domain, URL…"
@@ -236,5 +265,18 @@ export default function AuditPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Suspense boundary required by Next.js 14 when useSearchParams is used
+export default function AuditPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[40vh] text-sm" style={{ color: "var(--fg-subtle)" }}>
+        Loading audit log…
+      </div>
+    }>
+      <AuditPageInner />
+    </Suspense>
   );
 }

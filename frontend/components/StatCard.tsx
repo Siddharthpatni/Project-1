@@ -1,24 +1,37 @@
 import { ReactNode } from "react";
+import { Skeleton } from "@/components/ui";
 
-export default function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: ReactNode;
+interface StatCardProps {
+  icon?: ReactNode;
   label: string;
-  value: string | number;
+  value: ReactNode;
   sub?: string;
-}) {
+  loading?: boolean;
+  color?: string;
+}
+
+export default function StatCard({ icon, label, value, sub, loading, color }: StatCardProps) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
-        <span className="text-indigo-600">{icon}</span>
+    <div className="card p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <span className="text-label">{label}</span>
+        {icon && (
+          <span style={{ color: color ?? "var(--brand)", opacity: 0.75 }}>{icon}</span>
+        )}
       </div>
-      <div className="text-2xl font-bold text-slate-800">{value}</div>
-      {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
+      {loading ? (
+        <Skeleton height="2rem" width="55%" />
+      ) : (
+        <span
+          className="text-2xl font-extrabold tracking-tight"
+          style={{ color: color ?? "var(--fg)" }}
+        >
+          {value}
+        </span>
+      )}
+      {sub && !loading && (
+        <p className="text-xs" style={{ color: "var(--fg-subtle)", marginTop: "-8px" }}>{sub}</p>
+      )}
     </div>
   );
 }

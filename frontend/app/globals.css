@@ -2,111 +2,532 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────
+   Design tokens — light & dark
+   ───────────────────────────────────────────────────────────────────── */
 :root {
-  --bg: #f8fafc;
-  --fg: #0f172a;
-  --border: #e2e8f0;
+  /* Surface */
+  --bg:          #f8fafc;
+  --bg-elevated: #ffffff;
+  --bg-subtle:   #f1f5f9;
+  --bg-muted:    #e2e8f0;
+
+  /* Text */
+  --fg:          #0f172a;
+  --fg-muted:    #475569;
+  --fg-subtle:   #94a3b8;
+
+  /* Border */
+  --border:      #e2e8f0;
+  --border-muted:#f1f5f9;
+
+  /* Brand */
+  --brand:       #4f46e5;
+  --brand-hover: #4338ca;
+  --brand-light: #eef2ff;
+  --brand-muted: #e0e7ff;
+
+  /* Status */
+  --success:     #10b981;
+  --warning:     #f59e0b;
+  --error:       #ef4444;
+  --info:        #3b82f6;
+
+  /* Radius — restrained scale for a crisp, minimal feel */
+  --radius-sm:   5px;
+  --radius:      7px;
+  --radius-lg:   9px;
+  --radius-xl:   12px;
+  --radius-2xl:  14px;
+
+  /* Shadow — flat by default; surfaces are defined by borders, not elevation */
+  --shadow-sm:   0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow:      0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-md:   0 2px 8px -2px rgb(15 23 42 / 0.06);
+  --shadow-lg:   0 12px 28px -10px rgb(15 23 42 / 0.10);
+}
+
+.dark {
+  --bg:          #0a0a0f;
+  --bg-elevated: #111118;
+  --bg-subtle:   #17171f;
+  --bg-muted:    #1f1f2d;
+
+  --fg:          #f0f0ff;
+  --fg-muted:    #9191b0;
+  --fg-subtle:   #5a5a78;
+
+  --border:      #1f1f2d;
+  --border-muted:#17171f;
+
+  --brand:       #6366f1;
+  --brand-hover: #818cf8;
+  --brand-light: #1e1b4b20;
+  --brand-muted: #1e1b4b;
+
+  --shadow-sm:   0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow:      0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --shadow-md:   0 4px 6px -1px rgb(0 0 0 / 0.4);
+  --shadow-lg:   0 10px 15px -3px rgb(0 0 0 / 0.5);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Base
+   ───────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html, body {
   background: var(--bg);
   color: var(--fg);
+  transition: background 0.2s ease, color 0.2s ease;
+  /* Inter reads best with a hair of negative tracking + contextual alternates */
+  letter-spacing: -0.011em;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* ── Core component tokens ────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────
+   Typography
+   ───────────────────────────────────────────────────────────────────── */
+.text-display {
+  /* Fluid: scales smoothly from ~28px on phones to ~40px on large screens. */
+  font-size: clamp(1.75rem, 1.15rem + 2.6vw, 2.5rem);
+  @apply font-extrabold tracking-tight leading-[1.08];
+}
+.text-heading {
+  font-size: clamp(1.125rem, 0.95rem + 0.9vw, 1.375rem);
+  @apply font-bold tracking-tight;
+}
+.text-subheading {
+  @apply text-base font-semibold;
+}
+.text-label {
+  @apply text-xs font-bold uppercase tracking-wider;
+  color: var(--fg-subtle);
+}
 
+/* ─────────────────────────────────────────────────────────────────────
+   Surface components
+   ───────────────────────────────────────────────────────────────────── */
 .card {
-  @apply bg-white border border-slate-200 rounded-xl shadow-sm;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+.card-hover {
+  @apply card transition-colors duration-150;
+}
+.card-hover:hover {
+  border-color: var(--border);
+  background: var(--bg-subtle);
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   Buttons
+   ───────────────────────────────────────────────────────────────────── */
 .btn {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all active:scale-[0.97] cursor-pointer;
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+         transition-all duration-150 active:scale-[0.97] cursor-pointer select-none
+         disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
 }
 .btn-primary {
-  @apply btn bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow-md;
+  @apply btn text-white shadow-sm;
+  background: var(--brand);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+  box-shadow: var(--shadow-md);
 }
 .btn-secondary {
-  @apply btn bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300;
+  @apply btn;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--fg);
+}
+.btn-ghost {
+  @apply btn;
+  background: transparent;
+  color: var(--fg-muted);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--fg);
 }
 .btn-danger {
-  @apply btn bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 hover:border-rose-300;
+  @apply btn border;
+  background: var(--bg-elevated);
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #fff1f2;
+}
+.dark .btn-danger:hover:not(:disabled) {
+  background: #1f0a0a;
+}
+.btn-sm {
+  @apply px-3 py-1.5 text-xs rounded-md;
+}
+.btn-xs {
+  @apply px-2.5 py-1 text-[11px] rounded-md;
+}
+.btn-icon {
+  @apply btn p-2 gap-0;
 }
 
-/* Status badges */
+/* ─────────────────────────────────────────────────────────────────────
+   Status badges
+   ───────────────────────────────────────────────────────────────────── */
 .badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border;
 }
-.badge-success { @apply bg-emerald-100 text-emerald-700 border border-emerald-200; }
-.badge-failed  { @apply bg-rose-100    text-rose-700    border border-rose-200; }
-.badge-running { @apply bg-amber-100   text-amber-700   border border-amber-200; }
-.badge-pending { @apply bg-slate-100   text-slate-600   border border-slate-200; }
-.badge-partial { @apply bg-sky-100     text-sky-700     border border-sky-200; }
+.badge-dot::before {
+  content: '';
+  @apply w-1.5 h-1.5 rounded-full inline-block mr-1;
+}
+.badge-success { @apply badge bg-emerald-50 text-emerald-700 border-emerald-200; }
+.badge-failed  { @apply badge bg-rose-50    text-rose-700    border-rose-200; }
+.badge-running { @apply badge bg-amber-50   text-amber-700   border-amber-200; }
+.badge-pending { @apply badge bg-slate-100  text-slate-600   border-slate-200; }
+.badge-partial { @apply badge bg-sky-50     text-sky-700     border-sky-200; }
+.dark .badge-success { @apply bg-emerald-950 text-emerald-300 border-emerald-800; }
+.dark .badge-failed  { @apply bg-rose-950    text-rose-300    border-rose-800; }
+.dark .badge-running { @apply bg-amber-950   text-amber-300   border-amber-800; }
+.dark .badge-pending { @apply bg-slate-800   text-slate-400   border-slate-700; }
+.dark .badge-partial { @apply bg-sky-950     text-sky-300     border-sky-800; }
 
-/* ── Skeleton loader ─────────────────────────────────────────────── */
-
-.skeleton {
-  @apply bg-slate-200 rounded animate-pulse;
-}
-.skeleton-text {
-  @apply skeleton h-4 w-full;
-}
-.skeleton-heading {
-  @apply skeleton h-6 w-3/5;
-}
-
-/* ── Hide scrollbar (but still scrollable) ───────────────────────── */
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* ── Custom scrollbar (Webkit) ───────────────────────────────────── */
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-slate-200 rounded-full;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-300;
-}
-
-/* ── Code block ──────────────────────────────────────────────────── */
-
-.code-block {
-  @apply font-mono text-xs leading-relaxed bg-slate-950 text-slate-100 p-4 rounded-xl overflow-x-auto;
-}
-
-/* ── Input & select base ─────────────────────────────────────────── */
-
+/* ─────────────────────────────────────────────────────────────────────
+   Form inputs
+   ───────────────────────────────────────────────────────────────────── */
 .form-input {
-  @apply w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm outline-none
-         focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500
-         transition-all shadow-sm placeholder:text-slate-400;
+  @apply w-full px-3 py-2.5 text-sm rounded-lg outline-none
+         transition-all duration-150 shadow-sm;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+.form-input::placeholder {
+  color: var(--fg-subtle);
+}
+.form-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgb(99 102 241 / 0.12);
 }
 .form-select {
-  @apply form-input cursor-pointer bg-white;
+  @apply form-input cursor-pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 36px;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-/* ── Toast ───────────────────────────────────────────────────────── */
-
-@keyframes toast-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
+/* ─────────────────────────────────────────────────────────────────────
+   Skeleton loaders
+   ───────────────────────────────────────────────────────────────────── */
+.skeleton {
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+  animation: pulse 1.8s cubic-bezier(0.4,0,0.6,1) infinite;
 }
-@keyframes toast-out {
-  from { opacity: 1; }
-  to   { opacity: 0; transform: translateY(8px); }
+.skeleton-text    { @apply skeleton h-4; }
+.skeleton-heading { @apply skeleton h-6 w-3/5; }
+.skeleton-circle  { @apply skeleton rounded-full; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   Scrollbars
+   ───────────────────────────────────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--bg-muted);
+  border-radius: 99px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--border);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Code
+   ───────────────────────────────────────────────────────────────────── */
+.code-block {
+  @apply font-mono text-xs leading-relaxed p-4 rounded-xl overflow-x-auto;
+  background: #0d1117;
+  color: #e6edf3;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Animations
+   ───────────────────────────────────────────────────────────────────── */
+@keyframes fadeIn    { from { opacity: 0; }                          to { opacity: 1; } }
+@keyframes fadeUp    { from { opacity: 0; transform: translateY(8px); }  to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scaleIn   { from { opacity: 0; transform: scale(0.96); }  to { opacity: 1; transform: scale(1); } }
+
+.animate-fade-in    { animation: fadeIn    0.2s ease-out; }
+.animate-fade-up    { animation: fadeUp    0.25s ease-out; }
+.animate-slide-down { animation: slideDown 0.2s ease-out; }
+.animate-scale-in   { animation: scaleIn   0.2s ease-out; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Toast
+   ───────────────────────────────────────────────────────────────────── */
+@keyframes toast-in  { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; transform: translateY(8px); } }
 .toast-enter { animation: toast-in  0.22s ease-out forwards; }
 .toast-exit  { animation: toast-out 0.18s ease-in  forwards; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Table
+   ───────────────────────────────────────────────────────────────────── */
+.data-table {
+  @apply w-full text-sm border-collapse;
+}
+.data-table th {
+  @apply px-4 py-3 text-left font-semibold sticky top-0;
+  color: var(--fg-subtle);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.data-table td {
+  @apply px-4 py-3;
+  border-bottom: 1px solid var(--border-muted);
+  color: var(--fg);
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover td { background: var(--bg-subtle); }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Page layout helpers
+   ───────────────────────────────────────────────────────────────────── */
+.page-container {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8;
+}
+/* Let content breathe on very large displays without sprawling. */
+@media (min-width: 1536px) {
+  .page-container { max-width: 84rem; }
+}
+.section-header {
+  @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Nav link — hover via CSS to avoid React inline style mutation
+   ───────────────────────────────────────────────────────────────────── */
+.nav-link {
+  border: 1px solid var(--border);
+}
+.nav-link:hover {
+  background: var(--brand-light);
+  border-color: var(--brand-muted);
+}
+
+/* Recent jobs list item hover */
+.recent-job-link {
+  border: 1px solid var(--border);
+}
+.recent-job-link:hover {
+  background: var(--bg-subtle);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Divider
+   ───────────────────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Focus ring
+   ───────────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Dark mode — written OUTSIDE any @layer so cascade order wins over
+   Tailwind utilities. !important only where specificity still loses.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Base */
+.dark body  { background-color: var(--bg) !important; color: var(--fg) !important; }
+.dark main  { background-color: var(--bg) !important; }
+
+/* Surfaces — must beat bg-white / bg-slate-* utilities */
+.dark .bg-white        { background-color: var(--bg-elevated) !important; }
+.dark [class~="bg-white\/70"],
+.dark [class~="bg-white\/80"],
+.dark [class~="bg-white\/60"],
+.dark [class~="bg-white\/50"] { background-color: var(--bg-subtle) !important; }
+.dark .bg-slate-50     { background-color: var(--bg-subtle)   !important; }
+.dark [class~="bg-slate-50\/50"],
+.dark [class~="bg-slate-50\/30"] { background-color: var(--bg-subtle) !important; }
+.dark .bg-slate-100    { background-color: var(--bg-muted)    !important; }
+.dark .bg-slate-200    { background-color: #252535            !important; }
+.dark .bg-slate-900    { background-color: #0a0a14            !important; }
+
+/* Borders — including opacity variants */
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark [class~="border-slate-200\/80"],
+.dark [class~="border-slate-200\/60"] { border-color: var(--border) !important; }
+.dark .border-slate-300 { border-color: #2e2e42 !important; }
+
+/* Text colors — handled via CSS variables in the design system.
+   Direct .dark .text-slate-* selectors cause Tailwind JIT circular deps,
+   so we use attribute selectors instead for the most common patterns. */
+.dark [class~="text-slate-900"],
+.dark [class~="text-slate-800"] { color: var(--fg)        !important; }
+.dark [class~="text-slate-700"],
+.dark [class~="text-slate-600"] { color: var(--fg-muted)  !important; }
+.dark [class~="text-slate-500"],
+.dark [class~="text-slate-400"] { color: var(--fg-subtle) !important; }
+
+/* Hover surfaces */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-white:hover   { background-color: var(--bg-subtle) !important; }
+.dark .hover\:bg-slate-100:hover { background-color: var(--bg-muted) !important; }
+
+/* Status / state tints */
+.dark .bg-rose-50    { background-color: #1f0a0a !important; }
+.dark .bg-amber-50   { background-color: #1a1200 !important; }
+.dark .bg-emerald-50 { background-color: #001a10 !important; }
+.dark .bg-indigo-50  { background-color: #0d0f2a !important; }
+.dark .bg-blue-50    { background-color: #060e22 !important; }
+.dark .bg-violet-50  { background-color: #110926 !important; }
+.dark .bg-purple-50  { background-color: #110926 !important; }
+.dark .bg-sky-50     { background-color: #040f22 !important; }
+.dark .bg-orange-50  { background-color: #1a0c00 !important; }
+.dark .bg-cyan-50    { background-color: #001418 !important; }
+.dark .bg-fuchsia-50 { background-color: #1a0018 !important; }
+.dark .bg-yellow-50  { background-color: #141000 !important; }
+
+/* Badge tints */
+.dark .bg-emerald-100 { background-color: #003a1e !important; }
+.dark .bg-rose-100    { background-color: #2d0000 !important; }
+.dark .bg-amber-100   { background-color: #2a1800 !important; }
+.dark .bg-indigo-100  { background-color: #1a1a40 !important; }
+.dark .bg-indigo-200  { background-color: #1e1b4b !important; }
+.dark .bg-purple-100  { background-color: #1e1030 !important; }
+.dark .bg-sky-100     { background-color: #001428 !important; }
+
+/* Tables */
+.dark table                   { border-color: var(--border)      !important; }
+.dark thead                   { background-color: var(--bg-subtle) !important; }
+.dark th, .dark td            { border-color: var(--border-muted) !important; }
+.dark tbody tr:hover td       { background-color: var(--bg-subtle) !important; }
+
+/* Forms */
+.dark input:not([type="range"]),
+.dark textarea,
+.dark select {
+  background-color: var(--bg-subtle) !important;
+  color: var(--fg)                   !important;
+  border-color: var(--border)        !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: var(--fg-subtle) !important; }
+
+/* Nav */
+.dark nav {
+  background-color: rgba(10, 10, 20, 0.92) !important;
+  border-color: var(--border) !important;
+}
+
+/* ── Gradient white bleeding — the root cause of most dark mode failures ──
+   bg-gradient-to-* generates a background-image which sits above background-color.
+   .dark .bg-white fixes the color but the gradient still shows white.
+   Target: any element that has BOTH bg-white and a gradient direction class.
+   Hero/dark gradients are excluded because they do not have bg-white. */
+.dark .bg-white.bg-gradient-to-br,
+.dark .bg-white.bg-gradient-to-r,
+.dark .bg-white.bg-gradient-to-b,
+.dark .bg-white.bg-gradient-to-t,
+.dark .bg-white.bg-gradient-to-l,
+.dark .bg-white.bg-gradient-to-tl,
+.dark .bg-white.bg-gradient-to-tr,
+.dark .bg-white.bg-gradient-to-bl {
+  background-image: none !important;
+}
+
+/* Tinted borders not covered by the slate overrides above */
+.dark .border-emerald-100,
+.dark .border-emerald-200,
+.dark .border-indigo-100,
+.dark .border-indigo-200,
+.dark .border-purple-100,
+.dark .border-purple-200,
+.dark .border-blue-100,
+.dark .border-blue-200   { border-color: var(--border) !important; }
+
+/* Tinted text that doesn't use slate-* naming */
+.dark [class~="text-slate-755"] { color: var(--fg-muted) !important; }
+
+/* Code / pre */
+.dark pre:not([class*="bg-slate-9"]) {
+  background-color: #0d1117 !important;
+  color: #e6edf3 !important;
+}
+
+/* Gradient backgrounds: hero keeps its own dark bg, handled inline */
+
+/* Ring / focus */
+.dark .focus\:ring-indigo-500\/40:focus { box-shadow: 0 0 0 3px rgba(99,102,241,0.2) !important; }
+
+/* ─────────────────────────────────────────────────────────────────────
+   Responsive & accessibility refinements
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Wide tables: a momentum-scrolling wrapper that bleeds to the screen edges on
+   phones so the horizontal scroll reads as intentional, not as a broken layout. */
+.table-wrap {
+  @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Comfortable touch targets on touch devices (Apple HIG ≈ 44pt). */
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 40px; }
+  .btn-xs { min-height: 36px; }
+  .form-input, .form-select { min-height: 44px; }
+}
+
+/* Honour users who prefer reduced motion (Apple HIG / WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+

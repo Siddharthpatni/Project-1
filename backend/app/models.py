@@ -13,10 +13,10 @@ Tables:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum as PyEnum
 
-from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -38,7 +38,9 @@ class Strategy(str, PyEnum):
     MANUAL = "manual_scraper"
     EXISTING = "existing_scraper"
     DETERMINISTIC = "deterministic_template"
+    ADAPTIVE = "adaptive_universal"  # country/language-agnostic heuristic scraper (free)
     LLM_GENERATED = "llm_generated_scraper"
+    LEARNED_ROUTE = "learned_route"  # replay a route the CUA proved works (cheap)
     CUA = "computer_use_agent"
     NONE = "none"
 
@@ -47,15 +49,15 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id:         Mapped[str]      = mapped_column(String, primary_key=True, default=_uuid)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
     status:     Mapped[str]      = mapped_column(String, default=JobStatus.PENDING.value)
     submitted_by: Mapped[str | None] = mapped_column(String, nullable=True)
     total_urls:   Mapped[int]  = mapped_column(Integer, default=0)
     completed:    Mapped[int]  = mapped_column(Integer, default=0)
     cost_usd:     Mapped[float] = mapped_column(Float, default=0.0)
 
-    items: Mapped[list["JobItem"]] = relationship(back_populates="job", cascade="all, delete-orphan")
+    items: Mapped[list[JobItem]] = relationship(back_populates="job", cascade="all, delete-orphan")
 
 
 class JobItem(Base):
@@ -71,12 +73,36 @@ class JobItem(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     runtime_seconds: Mapped[float]    = mapped_column(Float, default=0.0)
 
+    # Top-level failure category from security.classify_error — populated on
+    # final failure so the UI / DB queries can group/filter by failure reason.
+    failure_category: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
     # Full cascade attempt chain — every strategy tried, its outcome, error, and timing.
     # Stored as JSON list of {strategy, success, downloaded, error, duration_s, ts}
     attempts_detail: Mapped[list] = mapped_column(JSON, default=list)
 
+    # ── Public tender-directory projection ──────────────────────────────────
+    # A successful JobItem *is* one published tender. These three columns are a
+    # denormalized projection of the most-queried extracted fields (kept in
+    # sync by the deep extractor; ExtractionRecord.fields_json stays the source
+    # of truth). They exist so the public browse-by-domain directory can filter
+    # "currently open" and sort "soonest-closing" with a real index instead of
+    # parsing JSON at query time. All nullable — extraction may be absent or a
+    # field may not have been found.
+    tender_title:     Mapped[str | None]      = mapped_column(String, nullable=True)
+    tender_reference: Mapped[str | None]      = mapped_column(String, nullable=True)
+    # Parsed submission deadline. NULL = unknown (treated as still-open, never as
+    # expired). A past value marks the tender expired and hides it from the directory.
+    deadline:         Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     job: Mapped[Job] = relationship(back_populates="items")
-    documents: Mapped[list["Document"]] = relationship(back_populates="job_item", cascade="all, delete-orphan")
+    documents: Mapped[list[Document]] = relationship(back_populates="job_item", cascade="all, delete-orphan")
+
+    # Composite index for the directory queries: group/filter by domain, restrict
+    # to published (status) tenders, and range-filter / order by deadline.
+    __table_args__ = (
+        Index("ix_job_items_directory", "domain", "status", "deadline"),
+    )
 
 
 class Document(Base):
@@ -90,7 +116,7 @@ class Document(Base):
     size_bytes:  Mapped[int] = mapped_column(Integer, default=0)
     version:     Mapped[int] = mapped_column(Integer, default=1)
     checksum:    Mapped[str] = mapped_column(String, default="")
-    created_at:  Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at:  Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
     job_item: Mapped[JobItem] = relationship(back_populates="documents")
 
@@ -106,11 +132,20 @@ class ScraperTemplate(Base):
     source:   Mapped[str] = mapped_column(String, default="llm")  # llm | manual
     platform: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. "netserver", "dtvp"
     route_used: Mapped[bool] = mapped_column(default=False)  # was route-guided generation used?
+    # CUA interaction trace stored as a text summary. Populated whenever the
+    # CUA fallback runs for this domain (success or failure) so future LLM
+    # generation can use it as verified navigation knowledge.
+    cua_hint:      Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Replayable navigation route learned from a CUA-only success (set by the
+    # CUA route learner when the agent succeeded after every cheaper strategy
+    # failed). Serialized LearnedRoute — replayed cheaply by the LEARNED_ROUTE
+    # strategy on future visits to this domain (no LLM, no vision, no full CUA).
+    learned_route: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     success_count: Mapped[int] = mapped_column(Integer, default=0)
     failure_count: Mapped[int] = mapped_column(Integer, default=0)
     avg_runtime:   Mapped[float] = mapped_column(Float, default=0.0)
-    created_at:    Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at:    Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at:    Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at:    Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class EvaluationRun(Base):
@@ -118,7 +153,7 @@ class EvaluationRun(Base):
     __tablename__ = "evaluation_runs"
 
     id:             Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    created_at:     Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at:     Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     model:          Mapped[str] = mapped_column(String, index=True)
     url:            Mapped[str] = mapped_column(Text)
     expected_docs:  Mapped[int] = mapped_column(Integer, default=0)
@@ -135,7 +170,7 @@ class AgentRun(Base):
     __tablename__ = "agent_runs"
 
     id:         Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     agent_name: Mapped[str] = mapped_column(String, index=True)
     url:        Mapped[str] = mapped_column(Text)
     steps:      Mapped[int] = mapped_column(Integer, default=0)
@@ -143,6 +178,22 @@ class AgentRun(Base):
     runtime_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     cost_usd:   Mapped[float] = mapped_column(Float, default=0.0)
     trace:      Mapped[dict]  = mapped_column(JSON, default=dict)
+
+
+class ExtractionRecord(Base):
+    """Stores structured fields extracted from a job item's downloaded documents."""
+    __tablename__ = "extraction_records"
+
+    id:              Mapped[str]      = mapped_column(String, primary_key=True, default=_uuid)
+    job_item_id:     Mapped[str]      = mapped_column(ForeignKey("job_items.id"), unique=True, index=True)
+    source_url:      Mapped[str]      = mapped_column(Text, default="")
+    fields_json:     Mapped[str]      = mapped_column(Text, default="{}")
+    docs_parsed:     Mapped[int]      = mapped_column(Integer, default=0)
+    runtime_seconds: Mapped[float]    = mapped_column(Float, default=0.0)
+    created_at:      Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at:      Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+
+    job_item: Mapped[JobItem] = relationship("JobItem", foreign_keys=[job_item_id])
 
 
 class AuditLog(Base):
@@ -156,7 +207,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     id:          Mapped[str]      = mapped_column(String, primary_key=True, default=_uuid)
-    created_at:  Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at:  Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
     level:       Mapped[str]      = mapped_column(String, default="info")   # info|warning|error|critical
     event_type:  Mapped[str]      = mapped_column(String, index=True)        # pipeline.start, strategy.attempt, …
     job_id:      Mapped[str | None] = mapped_column(String, nullable=True, index=True)

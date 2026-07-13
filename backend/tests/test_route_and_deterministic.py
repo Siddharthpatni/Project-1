@@ -255,3 +255,13 @@ def test_route_map_format_for_prompt_handles_no_route():
 
     rendered = rm.format_for_prompt()
     assert "no route discovered" in rendered.lower()
+
+
+def test_normalize_url_eu_supply_entrance_to_public():
+    """EU-Supply login-entrance URLs are rewritten to the public tender page."""
+    from app.phase3_integration.platform_classifier import normalize_url
+    src = "http://eu.eu-supply.com/app/rfq/rwlentrance_s.asp?PID=455767&B=TENDERLITE.DELETED"
+    assert normalize_url(src) == "http://eu.eu-supply.com/ctm/Supplier/PublicPurchase/455767/0/0"
+    # Non-entrance URLs pass through untouched.
+    keep = "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTVGFLGE9/documents"
+    assert normalize_url(keep) == keep

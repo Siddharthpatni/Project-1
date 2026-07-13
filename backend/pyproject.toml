@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["app/phase0_manual"]  # frozen V1 reference scraper
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, B bugbear (real bug patterns), UP modern syntax
+select = ["E", "F", "W", "B", "UP"]
+ignore = [
+    "E501",   # long lines: docstrings/log messages; line-length guides, not gates
+    "B008",   # FastAPI Depends(...) in defaults is the framework idiom
+    "UP042",  # str+Enum is deliberate: str(member) semantics + SQLAlchemy string cols
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E731"]  # lambdas in test fakes are fine

@@ -1,8 +1,32 @@
+/**
+ * Job Detail Page — real-time view of a single scraping job.
+ *
+ * This is the most information-dense page in the app. It shows:
+ *   - Job-level KPIs (total URLs, success count, cost, runtime)
+ *   - Per-item table with strategy used, iteration count, error reason
+ *   - Cascade trail visualization — which strategies were tried in order
+ *   - Per-item document list with download links
+ *   - Error report download (JSON or CSV)
+ *   - Deep extraction trigger and result view
+ *   - Job diagnostics panel (audit trail + domain breakdown)
+ *
+ * Data flow:
+ *   SWR polls GET /api/jobs/{id} every 4s while job is running.
+ *   Each JobItem contains `attempts_detail` — the full per-strategy attempt
+ *   history that powers the CascadeTrail visualization.
+ *
+ * Key components defined in this file:
+ *   CascadeTrail  — shows which strategies were tried (with visual pills)
+ *   StrategyPill  — color-coded badge for each strategy key
+ *   ItemRow       — expandable row showing one URL's status + documents
+ *   DiagnosticsPanel — collapsible audit trail + domain failure breakdown
+ */
 "use client";
 
 import useSWR from "swr";
 import { useParams, useRouter } from "next/navigation";
 import { api, fetcher } from "@/lib/api";
+import { usd } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import Link from "next/link";
 import {
@@ -11,14 +35,18 @@ import {
   Layers, Globe, ChevronDown, ChevronRight, RefreshCcw,
   FolderOpen, Shield, HeartPulse, ExternalLink, StopCircle,
   BarChart2, TrendingDown, AlertOctagon, FileDown, Timer,
+  ScanSearch, FileOutput, RefreshCw,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useToast } from "@/components/Toast";
 
 const STRATEGY_STYLES: Record<string, string> = {
   manual_scraper:         "bg-blue-50 text-blue-700 border-blue-200",
   existing_scraper:       "bg-purple-50 text-purple-700 border-purple-200",
   deterministic_template: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  adaptive_universal:     "bg-sky-50 text-sky-700 border-sky-200",
   llm_generated_scraper:  "bg-amber-50 text-amber-700 border-amber-200",
+  learned_route:          "bg-teal-50 text-teal-700 border-teal-200",
   computer_use_agent:     "bg-rose-50 text-rose-700 border-rose-200",
   none:                   "bg-slate-50 text-slate-600 border-slate-200",
 };
@@ -26,11 +54,14 @@ const STRATEGY_LABELS: Record<string, string> = {
   manual_scraper:         "Manual",
   existing_scraper:       "Cached",
   deterministic_template: "Deterministic",
+  adaptive_universal:     "Universal Adaptive",
   llm_generated_scraper:  "LLM Generated",
+  learned_route:          "Learned Route",
   computer_use_agent:     "CUA Agent",
   none:                   "Failed",
 };
-const CASCADE_ORDER = ["manual_scraper","existing_scraper","deterministic_template","llm_generated_scraper","computer_use_agent"];
+// Phase 3 cascade: EXISTING first (reuse) → DETERMINISTIC (free) → LLM → LEARNED_ROUTE (replay) → CUA → MANUAL (legacy)
+const CASCADE_ORDER = ["existing_scraper","deterministic_template","adaptive_universal","llm_generated_scraper","learned_route","computer_use_agent","manual_scraper"];
 
 function fileIcon(fn: string) {
   const e = fn.split(".").pop()?.toLowerCase() ?? "";
@@ -117,13 +148,13 @@ function ItemErrorBox({ msg }: { msg: string }) {
 function ThroughputBar({ completed, total, status }: { completed: number; total: number; status: string }) {
   const [snapshots, setSnapshots] = useState<{ t: number; c: number }[]>([]);
 
-  // Record snapshots every 5s to measure URL/min rate
-  useMemo(() => {
+  // Record snapshots whenever completed changes, to measure URL/min throughput rate.
+  // Must be useEffect (not useMemo) because setSnapshots is a side effect.
+  useEffect(() => {
     if (status !== "running" && status !== "pending") return;
     const now = Date.now();
     setSnapshots(prev => {
       const updated = [...prev, { t: now, c: completed }];
-      // Keep last 60 seconds of data
       return updated.filter(s => now - s.t < 60_000);
     });
   }, [completed, status]);
@@ -169,17 +200,75 @@ const STRATEGY_SHORT: Record<string, string> = {
   computer_use_agent:     "CUA",
 };
 
+// Full 27-category error palette matching backend security.py classify_error()
 const ERROR_CAT_COLOR: Record<string, string> = {
-  timeout:       "bg-amber-50  text-amber-700  border-amber-200",
-  network:       "bg-orange-50 text-orange-700 border-orange-200",
-  dns:           "bg-red-50    text-red-700    border-red-200",
-  auth:          "bg-purple-50 text-purple-700 border-purple-200",
-  not_found:     "bg-slate-50  text-slate-600  border-slate-200",
-  rate_limit:    "bg-yellow-50 text-yellow-700 border-yellow-200",
-  server_error:  "bg-rose-50   text-rose-700   border-rose-200",
-  no_documents:  "bg-blue-50   text-blue-600   border-blue-200",
-  loop_exhausted:"bg-violet-50 text-violet-700 border-violet-200",
-  unknown:       "bg-slate-50  text-slate-500  border-slate-200",
+  // Infrastructure
+  timeout:               "bg-amber-50   text-amber-700   border-amber-200",
+  network:               "bg-orange-50  text-orange-700  border-orange-200",
+  dns:                   "bg-red-50     text-red-700     border-red-200",
+  ssl:                   "bg-red-50     text-red-800     border-red-300",
+  redirect_loop:         "bg-yellow-50  text-yellow-700  border-yellow-200",
+  encoding_error:        "bg-indigo-50  text-indigo-700  border-indigo-200",
+  // Security / validation
+  code_validation:       "bg-violet-50  text-violet-700  border-violet-200",
+  prompt_injection:      "bg-rose-50    text-rose-800    border-rose-300",
+  blocked_url:           "bg-rose-50    text-rose-700    border-rose-200",
+  sandbox:               "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+  // Access / auth
+  login_required:        "bg-purple-50  text-purple-700  border-purple-200",
+  registration_required: "bg-violet-50  text-violet-600  border-violet-200",
+  auth:                  "bg-purple-50  text-purple-800  border-purple-300",
+  // Bot protection
+  captcha:               "bg-orange-50  text-orange-800  border-orange-300",
+  // HTTP
+  not_found:             "bg-slate-50   text-slate-600   border-slate-200",
+  rate_limit:            "bg-yellow-50  text-yellow-700  border-yellow-200",
+  server_error:          "bg-rose-50    text-rose-700    border-rose-200",
+  // Tender lifecycle
+  expired:               "bg-slate-100  text-slate-500   border-slate-300",
+  maintenance:           "bg-yellow-50  text-yellow-600  border-yellow-200",
+  // Scraper content
+  js_required:           "bg-cyan-50    text-cyan-700    border-cyan-200",
+  empty_page:            "bg-slate-50   text-slate-400   border-slate-200",
+  scraper_crash:         "bg-red-50     text-red-700     border-red-200",
+  // Documents / storage
+  no_documents:          "bg-blue-50    text-blue-600    border-blue-200",
+  storage:               "bg-orange-50  text-orange-700  border-orange-200",
+  // Pipeline
+  no_strategy:           "bg-slate-50   text-slate-500   border-slate-200",
+  loop_exhausted:        "bg-violet-50  text-violet-700  border-violet-200",
+  unknown:               "bg-slate-50   text-slate-500   border-slate-200",
+};
+
+// Human-readable labels for each category
+const ERROR_CAT_LABEL: Record<string, string> = {
+  timeout:               "Timeout",
+  network:               "Network Error",
+  dns:                   "DNS Failure",
+  ssl:                   "SSL/TLS Error",
+  redirect_loop:         "Redirect Loop",
+  encoding_error:        "Encoding Error",
+  code_validation:       "Code Invalid",
+  prompt_injection:      "Injection Detected",
+  blocked_url:           "URL Blocked",
+  sandbox:               "Sandbox Limit",
+  login_required:        "Login Required",
+  registration_required: "Registration Required",
+  auth:                  "Auth Denied (401/403)",
+  captcha:               "CAPTCHA / Bot Block",
+  not_found:             "Not Found (404)",
+  rate_limit:            "Rate Limited (429)",
+  server_error:          "Server Error (5xx)",
+  expired:               "Tender Expired",
+  maintenance:           "Site Maintenance",
+  js_required:           "JS Required",
+  empty_page:            "Empty Page",
+  scraper_crash:         "Scraper Crashed",
+  no_documents:          "No Documents",
+  storage:               "Storage Error",
+  no_strategy:           "No Strategy",
+  loop_exhausted:        "LLM Loop Exhausted",
+  unknown:               "Unknown Error",
 };
 
 function AttemptTimeline({ attempts }: { attempts: any[] }) {
@@ -249,8 +338,221 @@ function AttemptTimeline({ attempts }: { attempts: any[] }) {
   );
 }
 
+// ── Deep Extraction result panel — vergabepilot.ai tender card style ──
+
+function fmtDate(s: string | null | undefined): string | null {
+  if (!s) return null;
+  return s.replace(/(\d{4})-(\d{2})-(\d{2}).*/, "$3.$2.$1") || s;
+}
+
+function ExtractionPanel({ result, itemId }: { result: any; itemId: string }) {
+  const [showAll, setShowAll] = useState(false);
+  const f = result?.fields ?? {};
+
+  const titel       = f.titel || f.vergabenummer || null;
+  const authority   = f.auftraggeber || f.vergabestelle || null;
+  const pubDate     = fmtDate(f.veroeffentlichungsdatum);
+  const deadline    = fmtDate(f.abgabefrist);
+  const summary     = f.zusammenfassung || f.leistungsbeschreibung || null;
+  const bullets     = (f.kernpunkte ?? []) as string[];
+  const value       = f.auftragswert ? `${f.auftragswert}${f.waehrung ? " " + f.waehrung : " EUR"}` : null;
+  const procedure   = f.vergabeverfahren || null;
+  const contractType= f.auftragsart || null;
+  const location    = f.leistungsort || null;
+  const cpv         = (f.cpv_codes ?? []).slice(0, 3) as string[];
+  const criteria    = (f.zuschlagskriterien ?? []) as string[];
+  const eligibility = (f.eignungskriterien ?? []) as string[];
+
+  const isDeadlineUrgent = (() => {
+    if (!f.abgabefrist) return false;
+    const d = new Date(f.abgabefrist.split(".").reverse().join("-"));
+    const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    return !isNaN(diff) && diff >= 0 && diff <= 14;
+  })();
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+
+      {/* Tender card body */}
+      <div className="p-4 space-y-2.5">
+
+        {/* Title */}
+        {titel && (
+          <h4 className="text-sm font-bold text-slate-900 leading-snug">{titel}</h4>
+        )}
+
+        {/* Authority */}
+        {authority && (
+          <p className="text-xs text-slate-600 flex items-center gap-1">
+            <span className="text-slate-400">🏛</span> {authority}
+          </p>
+        )}
+
+        {/* Dates — vergabepilot.ai inline style */}
+        {(pubDate || deadline) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+            {pubDate && (
+              <span>Veröffentlicht: <span className="font-semibold text-slate-700">{pubDate}</span></span>
+            )}
+            {pubDate && deadline && <span className="text-slate-300">|</span>}
+            {deadline && (
+              <span>
+                Angebotsfrist:{" "}
+                <span className={`font-semibold ${isDeadlineUrgent ? "text-rose-600" : "text-slate-700"}`}>
+                  {deadline}
+                </span>
+                {isDeadlineUrgent && (
+                  <span className="ml-1 text-[9px] font-bold text-white bg-rose-500 rounded px-1 py-0.5">Bald</span>
+                )}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Summary */}
+        {summary && (
+          <p className="text-xs text-slate-600 leading-relaxed border-l-2 border-indigo-200 pl-3">
+            {summary}
+          </p>
+        )}
+
+        {/* Key bullets (top 3) */}
+        {bullets.length > 0 && !summary && (
+          <ul className="space-y-0.5">
+            {bullets.slice(0, 3).map((b, i) => (
+              <li key={i} className="flex gap-1.5 text-xs text-slate-600">
+                <span className="text-indigo-400 flex-shrink-0">•</span><span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {procedure && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">{procedure}</span>
+          )}
+          {contractType && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-slate-100 text-slate-600 border border-slate-200">{contractType}</span>
+          )}
+          {value && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">€ {value}</span>
+          )}
+          {location && (
+            <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-50 text-amber-700 border border-amber-200">📍 {location}</span>
+          )}
+          {cpv.map(c => (
+            <span key={c} className="px-2 py-0.5 text-[10px] font-mono rounded-full bg-slate-50 text-slate-500 border border-slate-200">{c}</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-2">
+        <a href={api(`/extract/${itemId}/report?fmt=pdf`)} target="_blank" rel="noopener noreferrer"
+           className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold rounded-lg transition-all">
+          <FileOutput className="w-3 h-3"/>PDF
+        </a>
+        <a href={api(`/extract/${itemId}/report?fmt=docx`)} target="_blank" rel="noopener noreferrer"
+           className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-[10px] font-bold rounded-lg transition-all">
+          <FileOutput className="w-3 h-3"/>DOCX
+        </a>
+        <button onClick={() => setShowAll(v => !v)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 text-slate-600 text-[10px] font-semibold rounded-lg hover:bg-slate-100 transition-all ml-auto">
+          {showAll ? <ChevronDown className="w-3 h-3"/> : <ChevronRight className="w-3 h-3"/>}
+          Alle Felder
+        </button>
+        <span className="text-[10px] text-slate-400 font-mono">
+          {result.docs_parsed} Dok. · {result.runtime_seconds}s
+        </span>
+      </div>
+
+      {/* Expanded full fields */}
+      {showAll && (
+        <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-3">
+          {/* Full bullets */}
+          {bullets.length > 0 && (
+            <ul className="space-y-0.5">
+              {bullets.map((b, i) => (
+                <li key={i} className="flex gap-1.5 text-[10px] text-slate-600">
+                  <span className="text-indigo-400 flex-shrink-0">•</span><span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* Field grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+            {([
+              ["Vergabenummer", f.vergabenummer],
+              ["TED-Referenz", f.ted_reference],
+              ["Auftraggeber", f.auftraggeber],
+              ["Vergabestelle", f.vergabestelle],
+              ["Vergabeverfahren", f.vergabeverfahren],
+              ["Auftragsart", f.auftragsart],
+              ["Veröffentlicht", fmtDate(f.veroeffentlichungsdatum)],
+              ["Abgabefrist", fmtDate(f.abgabefrist)],
+              ["Bindefrist", f.bindefrist],
+              ["Auftragswert", f.auftragswert ? `${f.auftragswert} ${f.waehrung || "EUR"}` : null],
+              ["Leistungsort", f.leistungsort],
+              ["Laufzeit", f.laufzeit],
+              ["CPV-Code(s)", (f.cpv_codes ?? []).join(", ")],
+              ["NUTS-Code(s)", (f.nuts_codes ?? []).join(", ")],
+              ["Ansprechpartner", f.ansprechpartner],
+              ["E-Mail", f.email],
+              ["Telefon", f.telefon],
+            ] as [string, string | null][]).map(([label, val]) => {
+              if (!val) return null;
+              return (
+                <div key={label} className="flex gap-2 px-3 py-2 bg-white">
+                  <span className="text-[10px] font-bold text-slate-400 w-28 flex-shrink-0 pt-px">{label}</span>
+                  <span className="text-[10px] text-slate-700 break-all">{val}</span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Criteria */}
+          {criteria.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Zuschlagskriterien</p>
+              {criteria.map((c, i) => <p key={i} className="text-[10px] text-slate-600">• {c}</p>)}
+            </div>
+          )}
+          {eligibility.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Eignungskriterien</p>
+              {eligibility.map((c, i) => <p key={i} className="text-[10px] text-slate-600">• {c}</p>)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onRetry:(id:string)=>void; retrying:boolean }) {
   const [open, setOpen] = useState(false);
+  const [extracting,       setExtracting]       = useState(false);
+  const [extractionResult, setExtractionResult] = useState<any>(null);
+  const [extractionChecked, setExtractionChecked] = useState(false);
+
+  // Auto-load existing extraction result when row is expanded and has docs
+  useEffect(() => {
+    if (!open || docs.length === 0 || extractionChecked) return;
+    setExtractionChecked(true);
+    fetch(api(`/extract/${item.id}`))
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setExtractionResult(data); })
+      .catch(() => {});
+  }, [open, docs.length, extractionChecked, item.id]);
+
+  async function handleExtract() {
+    setExtracting(true);
+    try {
+      const r = await fetch(api(`/extract/${item.id}/trigger`), { method: "POST" });
+      if (r.ok) setExtractionResult(await r.json());
+    } catch { /* silent */ }
+    finally { setExtracting(false); }
+  }
 
   // Build a short failure summary from attempts_detail if error_message is generic
   const failureSummary = useMemo(() => {
@@ -290,11 +592,20 @@ function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onR
           {/* URL */}
           <p className="font-mono text-[10px] text-indigo-700 break-all" title={item.url}>{item.url}</p>
 
-          {/* Inline failure reason (collapsed view) */}
-          {item.status === "failed" && failureSummary && !open && (
-            <p className="text-[10px] text-rose-600 mt-1 truncate font-medium" title={failureSummary}>
-              ✗ {failureSummary}
-            </p>
+          {/* failure_category badge + inline reason (collapsed view) */}
+          {item.status === "failed" && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              {item.failure_category && item.failure_category !== "unknown" && (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${ERROR_CAT_COLOR[item.failure_category] ?? ERROR_CAT_COLOR.unknown}`}>
+                  {ERROR_CAT_LABEL[item.failure_category] ?? item.failure_category.replace(/_/g, " ")}
+                </span>
+              )}
+              {failureSummary && !open && (
+                <span className="text-[10px] text-rose-500 truncate" title={failureSummary}>
+                  {failureSummary.slice(0, 100)}{failureSummary.length > 100 ? "…" : ""}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -370,6 +681,46 @@ function URLRow({ item, docs, onRetry, retrying }: { item: any; docs: any[]; onR
               <p className="text-xs text-slate-400 italic">No documents downloaded for this URL.</p>
             )
           )}
+
+          {/* Deep Document Extraction */}
+          {docs.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ScanSearch className="w-3 h-3"/>Deep Document Analysis
+                </p>
+                <button
+                  onClick={handleExtract}
+                  disabled={extracting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-[10px] font-bold rounded-lg transition-all"
+                >
+                  {extracting
+                    ? <><Loader2 className="w-3 h-3 animate-spin"/>Extracting…</>
+                    : extractionResult
+                      ? <><RefreshCw className="w-3 h-3"/>Re-extract</>
+                      : <><ScanSearch className="w-3 h-3"/>Extract Fields</>
+                  }
+                </button>
+              </div>
+
+              {!extractionResult && !extracting && (
+                <p className="text-[10px] text-slate-400 italic">
+                  Click &quot;Extract Fields&quot; to deep-parse documents and generate a structured report (no AI, pure text analysis).
+                </p>
+              )}
+
+              {extracting && (
+                <div className="flex items-center gap-2 px-3 py-3 border border-indigo-100 rounded-xl bg-indigo-50/40">
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500"/>
+                  <span className="text-xs text-indigo-600 font-medium">Parsing documents and extracting procurement fields…</span>
+                </div>
+              )}
+
+              {extractionResult && !extracting && (
+                <ExtractionPanel result={extractionResult} itemId={item.id}/>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -408,6 +759,7 @@ function DomainSection({ domain, items, docsByItem, onRetry, retryingId }: {
 export default function JobDetailPage() {
   const { id }    = useParams<{ id: string }>();
   const router    = useRouter();
+  const toast     = useToast();
   const [isZipping,    setIsZipping]    = useState(false);
   const [isDeleting,   setIsDeleting]   = useState(false);
   const [isStopping,   setIsStopping]   = useState(false);
@@ -416,9 +768,6 @@ export default function JobDetailPage() {
   const [showDiag,     setShowDiag]     = useState(false);
   const [diag,         setDiag]         = useState<any|null>(null);
   const [diagLoading,  setDiagLoading]  = useState(false);
-  // Throughput tracking
-  const [startCompleted, setStartCompleted] = useState<number|null>(null);
-  const [startTime,      setStartTime]      = useState<number|null>(null);
 
   const { data: job, mutate: mutateJob } = useSWR(id?api(`/jobs/${id}`):null, fetcher, {
     refreshInterval: d=>(!d||d.status==="pending"||d.status==="running")?2000:0,
@@ -443,53 +792,95 @@ export default function JobDetailPage() {
   const totalDocs= documents?.length??0;
   const pct      = job?Math.max(4,Math.round((job.completed/Math.max(1,job.total_urls))*100)):0;
 
+  // All hooks must be declared before any conditional return (rules-of-hooks)
+  const handleZip = useCallback(async () => {
+    if (isZipping) return;
+    setIsZipping(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}/download-all`));
+      if (!r.ok) throw new Error(r.statusText);
+      const url = URL.createObjectURL(await r.blob());
+      const a   = document.createElement("a");
+      a.href     = url;
+      a.download = `job-${id?.slice(0, 8)}-docs.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast.error("ZIP download failed", e?.message);
+    } finally {
+      setIsZipping(false);
+    }
+  }, [id, isZipping, toast]);
+
+  const handleDelete = useCallback(async () => {
+    if (!window.confirm("Delete job permanently?")) return;
+    setIsDeleting(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}`), { method: "DELETE" });
+      if (!r.ok) throw new Error(r.statusText);
+      router.push("/jobs");
+    } catch (e: any) {
+      toast.error("Delete failed", e?.message);
+      setIsDeleting(false);
+    }
+  }, [id, router, toast]);
+
+  const handleStop = useCallback(async () => {
+    if (!window.confirm("Stop this job? All pending URLs will be marked as failed.")) return;
+    setIsStopping(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}/stop`), { method: "POST" });
+      if (!r.ok) throw new Error(r.statusText);
+      mutateJob();
+    } catch (e: any) {
+      toast.error("Stop failed", e?.message);
+    } finally {
+      setIsStopping(false);
+    }
+  }, [id, mutateJob, toast]);
+
+  const handleDiagnostics = useCallback(async () => {
+    setShowDiag(true);
+    setDiagLoading(true);
+    try {
+      const r = await fetch(api(`/jobs/${id}/diagnostics`));
+      setDiag(r.ok ? await r.json() : null);
+    } catch {
+      setDiag(null);
+    } finally {
+      setDiagLoading(false);
+    }
+  }, [id]);
+
+  const handleRetry = useCallback(async (itemId: string) => {
+    setRetryingId(itemId);
+    try {
+      const r = await fetch(api(`/jobs/${id}/items/${itemId}/retry`), { method: "POST" });
+      if (!r.ok) throw new Error(r.statusText);
+      setTimeout(() => { mutateJob(); mutateDocs(); setRetryingId(null); }, 1500);
+    } catch (e: any) {
+      setRetryingId(null);
+      toast.error("Retry failed", e?.message);
+    }
+  }, [id, mutateJob, mutateDocs, toast]);
+  const copyId = useCallback(() => {
+    navigator.clipboard.writeText(job?.id ?? "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [job?.id]);
+
+  // Guard: show spinner while job data loads (placed after all hooks)
   if (!job) return (
-    <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+    <div className="py-16 text-center">
       <Loader2 className="w-6 h-6 animate-spin text-indigo-600 mx-auto mb-3"/>
       <p className="text-slate-500 text-sm">Loading job…</p>
     </div>
   );
 
-  const handleZip = async()=>{
-    if (isZipping) return; setIsZipping(true);
-    try {
-      const r=await fetch(api(`/jobs/${id}/download-all`));
-      if(!r.ok) throw new Error();
-      const a=Object.assign(document.createElement("a"),{href:URL.createObjectURL(await r.blob()),download:`job-${id?.slice(0,8)}-docs.zip`});
-      document.body.appendChild(a);a.click();a.remove();
-    } catch { alert("ZIP download failed."); } finally { setIsZipping(false); }
-  };
-  const handleDelete=async()=>{
-    if(!confirm("Delete job permanently?")) return; setIsDeleting(true);
-    try { await fetch(api(`/jobs/${id}`),{method:"DELETE"}); router.push("/jobs"); }
-    catch { alert("Delete failed."); setIsDeleting(false); }
-  };
-  const handleStop=async()=>{
-    if(!confirm("Stop this job? All pending URLs will be marked as failed.")) return;
-    setIsStopping(true);
-    try {
-      await fetch(api(`/jobs/${id}/stop`),{method:"POST"});
-      mutateJob();
-    } catch { alert("Stop failed."); }
-    finally { setIsStopping(false); }
-  };
-  const handleDiagnostics=async()=>{
-    setShowDiag(true); setDiagLoading(true);
-    try {
-      const r=await fetch(api(`/jobs/${id}/diagnostics`));
-      setDiag(await r.json());
-    } catch { setDiag(null); }
-    finally { setDiagLoading(false); }
-  };
-  const handleRetry=async(itemId:string)=>{
-    setRetryingId(itemId);
-    try { await fetch(api(`/jobs/${id}/items/${itemId}/retry`),{method:"POST"}); setTimeout(()=>{mutateJob();mutateDocs();setRetryingId(null);},1500); }
-    catch { setRetryingId(null); alert("Retry failed."); }
-  };
-  const copyId=()=>{ navigator.clipboard.writeText(job.id); setCopied(true); setTimeout(()=>setCopied(false),1500); };
-
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="space-y-8">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
         <Link href="/" className="hover:text-indigo-600">Dashboard</Link><span>/</span>
@@ -501,7 +892,7 @@ export default function JobDetailPage() {
       <header className="space-y-3 border-b border-slate-100 pb-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <code className="font-mono text-sm bg-slate-100 border border-slate-200 px-4 py-2 rounded-xl text-slate-700">{job.id}</code>
+            <code className="font-mono text-xs sm:text-sm bg-slate-100 border border-slate-200 px-3 sm:px-4 py-2 rounded-xl text-slate-700 break-all max-w-full">{job.id}</code>
             <button onClick={copyId} className="btn-secondary text-xs gap-1.5"><Copy className="w-3.5 h-3.5"/>{copied?"Copied!":"Copy"}</button>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -536,7 +927,7 @@ export default function JobDetailPage() {
             [Layers, `${job.completed}/${job.total_urls} URLs`],
             [FileText, `${totalDocs} docs`],
             [Globe, `${domains.length} domain${domains.length!==1?"s":""}`],
-            [DollarSign, `$${(job.cost_usd??0).toFixed(4)}`],
+            [DollarSign, usd(job.cost_usd)],
             [Clock, new Date(job.created_at).toLocaleString()],
           ].map(([Icon,label]:any,i)=>(
             <span key={i} className="badge bg-slate-100 text-slate-600 border-slate-200">
@@ -563,6 +954,34 @@ export default function JobDetailPage() {
           <ThroughputBar completed={job.completed} total={job.total_urls} status={job.status}/>
         </div>
       )}
+
+      {/* Failure Category Breakdown — shown when job has failed items */}
+      {(() => {
+        const failedItems = job.items?.filter((i: any) => i.status === "failed") ?? [];
+        if (failedItems.length === 0) return null;
+        const catCounts: Record<string, number> = {};
+        for (const i of failedItems) {
+          const cat = i.failure_category || "unknown";
+          catCounts[cat] = (catCounts[cat] || 0) + 1;
+        }
+        const sorted = Object.entries(catCounts).sort((a, b) => b[1] - a[1]);
+        return (
+          <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+              <AlertOctagon className="w-4 h-4 text-rose-500"/>
+              <h2 className="font-bold text-slate-800 text-sm">Failure Breakdown <span className="font-normal text-slate-400">({failedItems.length} failed URL{failedItems.length !== 1 ? "s" : ""})</span></h2>
+            </div>
+            <div className="px-5 py-4 flex flex-wrap gap-2">
+              {sorted.map(([cat, count]) => (
+                <div key={cat} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-semibold text-xs ${ERROR_CAT_COLOR[cat] ?? ERROR_CAT_COLOR.unknown}`}>
+                  <span>{ERROR_CAT_LABEL[cat] ?? cat.replace(/_/g, " ")}</span>
+                  <span className="bg-white/60 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{count}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Domain → URL → Docs tree */}
       <section className="space-y-4">
@@ -593,7 +1012,7 @@ export default function JobDetailPage() {
           <table className="w-full text-xs">
             <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
               <tr>
-                {["URL","Strategy","Iters","Time","Docs","Status"].map(h=>(
+                {["URL","Strategy","Iters","Time","Docs","Failure Reason","Status"].map(h=>(
                   <th key={h} className={`px-5 py-3 font-semibold text-slate-500 uppercase tracking-wide ${h==="Status"?"text-right":h==="URL"?"text-left":"text-center"}`}>{h}</th>
                 ))}
               </tr>
@@ -606,6 +1025,13 @@ export default function JobDetailPage() {
                   <td className="px-5 py-3 text-center font-semibold text-slate-600">{item.iterations}</td>
                   <td className="px-5 py-3 text-center font-mono text-slate-500">{item.runtime_seconds?.toFixed(1)}s</td>
                   <td className="px-5 py-3 text-center font-bold text-slate-700">{item.document_count}</td>
+                  <td className="px-5 py-3 text-center">
+                    {item.failure_category && item.failure_category !== "unknown"
+                      ? <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${ERROR_CAT_COLOR[item.failure_category] ?? ERROR_CAT_COLOR.unknown}`}>
+                          {ERROR_CAT_LABEL[item.failure_category] ?? item.failure_category}
+                        </span>
+                      : <span className="text-slate-300">—</span>}
+                  </td>
                   <td className="px-5 py-3 text-right"><StatusBadge status={item.status}/></td>
                 </tr>
               ))}
@@ -642,7 +1068,7 @@ export default function JobDetailPage() {
                       {label:"Succeeded", value:diag.succeeded, color:"text-emerald-600"},
                       {label:"Failed",    value:diag.failed,    color:"text-rose-600"},
                       {label:"Pending",   value:diag.pending,   color:"text-amber-600"},
-                      {label:"Cost",      value:`$${diag.cost_usd}`, color:"text-slate-700"},
+                      {label:"Cost",      value:usd(diag.cost_usd), color:"text-slate-700"},
                     ].map(({label,value,color})=>(
                       <div key={label} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>

@@ -22,21 +22,27 @@ export default function JobSubmitForm() {
   );
 
   async function submit() {
+    // Validate before setting busy so the spinner never gets stuck
+    if (mode === "manual") {
+      const urls = text.split(/\s+/).map((u) => u.trim()).filter(Boolean);
+      if (!urls.length) { setError("Paste at least one URL."); return; }
+    } else {
+      if (!file) { setError("Please select a file."); return; }
+    }
+
     setBusy(true);
     setError(null);
     try {
       if (mode === "manual") {
         const urls = text.split(/\s+/).map((u) => u.trim()).filter(Boolean);
-        if (!urls.length) { setError("Paste at least one URL."); return; }
-        const body: any = { urls };
+        const body: Record<string, unknown> = { urls };
         if (forceStrategy) body.force_strategy = forceStrategy;
         if (forceModel)    body.force_model    = forceModel;
         const job = await postJSON<{ id: string }>("/jobs", body);
         router.push(`/jobs/${job.id}`);
       } else {
-        if (!file) { setError("Please select a file."); return; }
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", file!);
         const query = new URLSearchParams();
         if (forceStrategy) query.append("force_strategy", forceStrategy);
         if (forceModel)    query.append("force_model", forceModel);

@@ -1,3 +1,19 @@
+/**
+ * System Admin page — ops dashboard for infrastructure health and error triage.
+ *
+ * Panels:
+ *   - System health check: live status of DB, Redis, MinIO, OpenRouter, Celery workers
+ *   - Recent errors: failed URL items with error category, severity, and domain
+ *   - Circuit breakers: per-domain CB state (open = fast-failing that domain)
+ *   - Danger zone: reset-DB and reset-stale-jobs controls
+ *
+ * Data sources:
+ *   GET /api/admin/system-check    → live ping of all infrastructure components
+ *   GET /api/admin/errors          → most recent failed URL items (default 50)
+ *   GET /api/admin/circuit-breakers → per-domain circuit breaker state
+ *   POST /api/admin/reset          → wipe all data (requires confirmation)
+ *   POST /api/admin/reset-stale-jobs → mark stuck RUNNING/PENDING jobs as FAILED
+ */
 "use client";
 
 import useSWR from "swr";
@@ -17,7 +33,6 @@ import {
   ChevronRight,
   Filter,
   XCircle,
-  ArrowLeft,
   Trash2,
 } from "lucide-react";
 import {
@@ -33,6 +48,7 @@ import {
   Pie,
 } from "recharts";
 import { useState } from "react";
+import { useToast } from "@/components/Toast";
 
 // Severity → visual style
 const SEVERITY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -42,30 +58,51 @@ const SEVERITY_STYLES: Record<string, { bg: string; text: string; border: string
   info:     { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200", dot: "bg-slate-400" },
 };
 
-// Error category → colors for the pie chart
+// Error category → colors for the pie/bar chart — covers all 27 backend categories
 const CATEGORY_COLORS: Record<string, string> = {
-  timeout: "#f59e0b",
-  network: "#ef4444",
-  dns: "#dc2626",
-  ssl: "#b91c1c",
-  auth: "#d97706",
-  not_found: "#6b7280",
-  rate_limit: "#f97316",
-  server_error: "#dc2626",
-  code_validation: "#7c3aed",
-  sandbox: "#be123c",
-  prompt_injection: "#e11d48",
-  no_documents: "#64748b",
-  storage: "#ea580c",
-  blocked_url: "#be123c",
-  no_strategy: "#94a3b8",
-  loop_exhausted: "#ca8a04",
-  unknown: "#9ca3af",
+  // Infrastructure
+  timeout:               "#f59e0b",
+  network:               "#f97316",
+  dns:                   "#dc2626",
+  ssl:                   "#b91c1c",
+  redirect_loop:         "#fbbf24",
+  encoding_error:        "#6366f1",
+  // Security / validation
+  code_validation:       "#7c3aed",
+  prompt_injection:      "#e11d48",
+  blocked_url:           "#be123c",
+  sandbox:               "#a21caf",
+  // Access / auth
+  login_required:        "#9333ea",
+  registration_required: "#7e22ce",
+  auth:                  "#d97706",
+  // Bot protection
+  captcha:               "#ea580c",
+  // HTTP
+  not_found:             "#6b7280",
+  rate_limit:            "#f97316",
+  server_error:          "#ef4444",
+  // Tender lifecycle
+  expired:               "#94a3b8",
+  maintenance:           "#ca8a04",
+  // Scraper content
+  js_required:           "#0891b2",
+  empty_page:            "#cbd5e1",
+  scraper_crash:         "#dc2626",
+  // Documents / storage
+  no_documents:          "#64748b",
+  storage:               "#ea580c",
+  // Pipeline
+  no_strategy:           "#94a3b8",
+  loop_exhausted:        "#ca8a04",
+  unknown:               "#9ca3af",
 };
 
 export default function AdminPage() {
+  const toast = useToast();
   const { data: stats, error: statsError, isLoading: statsLoading, mutate: mutateStats } = useSWR(api("/admin/stats"), fetcher, { refreshInterval: 10000 });
   const { data: errors, error: errorsError, isLoading: errorsLoading, mutate: mutateErrors } = useSWR(api("/admin/errors"), fetcher, { refreshInterval: 10000 });
+  const { data: needsManual } = useSWR(api("/jobs/needs-manual"), fetcher, { refreshInterval: 15000 });
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -113,10 +150,10 @@ export default function AdminPage() {
         mutateErrors();
         setTimeout(() => setResetSuccess(false), 5000);
       } else {
-        alert("Reset failed");
+        toast.error("Reset failed");
       }
     } catch (err) {
-      alert("Error during reset");
+      toast.error("Error during reset");
     } finally {
       setIsResetting(false);
     }
@@ -132,10 +169,10 @@ export default function AdminPage() {
         mutateErrors();
         setTimeout(() => setResetJobsSuccess(false), 5000);
       } else {
-        alert("Failed to reset stale jobs");
+        toast.error("Failed to reset stale jobs");
       }
     } catch (err) {
-      alert("Error resetting stale jobs");
+      toast.error("Error resetting stale jobs");
     } finally {
       setIsResettingJobs(false);
     }
@@ -166,15 +203,7 @@ export default function AdminPage() {
     : [];
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      {/* ── Navigation / Back Button ── */}
-      <Link 
-        href="/" 
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all hover:translate-x-[-2px] duration-200"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Back to Dashboard
-      </Link>
+    <div className="space-y-8">
 
       {/* ── Backend Offline Warning ── */}
       {(statsError || errorsError) && (
@@ -190,8 +219,7 @@ export default function AdminPage() {
       {/* ── Header ── */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-3 text-slate-900 tracking-tight">
-            <ShieldAlert className="w-8 h-8 text-rose-500" />
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Admin &amp; Pipeline Control Center
           </h1>
           <p className="text-slate-500 text-sm sm:text-base font-medium mt-1">
@@ -210,7 +238,7 @@ export default function AdminPage() {
       </header>
 
       {/* ── System Integrity Diagnostic Check ── */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 hover:shadow-md transition-all duration-300 space-y-6">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 hover:shadow-md transition-all duration-300 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl border ${
@@ -354,8 +382,8 @@ export default function AdminPage() {
       {/* ── Top Stats Grid ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Jobs */}
-        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-indigo-50/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+        <div className={`bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-indigo-50/20 to-transparent rounded-bl-full pointer-events-none" />
           <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-100 text-slate-500">
               <Database className="w-3.5 h-3.5" />
@@ -367,8 +395,8 @@ export default function AdminPage() {
         </div>
 
         {/* Total Items */}
-        <div className={`bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-violet-50/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+        <div className={`bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-violet-50/20 to-transparent rounded-bl-full pointer-events-none" />
           <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-100 text-slate-500">
               <Layers className="w-3.5 h-3.5" />
@@ -380,8 +408,8 @@ export default function AdminPage() {
         </div>
 
         {/* Success Rate */}
-        <div className={`bg-emerald-50/5 border border-emerald-200/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-emerald-100/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+        <div className={`bg-emerald-50/5 border border-emerald-200/60 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-emerald-100/20 to-transparent rounded-bl-full pointer-events-none" />
           <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-emerald-100/50 rounded-lg text-emerald-700">
               <ShieldCheck className="w-3.5 h-3.5" />
@@ -395,8 +423,8 @@ export default function AdminPage() {
         </div>
 
         {/* Failed Items */}
-        <div className={`bg-rose-50/5 border border-rose-200/60 rounded-3xl p-6 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
-          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-rose-100/20 to-transparent rounded-bl-full pointer-events-none transition-transform duration-300 group-hover:scale-110" />
+        <div className={`bg-rose-50/5 border border-rose-200/60 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group ${isRefreshing && !stats ? "animate-pulse" : ""}`}>
+          <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-b from-rose-100/20 to-transparent rounded-bl-full pointer-events-none" />
           <div className="flex items-center gap-2 text-rose-600 text-xs font-bold uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-rose-100/50 rounded-lg text-rose-700">
               <AlertTriangle className="w-3.5 h-3.5" />
@@ -410,10 +438,49 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* ── Needs Manual Action ── */}
+      {(needsManual?.items?.length ?? 0) > 0 && (
+        <div className="bg-white border border-amber-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="p-1.5 bg-amber-100/60 rounded-lg text-amber-700">
+              <ShieldAlert className="w-3.5 h-3.5" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800">Needs manual action</h3>
+            <span className="ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              {needsManual.total}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 font-medium mb-4">
+            These URLs can only be resolved by a human (login / CAPTCHA) — not silent failures.
+          </p>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {needsManual.items.map((it: any) => (
+              <div key={it.item_id} className="flex items-start justify-between gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                      {it.bucket_label}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-700 truncate">{it.domain}</span>
+                  </div>
+                  <a href={it.url} target="_blank" rel="noreferrer"
+                     className="text-[11px] text-indigo-600 hover:underline truncate block max-w-xl">{it.url}</a>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{it.suggested_action}</p>
+                </div>
+                <a href={`/jobs/${it.job_id}`}
+                   className="flex-shrink-0 text-[11px] font-semibold text-slate-500 hover:text-indigo-600 underline">
+                  View job
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Charts Row ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Strategy Distribution */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 flex flex-col shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 flex flex-col shadow-sm">
           <div className="border-b border-slate-100 pb-3 mb-5">
             <h2 className="text-md font-extrabold flex items-center gap-2 text-slate-800">
               <Activity className="w-4 h-4 text-indigo-500" />
@@ -451,7 +518,7 @@ export default function AdminPage() {
         </div>
 
         {/* Error Categories Breakdown */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 flex flex-col shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 flex flex-col shadow-sm">
           <div className="border-b border-slate-100 pb-3 mb-5">
             <h2 className="text-md font-extrabold flex items-center gap-2 text-slate-800">
               <AlertTriangle className="w-4 h-4 text-rose-500" />
@@ -637,7 +704,7 @@ export default function AdminPage() {
       {/* ── System Maintenance & Recovery Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Platform Maintenance & Data Purging */}
-        <div className="bg-rose-50/10 border border-rose-200/85 rounded-3xl p-6 md:p-8 hover:shadow transition-all duration-300 flex flex-col justify-between space-y-5">
+        <div className="bg-rose-50/10 border border-rose-200/85 rounded-2xl p-6 md:p-8 hover:shadow transition-all duration-300 flex flex-col justify-between space-y-5">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-rose-100 border border-rose-200 text-rose-700 rounded-xl">
@@ -690,7 +757,7 @@ export default function AdminPage() {
         </div>
 
         {/* Stuck Jobs Recovery */}
-        <div className="bg-indigo-50/10 border border-indigo-200 rounded-3xl p-6 md:p-8 hover:shadow transition-all duration-300 flex flex-col justify-between space-y-5">
+        <div className="bg-indigo-50/10 border border-indigo-200 rounded-2xl p-6 md:p-8 hover:shadow transition-all duration-300 flex flex-col justify-between space-y-5">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-xl">
@@ -735,7 +802,7 @@ export default function AdminPage() {
       {/* ── Immersive Details Modal ── */}
       {activeModalService && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 max-w-lg w-full mx-4 shadow-2xl relative space-y-5 ">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 max-w-lg w-full mx-4 shadow-2xl relative space-y-5 ">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full animate-ping ${
@@ -777,7 +844,7 @@ export default function AdminPage() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(activeModalService.message);
-                  alert("Diagnostic payload copied to clipboard!");
+                  toast.success("Copied to clipboard");
                 }}
                 className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition active:scale-95 cursor-pointer"
               >

@@ -31,7 +31,7 @@ class GroundTruth:
     notes: str = ""
 
     @classmethod
-    def from_dict(cls, d: dict) -> "GroundTruth":
+    def from_dict(cls, d: dict) -> GroundTruth:
         return cls(
             url=d["url"],
             expected_doc_count=int(d.get("expected_doc_count", 0)),
@@ -76,8 +76,13 @@ def evaluate(truth: GroundTruth, result: ExecutionResult) -> EvaluationMetrics:
     )
 
 
-def load_dataset(path: str) -> list[GroundTruth]:
-    """Load a JSONL or CSV evaluation dataset."""
+def load_dataset(path: str, max_entries: int | None = None) -> list[GroundTruth]:
+    """Load a JSONL or CSV evaluation dataset.
+
+    ``max_entries`` caps the dataset explicitly. The CSV branch previously
+    hard-capped at 5 entries silently, which made API-triggered benchmark
+    runs report results for a dataset nobody asked to truncate.
+    """
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"dataset not found: {path}")
@@ -114,7 +119,7 @@ def load_dataset(path: str) -> list[GroundTruth]:
                     expected_extensions=["zip"],
                     notes=f"CSV Export - {domain}",
                 ))
-                if len(out) >= 5:  # Sensible default limit for evaluation runs
+                if max_entries is not None and len(out) >= max_entries:
                     break
     else:
         for line in p.read_text().splitlines():
@@ -122,6 +127,8 @@ def load_dataset(path: str) -> list[GroundTruth]:
             if not line or line.startswith("#"):
                 continue
             out.append(GroundTruth.from_dict(json.loads(line)))
+            if max_entries is not None and len(out) >= max_entries:
+                break
     return out
 
 

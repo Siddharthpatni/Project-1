@@ -119,7 +119,7 @@ class RouteMap:
                 if len(step.found_downloads) > 5:
                     lines.append(f"     → (+{len(step.found_downloads) - 5} more)")
         lines.append(f"\nTotal documents discovered along this route: {self.total_documents_found}")
-        
+
         main_summary = "\n".join(lines)
         if self.cua_discovery_report:
             main_summary += f"\n\n## CUA DISCOVERED NAVIGATION ROUTE & ERROR LOGS:\n{self.cua_discovery_report}"

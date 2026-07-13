@@ -53,4 +53,6 @@ RUN python -m playwright install chromium
 COPY . .
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# WEB_CONCURRENCY worker processes (default 4) so the API scales past one
+# core; proxy flags make client IPs/scheme correct behind the nginx proxy.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-4} --timeout-keep-alive 75 --proxy-headers --forwarded-allow-ips='*'"]

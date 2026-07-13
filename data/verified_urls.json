@@ -1,0 +1,778 @@
+{
+  "domains": {
+    "ausschreibung.halle.de": {
+      "best_url": "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dcdcd2763-1f61be581b40a4d&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df6a0203f-13d8559802fc3175&PublicationType=0",
+        "https://ausschreibung.halle.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dd80b4699-5f8ffa0d15a1fa7b",
+        "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dce16a3a4-6a79ad3679745f3d&PublicationType=0",
+        "https://ausschreibung.halle.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dcdcd2763-1f61be581b40a4d&PublicationType=0"
+      ],
+      "url_count": 4
+    },
+    "ausschreibungen.giz.de": {
+      "best_url": "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTP2B98HF",
+      "zip_url": "https://ausschreibungen.giz.de/Satellite/public/company/project/CXTRYY6YTP2B98HF/de/documents/archive/Vergabeunterlagen_CXTRYY6YTP2B98HF.zip",
+      "all_urls": [
+        "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTP2B98HF",
+        "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTP2YKG7B",
+        "https://ausschreibungen.giz.de/Satellite/notice/CXTRYY6YTP6SNJJQ/documents"
+      ],
+      "url_count": 3
+    },
+    "ausschreibungen.kfw.de": {
+      "best_url": "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/b6a10f52-e51e-4a1e-90f2-c4cab9492dc8",
+      "zip_url": null,
+      "all_urls": [
+        "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/b6a10f52-e51e-4a1e-90f2-c4cab9492dc8",
+        "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/7605c11f-0647-4625-8f87-7e77e3865f95",
+        "https://ausschreibungen.kfw.de/evergabe.bieter/api/supplier/external/deeplink/subproject/6ac74648-c4ba-45a1-bfed-c74d151ed7d9"
+      ],
+      "url_count": 3
+    },
+    "ausschreibungen.landbw.de": {
+      "best_url": "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YRHY4YV/documents",
+      "zip_url": "https://ausschreibungen.landbw.de/Satellite/public/company/project/CXR6YRHY4YV/de/documents/archive/Vergabeunterlagen_CXR6YRHY4YV.zip",
+      "all_urls": [
+        "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YD0Y4YA/documents",
+        "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YD0YMTP/documents",
+        "https://ausschreibungen.landbw.de/Satellite/notice/CXR6YRHY4YV/documents"
+      ],
+      "url_count": 3
+    },
+    "beschaffungen.barmer.de": {
+      "best_url": "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c76689c9f-7205849a46bfd625",
+      "zip_url": null,
+      "all_urls": [
+        "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c76689c9f-7205849a46bfd625",
+        "https://beschaffungen.barmer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d71303245-51ff7b9d70a79aee"
+      ],
+      "url_count": 2
+    },
+    "bi-medien.de": {
+      "best_url": "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461532423",
+      "zip_url": null,
+      "all_urls": [
+        "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461532423",
+        "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461462328",
+        "https://bi-medien.de/ausschreibungsdienste/ausschreibungen/D461472347"
+      ],
+      "url_count": 3
+    },
+    "bieter.ehealth-evergabe.de": {
+      "best_url": "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/f460708e-ed8f-4381-8334-15f86a573cd3",
+      "zip_url": null,
+      "all_urls": [
+        "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/f460708e-ed8f-4381-8334-15f86a573cd3",
+        "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/a20713ad-d01c-4465-b0a8-7260ab53d2d4",
+        "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/91734beb-b2bf-4689-89cd-0c6bbfaabedf",
+        "https://bieter.ehealth-evergabe.de/bieter/api/supplier/external/deeplink/subproject/a968078e-d396-4316-b195-1e834030a167"
+      ],
+      "url_count": 4
+    },
+    "bieterportal.dfg.e-va.eu": {
+      "best_url": "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTQ1MSwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D",
+      "zip_url": null,
+      "all_urls": [
+        "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTQ1MSwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D",
+        "https://bieterportal.dfg.e-va.eu/bundde?data=eyJ0IjoxMDAwMTQzNSwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMH0%3D"
+      ],
+      "url_count": 2
+    },
+    "bieterportal.noncd.db.de": {
+      "best_url": "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/55407a67-c491-4a4a-b3cf-20b5d234f044",
+      "zip_url": null,
+      "all_urls": [
+        "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/55407a67-c491-4a4a-b3cf-20b5d234f044",
+        "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/f5ac79f7-41c8-4789-90cc-266e4865efed",
+        "https://bieterportal.noncd.db.de/evergabe.bieter/api/supplier/external/deeplink/subproject/2b011b65-3afc-4c48-a02e-622aa21acadc"
+      ],
+      "url_count": 3
+    },
+    "bieterportal.pd-g.e-va.eu": {
+      "best_url": "https://bieterportal.pd-g.e-va.eu/?tid=1adb22ad71dfd546a4cd4e774f5f7dde",
+      "zip_url": null,
+      "all_urls": [
+        "https://bieterportal.pd-g.e-va.eu/?tid=1adb22ad71dfd546a4cd4e774f5f7dde"
+      ],
+      "url_count": 1
+    },
+    "bieterzugang.deutsche-evergabe.de": {
+      "best_url": "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/79570cdc-e2bd-4889-8006-d15f2e5c05f3",
+      "zip_url": null,
+      "all_urls": [
+        "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/79570cdc-e2bd-4889-8006-d15f2e5c05f3",
+        "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/50aeca8d-f21b-4ef2-a756-7ca5bbd45e8f",
+        "https://bieterzugang.deutsche-evergabe.de/evergabe.bieter/api/supplier/external/deeplink/subproject/50d491a9-9bd2-4533-8c47-441ef803518f"
+      ],
+      "url_count": 3
+    },
+    "bund.vergabe24.de": {
+      "best_url": "https://bund.vergabe24.de/?hash=9ddc9095351fe8dd7fc48bb61b69497f",
+      "zip_url": null,
+      "all_urls": [
+        "https://bund.vergabe24.de/?hash=9ddc9095351fe8dd7fc48bb61b69497f",
+        "https://bund.vergabe24.de/?hash=bf7dd6dfb73bd7c6ad5b8cde6c0e0cd9",
+        "https://bund.vergabe24.de/?hash=c21d1dcbbcff8fa93432747ca8c38a59"
+      ],
+      "url_count": 3
+    },
+    "eit-culture-creativity.eu": {
+      "best_url": "https://eit-culture-creativity.eu/your-opportunities/request-proposals/crm-platform",
+      "zip_url": null,
+      "all_urls": [
+        "https://eit-culture-creativity.eu/your-opportunities/request-proposals/crm-platform"
+      ],
+      "url_count": 1
+    },
+    "eliagroup.sharepoint.com": {
+      "best_url": "https://eliagroup.sharepoint.com/:f:/s/EFSS/EFSS/IgDIpp0CIBSUQLC7n-F6UulbAS_xI1BtIAlyWRsdHuIOj8g?e=Y6kYV9",
+      "zip_url": null,
+      "all_urls": [
+        "https://eliagroup.sharepoint.com/:f:/s/EFSS/EFSS/IgDIpp0CIBSUQLC7n-F6UulbAS_xI1BtIAlyWRsdHuIOj8g?e=Y6kYV9",
+        "https://eliagroup.sharepoint.com/:f:/s/FB-EUtender/IgCUe_lyCudyS5M9BGXSn0POASajEk-ylgbaGMKYvokJgLs?e=x6Jdj9"
+      ],
+      "url_count": 2
+    },
+    "eom-vp-prod.ai-hosting.de": {
+      "best_url": "https://eom-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d90f7d1eb-516c73388e1ed969",
+      "zip_url": null,
+      "all_urls": [
+        "https://eom-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d90f7d1eb-516c73388e1ed969"
+      ],
+      "url_count": 1
+    },
+    "eu.mu.ariba.com": {
+      "best_url": "https://eu.mu.ariba.com/uav/project/?token=c7fd9658-a64b-4175-9c5f-4f837503b6bd",
+      "zip_url": null,
+      "all_urls": [
+        "https://eu.mu.ariba.com/uav/project/?token=c7fd9658-a64b-4175-9c5f-4f837503b6bd",
+        "https://eu.mu.ariba.com/uav/project/?token=42f7e080-0005-4495-83dd-4848b8d6346d"
+      ],
+      "url_count": 2
+    },
+    "evergabe-mv.de": {
+      "best_url": "https://evergabe-mv.de/Satellite/notice/CXVHYRQYTPJGD48N/documents",
+      "zip_url": "https://evergabe-mv.de/Satellite/public/company/project/CXVHYRQYTPJGD48N/de/documents/archive/Vergabeunterlagen_CXVHYRQYTPJGD48N.zip",
+      "all_urls": [
+        "https://evergabe-mv.de/Satellite/notice/CXVHYRQYTPJGD48N/documents",
+        "https://evergabe-mv.de/Satellite/notice/CXVHYRKYTP4M9T51",
+        "https://evergabe-mv.de/Satellite/notice/CXVHYD4YTP50J01V"
+      ],
+      "url_count": 3
+    },
+    "fbhh-evergabe.web.hamburg.de": {
+      "best_url": "https://fbhh-evergabe.web.hamburg.de/evergabe.bieter/api/supplier/external/deeplink/subproject/68e0308c-e2fd-4010-bd15-132e1fcb5240",
+      "zip_url": null,
+      "all_urls": [
+        "https://fbhh-evergabe.web.hamburg.de/evergabe.bieter/api/supplier/external/deeplink/subproject/68e0308c-e2fd-4010-bd15-132e1fcb5240",
+        "https://fbhh-evergabe.web.hamburg.de/evergabe.bieter/api/supplier/external/deeplink/subproject/f316328f-dc85-4b2f-97f7-5430bca5fa34",
+        "https://fbhh-evergabe.web.hamburg.de/evergabe.bieter/api/supplier/external/deeplink/subproject/64909976-9215-4f90-936c-1bbe1748d6dc"
+      ],
+      "url_count": 3
+    },
+    "ffb.healyhudson.biz": {
+      "best_url": "https://ffb.healyhudson.biz/evergabe.bieter/api/supplier/external/deeplink/subproject/e930abf2-b18f-4e9c-9897-290438cdc7d7",
+      "zip_url": null,
+      "all_urls": [
+        "https://ffb.healyhudson.biz/evergabe.bieter/api/supplier/external/deeplink/subproject/e930abf2-b18f-4e9c-9897-290438cdc7d7"
+      ],
+      "url_count": 1
+    },
+    "fham-vp-prod.ai-hosting.de": {
+      "best_url": "https://fham-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d201d6cbb-4069394999cf044c",
+      "zip_url": null,
+      "all_urls": [
+        "https://fham-vp-prod.ai-hosting.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d201d6cbb-4069394999cf044c"
+      ],
+      "url_count": 1
+    },
+    "it-vergabe.eu": {
+      "best_url": "https://it-vergabe.eu/vergabe/vorgaben/920c18cb75d1a6b2150c6c737d7c9b3a",
+      "zip_url": null,
+      "all_urls": [
+        "https://it-vergabe.eu/vergabe/vorgaben/920c18cb75d1a6b2150c6c737d7c9b3a"
+      ],
+      "url_count": 1
+    },
+    "landesverwaltung.vergabe.rlp.de": {
+      "best_url": "https://landesverwaltung.vergabe.rlp.de/VMPSatellite/notice/CXPDYY9YNTM",
+      "zip_url": "https://landesverwaltung.vergabe.rlp.de/VMPSatellite/public/company/project/CXPDYY9YNTM/de/documents/archive/Vergabeunterlagen_CXPDYY9YNTM.zip",
+      "all_urls": [
+        "https://landesverwaltung.vergabe.rlp.de/VMPSatellite/notice/CXPDYY9YNTM",
+        "https://landesverwaltung.vergabe.rlp.de/VMPSatellite/notice/CXPDYYHYKBD",
+        "https://landesverwaltung.vergabe.rlp.de/VMPSatellite/notice/CXPDYY5YKM5/documents"
+      ],
+      "url_count": 3
+    },
+    "lwl.org": {
+      "best_url": "https://lwl.org/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19b2b7ec8de-60eabb972606adc6",
+      "zip_url": null,
+      "all_urls": [
+        "https://lwl.org/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19b2b7ec8de-60eabb972606adc6"
+      ],
+      "url_count": 1
+    },
+    "mp.aumass.de": {
+      "best_url": "https://mp.aumass.de/Veroeffentlichung/av279ef1-eu",
+      "zip_url": null,
+      "all_urls": [
+        "https://mp.aumass.de/Veroeffentlichung/av279ef1-eu",
+        "https://mp.aumass.de/Veroeffentlichung/av27aceb-eu",
+        "https://mp.aumass.de/Veroeffentlichung/av27abf0-eu"
+      ],
+      "url_count": 3
+    },
+    "plattform.aumass.de": {
+      "best_url": "https://plattform.aumass.de/Veroeffentlichung/AV27BE51-A",
+      "zip_url": null,
+      "all_urls": [
+        "https://plattform.aumass.de/Veroeffentlichung/AV27BE51-A",
+        "https://plattform.aumass.de/Veroeffentlichung/av27ad92-eu",
+        "https://plattform.aumass.de/Veroeffentlichung/av27ad8b-eu"
+      ],
+      "url_count": 3
+    },
+    "rlp.vergabekommunal.de": {
+      "best_url": "https://rlp.vergabekommunal.de/Satellite/notice/CXVHY55YT8NNYP5U/documents",
+      "zip_url": "https://rlp.vergabekommunal.de/Satellite/public/company/project/CXVHY55YT8NNYP5U/de/documents/archive/Vergabeunterlagen_CXVHY55YT8NNYP5U.zip",
+      "all_urls": [
+        "https://rlp.vergabekommunal.de/Satellite/notice/CXVHY55YT8NNYP5U/documents",
+        "https://rlp.vergabekommunal.de/Satellite/notice/CXS0YBFYTP2DXNQ5",
+        "https://rlp.vergabekommunal.de/Satellite/notice/CXP6YDXYE3E"
+      ],
+      "url_count": 3
+    },
+    "saarvpsl.vmstart.de": {
+      "best_url": "https://saarvpsl.vmstart.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd8ae3d86-37cc8477fca84a0f&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://saarvpsl.vmstart.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d2981786c-ae6caa556f0814a&PublicationType=0",
+        "https://saarvpsl.vmstart.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19df303ae29-7f0c43ad232fcccb",
+        "https://saarvpsl.vmstart.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd8ae3d86-37cc8477fca84a0f&PublicationType=0",
+        "https://saarvpsl.vmstart.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19df2ae70b0-3613cecec938389"
+      ],
+      "url_count": 4
+    },
+    "vergabe.autobahn.de": {
+      "best_url": "https://vergabe.autobahn.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19df1ea0a63-52362a52d408fa7a",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.autobahn.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19df1ea0a63-52362a52d408fa7a",
+        "https://vergabe.autobahn.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19ddd25a6db-2638bccb420adcfa",
+        "https://vergabe.autobahn.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dce6567c7-4973e4571792387d"
+      ],
+      "url_count": 3
+    },
+    "vergabe.bremen.de": {
+      "best_url": "https://vergabe.bremen.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c23f4bc49-63bf7199cb34a540",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.bremen.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c23f4bc49-63bf7199cb34a540",
+        "https://vergabe.bremen.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dd8bf14c1-50593080f4bace34",
+        "https://vergabe.bremen.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dd88c7061-10b9b983933cc48c"
+      ],
+      "url_count": 3
+    },
+    "vergabe.brw-haan.de": {
+      "best_url": "https://vergabe.brw-haan.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19c7659d98b-6abe069781725b58&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.brw-haan.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d2dd681d9-7e9e5fc7c9047fd9",
+        "https://vergabe.brw-haan.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19c7659d98b-6abe069781725b58&PublicationType=0"
+      ],
+      "url_count": 2
+    },
+    "vergabe.bwbm.de": {
+      "best_url": "https://vergabe.bwbm.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d9bbf994f-1d224fcd852b973e",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.bwbm.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d9bbf994f-1d224fcd852b973e",
+        "https://vergabe.bwbm.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19db92fab87-4b73a344beb10468"
+      ],
+      "url_count": 2
+    },
+    "vergabe.deges.de": {
+      "best_url": "https://vergabe.deges.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd8c6acc1-5c6aea19672bb212&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.deges.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd8c6acc1-5c6aea19672bb212&PublicationType=0",
+        "https://vergabe.deges.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19db9a7af35-4c73160d7b69c43a",
+        "https://vergabe.deges.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19db51ae1b4-46f2b0e6bf76c437"
+      ],
+      "url_count": 3
+    },
+    "vergabe.duesseldorf.de": {
+      "best_url": "https://vergabe.duesseldorf.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19ddd44a47a-19876dc27734c6a0&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.duesseldorf.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19df6909df6-67bc6a3d4626d758",
+        "https://vergabe.duesseldorf.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19ddd44a47a-19876dc27734c6a0&PublicationType=0",
+        "https://vergabe.duesseldorf.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19daaa1f1d7-2e3ee4d5421257b7"
+      ],
+      "url_count": 3
+    },
+    "vergabe.fraunhofer.de": {
+      "best_url": "https://vergabe.fraunhofer.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd3b16230-2afc8ad6cb691087&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.fraunhofer.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df7f173e4-5d5fe8d5b29b4514&PublicationType=0",
+        "https://vergabe.fraunhofer.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19df71b0919-b10a446f5a58df",
+        "https://vergabe.fraunhofer.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd3b16230-2afc8ad6cb691087&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "vergabe.hamburgwasser.de": {
+      "best_url": "https://vergabe.hamburgwasser.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c2d4eea6e-474ca6e878a3e7fb",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.hamburgwasser.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c2d4eea6e-474ca6e878a3e7fb",
+        "https://vergabe.hamburgwasser.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d2492ca93-1ff6199cd03ea20e",
+        "https://vergabe.hamburgwasser.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19db388e488-7089b91d644b651c"
+      ],
+      "url_count": 3
+    },
+    "vergabe.hessen.de": {
+      "best_url": "https://vergabe.hessen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd88769b6-664b9e5fa228d9cc&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.hessen.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d23d43d21-54539791b80edd3d",
+        "https://vergabe.hessen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19db9416b92-4858e4c14e519f99&PublicationType=0",
+        "https://vergabe.hessen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd88769b6-664b9e5fa228d9cc&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "vergabe.hilgmbh.de": {
+      "best_url": "https://vergabe.hilgmbh.de/VMPSatellite/notice/CXT6YYDYTP44KDLQ/documents",
+      "zip_url": "https://vergabe.hilgmbh.de/VMPSatellite/public/company/project/CXT6YYDYTP44KDLQ/de/documents/archive/Vergabeunterlagen_CXT6YYDYTP44KDLQ.zip",
+      "all_urls": [
+        "https://vergabe.hilgmbh.de/VMPSatellite/notice/CXT6YYDYTP44KDLQ/documents",
+        "https://vergabe.hilgmbh.de/VMPSatellite/notice/CXT6YYDYTPSA2S9H/documents",
+        "https://vergabe.hilgmbh.de/VMPSatellite/notice/CXT6YYDYTP6KNF4K/documents"
+      ],
+      "url_count": 3
+    },
+    "vergabe.landbw.de": {
+      "best_url": "https://vergabe.landbw.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19ac0551868-7c61e3244421a2e5",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.landbw.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd2fad39e-2ef255b6935fa601",
+        "https://vergabe.landbw.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d1917e726-2fb5339f3eb97432",
+        "https://vergabe.landbw.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19ac0551868-7c61e3244421a2e5"
+      ],
+      "url_count": 3
+    },
+    "vergabe.lvr.de": {
+      "best_url": "https://vergabe.lvr.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d9b131d2f-5f09c0bfc8dda2fa&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.lvr.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19daa6a1bcb-155944b927b62ff3",
+        "https://vergabe.lvr.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d9b131d2f-5f09c0bfc8dda2fa&PublicationType=0",
+        "https://vergabe.lvr.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dafd3e85e-1214757423e20bc8"
+      ],
+      "url_count": 3
+    },
+    "vergabe.muenchen.de": {
+      "best_url": "https://vergabe.muenchen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19ce1482a6e-7180d36181bf08e7&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.muenchen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dddcd0e77-308389dbea73eafe&PublicationType=0",
+        "https://vergabe.muenchen.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d6cfa96b6-15b7eef2fb2f71ca",
+        "https://vergabe.muenchen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19ce1482a6e-7180d36181bf08e7&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "vergabe.niedersachsen.de": {
+      "best_url": "https://vergabe.niedersachsen.de/Satellite/notice/CXS0Y6VYTPJ7ACDT/documents",
+      "zip_url": "https://vergabe.niedersachsen.de/Satellite/public/company/project/CXS0Y6VYTPJ7ACDT/de/documents/archive/Vergabeunterlagen_CXS0Y6VYTPJ7ACDT.zip",
+      "all_urls": [
+        "https://vergabe.niedersachsen.de/Satellite/notice/CXS0Y6VYTPJ7ACDT/documents",
+        "https://vergabe.niedersachsen.de/Satellite/notice/CXTWYYDYTPWQYRES",
+        "https://vergabe.niedersachsen.de/Satellite/notice/CXS0YHAYTPVWVHZ0",
+        "https://vergabe.niedersachsen.de/Satellite/notice/CXS0Y6VYTPJQU5HC/documents"
+      ],
+      "url_count": 4
+    },
+    "vergabe.stadt-frankfurt.de": {
+      "best_url": "https://vergabe.stadt-frankfurt.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19daaa19552-718498ae9b466528",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.stadt-frankfurt.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19daaa19552-718498ae9b466528",
+        "https://vergabe.stadt-frankfurt.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19cd6f692f7-6c598db93ea8c22",
+        "https://vergabe.stadt-frankfurt.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d91876070-5d30ae05dcb0c2a6"
+      ],
+      "url_count": 3
+    },
+    "vergabe.tk.de": {
+      "best_url": "https://vergabe.tk.de/Satellite/notice/CXR0YYRY6YZ",
+      "zip_url": "https://vergabe.tk.de/Satellite/public/company/project/CXR0YYRY6YZ/de/documents/archive/Vergabeunterlagen_CXR0YYRY6YZ.zip",
+      "all_urls": [
+        "https://vergabe.tk.de/Satellite/notice/CXR0YYRY6YZ",
+        "https://vergabe.tk.de/Satellite/notice/CXR0YYRY6YA/documents",
+        "https://vergabe.tk.de/Satellite/notice/CXR0YYRY6Y9/documents"
+      ],
+      "url_count": 3
+    },
+    "vergabe.vmstart.de": {
+      "best_url": "https://vergabe.vmstart.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df72eca48-64f0f570c7d21dcf&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabe.vmstart.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dd9ad40fc-1a7818c9c9a82f5",
+        "https://vergabe.vmstart.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19df7141b2f-16874e75cc932dfe",
+        "https://vergabe.vmstart.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df72eca48-64f0f570c7d21dcf&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "vergabemarktplatz.brandenburg.de": {
+      "best_url": "https://vergabemarktplatz.brandenburg.de/VMPSatellite/notice/CXP9YDMHN79/documents",
+      "zip_url": "https://vergabemarktplatz.brandenburg.de/VMPSatellite/public/company/project/CXP9YDMHN79/de/documents/archive/Vergabeunterlagen_CXP9YDMHN79.zip",
+      "all_urls": [
+        "https://vergabemarktplatz.brandenburg.de/VMPSatellite/notice/CXT8YYHYTP25A6F8/documents",
+        "https://vergabemarktplatz.brandenburg.de/VMPSatellite/notice/CXP9Y4BHK5P/documents",
+        "https://vergabemarktplatz.brandenburg.de/VMPSatellite/notice/CXP9YDMHN79/documents"
+      ],
+      "url_count": 3
+    },
+    "vergabeplattform.bwi.de": {
+      "best_url": "https://vergabeplattform.bwi.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c9a6295ed-288c347595099b2b",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabeplattform.bwi.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19c9a6295ed-288c347595099b2b",
+        "https://vergabeplattform.bwi.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19cd66cabcf-1b69408e53472195",
+        "https://vergabeplattform.bwi.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-198c15865e4-6423f6720ffdbca9"
+      ],
+      "url_count": 3
+    },
+    "vergabeplattform.charite.de": {
+      "best_url": "https://vergabeplattform.charite.de?tid=8e8fca03a49d285a4a9ebeedcbf2f3ee",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabeplattform.charite.de?tid=8e8fca03a49d285a4a9ebeedcbf2f3ee",
+        "https://vergabeplattform.charite.de/bundde/?data=eyJ0IjoxMDEwNDc2MSwidHlwZSI6MTU1MDAyLCJvIjoxMDAwMDAwMX0%3D",
+        "https://vergabeplattform.charite.de?tid=0d9ddb12c8fcc9724b2f3d79cfc83bbe"
+      ],
+      "url_count": 3
+    },
+    "vergabeplattform.stadt-koeln.de": {
+      "best_url": "https://vergabeplattform.stadt-koeln.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19ce67527db-42b76f6ef8f16b43&",
+      "zip_url": null,
+      "all_urls": [
+        "https://vergabeplattform.stadt-koeln.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19ce67527db-42b76f6ef8f16b43&",
+        "https://vergabeplattform.stadt-koeln.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d8c1f5848-7c47fded453d4b49&",
+        "https://vergabeplattform.stadt-koeln.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d3d20896a-491cb1d25df0c783&"
+      ],
+      "url_count": 3
+    },
+    "vergabeportal-bw.de": {
+      "best_url": "https://vergabeportal-bw.de/Satellite/notice/CXRAY63Y5ZG/documents",
+      "zip_url": "https://vergabeportal-bw.de/Satellite/public/company/project/CXRAY63Y5ZG/de/documents/archive/Vergabeunterlagen_CXRAY63Y5ZG.zip",
+      "all_urls": [
+        "https://vergabeportal-bw.de/Satellite/notice/CXRAY63Y5ZG/documents",
+        "https://vergabeportal-bw.de/Satellite/notice/CXRAYYGY5KH",
+        "https://vergabeportal-bw.de/Satellite/notice/CXRAYY6Y5Z3"
+      ],
+      "url_count": 3
+    },
+    "www.ausschreibungen.ls.brandenburg.de": {
+      "best_url": "https://www.ausschreibungen.ls.brandenburg.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d6cf05761-10ad59b58d9e4df8&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.ausschreibungen.ls.brandenburg.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd8f5cf0f-592e47d74c8f4cb2&PublicationType=0",
+        "https://www.ausschreibungen.ls.brandenburg.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d6cf05761-10ad59b58d9e4df8&PublicationType=0",
+        "https://www.ausschreibungen.ls.brandenburg.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dcee254d8-5a7fd7ed57939a7b"
+      ],
+      "url_count": 3
+    },
+    "www.deutsche-evergabe.de": {
+      "best_url": "http://www.deutsche-evergabe.de/dashboards/dashboard_off/da26db7c-bef9-464f-9428-41b60298e687",
+      "zip_url": null,
+      "all_urls": [
+        "http://www.deutsche-evergabe.de/dashboards/dashboard_off/da26db7c-bef9-464f-9428-41b60298e687",
+        "https://www.deutsche-evergabe.de/dashboards/dashboard_off/f5a8bfe6-18f9-44da-bfbf-ac81ca5824ad",
+        "https://www.deutsche-evergabe.de/dashboards/dashboard_off/98f46df3-6443-43a2-973d-df1bef5f60be"
+      ],
+      "url_count": 3
+    },
+    "www.deutsche-rentenversicherung-bund.de": {
+      "best_url": "https://www.deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d8bc3f789-71b48a2c0ffc52ce&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d01033cca-3be7a30112eabe5d&PublicationType=0",
+        "https://www.deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd4ae3d4a-6e6737a5b4650cde&PublicationType=0",
+        "https://www.deutsche-rentenversicherung-bund.de/einkaufskoordination/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d8bc3f789-71b48a2c0ffc52ce&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "www.deutsches-ausschreibungsblatt.de": {
+      "best_url": "https://www.deutsches-ausschreibungsblatt.de/VN/S-HAMELN-ET-2026-0013",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.deutsches-ausschreibungsblatt.de/VN/S-HAMELN-ET-2026-0013",
+        "https://www.deutsches-ausschreibungsblatt.de/VN/S-HSS-65-2026-0039",
+        "https://www.deutsches-ausschreibungsblatt.de/VN/S-BOT-ZV-2026-0067"
+      ],
+      "url_count": 3
+    },
+    "www.dtvp.de": {
+      "best_url": "https://www.dtvp.de/Satellite/notice/CXP4YTRMAGZ",
+      "zip_url": "https://www.dtvp.de/Satellite/public/company/project/CXP4YTRMAGZ/de/documents/archive/Vergabeunterlagen_CXP4YTRMAGZ.zip",
+      "all_urls": [
+        "https://www.dtvp.de/Satellite/notice/CXS0YMKYTPW8XPBS",
+        "https://www.dtvp.de/Satellite/notice/CXP4YTRMAGZ",
+        "https://www.dtvp.de/Satellite/notice/CXP4YKRMNZ3/documents"
+      ],
+      "url_count": 3
+    },
+    "www.enarocanje.si": {
+      "best_url": "https://www.enarocanje.si/api/datoteka/get?id=NTI1Mzk3O1JhenBpc25hIGRva3VtZW50YWNpamEgb2dsYcWhZXZhbmplIHYgc3BsZXRuaWggbWVkaWppaC56aXA",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.enarocanje.si/api/datoteka/get?id=NTI1Mzk3O1JhenBpc25hIGRva3VtZW50YWNpamEgb2dsYcWhZXZhbmplIHYgc3BsZXRuaWggbWVkaWppaC56aXA"
+      ],
+      "url_count": 1
+    },
+    "www.evergabe-online.de": {
+      "best_url": "https://www.evergabe-online.de/tenderdocuments.html?id=858407",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.evergabe-online.de/tenderdocuments.html?id=858407",
+        "https://www.evergabe-online.de/tenderdetails.html?id=858284",
+        "https://www.evergabe-online.de/tenderdocuments.html?id=858474"
+      ],
+      "url_count": 3
+    },
+    "www.evergabe.bayern.de": {
+      "best_url": "https://www.evergabe.bayern.de/evergabe.bieter/api/supplier/external/deeplink/subproject/918dfbf4-319f-46a2-9aa4-6185f28ae71d",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.evergabe.bayern.de/evergabe.bieter/api/supplier/external/deeplink/subproject/918dfbf4-319f-46a2-9aa4-6185f28ae71d",
+        "https://www.evergabe.bayern.de/evergabe.bieter/api/supplier/external/deeplink/subproject/cad5c3f7-f222-407d-9018-a4c8474cbfe1",
+        "https://www.evergabe.bayern.de/evergabe.bieter/api/supplier/external/deeplink/subproject/9f379877-08a0-41f0-b7c4-53334034328c"
+      ],
+      "url_count": 3
+    },
+    "www.evergabe.de": {
+      "best_url": "https://www.evergabe.de/auftraege/suche-ueber-vergabestellen/Stadt%2520Haldenslebenzentrale%2520Vergabestelle/3375215",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.evergabe.de/auftraege/suche-ueber-vergabestellen/Stadt%2520Haldenslebenzentrale%2520Vergabestelle/3375215",
+        "https://www.evergabe.de/auftraege/suche-ueber-vergabestellen/Gro%25C3%259Fe%2520Kreisstadt%2520Niesky/3376410",
+        "https://www.evergabe.de/unterlagen/019df34d-2f1e-42ae-8b1c-32d283cdf130/zustellweg-auswaehlen"
+      ],
+      "url_count": 3
+    },
+    "www.evergabe.nrw.de": {
+      "best_url": "https://www.evergabe.nrw.de/VMPSatellite/notice/CXS0YYWYTQDY792Y",
+      "zip_url": "https://www.evergabe.nrw.de/VMPSatellite/public/company/project/CXS0YYWYTQDY792Y/de/documents/archive/Vergabeunterlagen_CXS0YYWYTQDY792Y.zip",
+      "all_urls": [
+        "https://www.evergabe.nrw.de/VMPSatellite/notice/CXS0YYWYTQDY792Y",
+        "https://www.evergabe.nrw.de/VMPSatellite/notice/CXS7YY9YTPWZGVVC/documents",
+        "https://www.evergabe.nrw.de/VMPSatellite/notice/CXS7YYJYTP3Y2GL6/documents"
+      ],
+      "url_count": 3
+    },
+    "www.evergabe.sachsen.de": {
+      "best_url": "https://www.evergabe.sachsen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d8f9459ec-543a5b9e4cd160&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.evergabe.sachsen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df317b285-7211c91179660f42&PublicationType=0",
+        "https://www.evergabe.sachsen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd98219af-165e2504774b155d&PublicationType=0",
+        "https://www.evergabe.sachsen.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d8f9459ec-543a5b9e4cd160&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "www.had.de": {
+      "best_url": "https://www.had.de/onlinesuche_langfassung.html?showpub=IPLA9GJ1LIFDU2BD",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.had.de/onlinesuche_langfassung.html?showpub=IPLA9GJ1LIFDU2BD",
+        "https://www.had.de/onlinesuche_langfassung.html?showpub=DUY2TBRMUYGIS7CL",
+        "https://www.had.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dd8545d67-4e250451cefc7505"
+      ],
+      "url_count": 3
+    },
+    "www.kvb.de": {
+      "best_url": "https://www.kvb.de/ueber-uns/zusammenarbeit-mit-gesundheitspartnern/bewerbung-epraxis-aussteller",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.kvb.de/ueber-uns/zusammenarbeit-mit-gesundheitspartnern/bewerbung-epraxis-aussteller"
+      ],
+      "url_count": 1
+    },
+    "www.laenderfinanzierungsprogramm.de": {
+      "best_url": "https://www.laenderfinanzierungsprogramm.de/vergaben/",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.laenderfinanzierungsprogramm.de/vergaben/"
+      ],
+      "url_count": 1
+    },
+    "www.lubey.de": {
+      "best_url": "https://www.lubey.de/alloc/details/MRxN8JPywDEj/lot/uwPa7yShDUgf",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.lubey.de/alloc/details/MRxN8JPywDEj/lot/uwPa7yShDUgf"
+      ],
+      "url_count": 1
+    },
+    "www.meinauftrag.rib.de": {
+      "best_url": "https://www.meinauftrag.rib.de/public/DetailsByPlatformIdAndTenderId/platformId/3/tenderId/154093",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.meinauftrag.rib.de/public/DetailsByPlatformIdAndTenderId/platformId/3/tenderId/154093",
+        "https://www.meinauftrag.rib.de/public/DetailsByPlatformIdAndTenderId/platformId/1/tenderId/296871",
+        "https://www.meinauftrag.rib.de/public/DetailsByPlatformIdAndTenderId/platformId/1/tenderId/294718"
+      ],
+      "url_count": 3
+    },
+    "www.sachsen-vergabe.de": {
+      "best_url": "https://www.sachsen-vergabe.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df16cee24-2c9580444a337de&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.sachsen-vergabe.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dbe28c196-48c59f576f5d7c77&PublicationType=0",
+        "https://www.sachsen-vergabe.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df16cee24-2c9580444a337de&PublicationType=0",
+        "https://www.sachsen-vergabe.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d9665b6f8-54ca763a073f6dc9"
+      ],
+      "url_count": 3
+    },
+    "www.staatsanzeiger-eservices.de": {
+      "best_url": "https://www.staatsanzeiger-eservices.de/aJs/EFormsBekVuUrl?z_param=325515",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.staatsanzeiger-eservices.de/aJs/EFormsBekVuUrl?z_param=325515",
+        "https://www.staatsanzeiger-eservices.de/aJs/EFormsBekVuUrl?z_param=325560",
+        "https://www.staatsanzeiger-eservices.de/aJs/EFormsBekVuUrl?z_param=325507"
+      ],
+      "url_count": 3
+    },
+    "www.subreport-elvis.de": {
+      "best_url": "https://www.subreport-elvis.de/download/bund/E28793824/1777904119363/bekanntmachung.pdf",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.subreport-elvis.de/download/bund/E28793824/1777904119363/bekanntmachung.pdf",
+        "https://www.subreport-elvis.de/download/bund/E49274634/1777463577450/bekanntmachung.pdf",
+        "https://www.subreport-elvis.de/download/bund/E66376329/1776170458129/bekanntmachung.pdf"
+      ],
+      "url_count": 3
+    },
+    "www.subreport.de": {
+      "best_url": "https://www.subreport.de/E69184189",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.subreport.de/E69184189",
+        "https://www.subreport.de/E99148163",
+        "https://www.subreport.de/E82648369"
+      ],
+      "url_count": 3
+    },
+    "www.tender24.de": {
+      "best_url": "https://www.tender24.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df6e519b5-7d0ae6df35400855&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.tender24.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19a96969a13-49bd9c9f585d446f",
+        "https://www.tender24.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19df6e519b5-7d0ae6df35400855&PublicationType=0",
+        "https://www.tender24.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dddd854bb-7daa2d830abd7948"
+      ],
+      "url_count": 3
+    },
+    "www.vergabe-westfalen.de": {
+      "best_url": "https://www.vergabe-westfalen.de/VMPSatellite/notice/CXVJYYDYTPCW09Q9/documents",
+      "zip_url": "https://www.vergabe-westfalen.de/VMPSatellite/public/company/project/CXVJYYDYTPCW09Q9/de/documents/archive/Vergabeunterlagen_CXVJYYDYTPCW09Q9.zip",
+      "all_urls": [
+        "https://www.vergabe-westfalen.de/VMPSatellite/notice/CXVJYYDYTPCW09Q9/documents",
+        "https://www.vergabe-westfalen.de/VMPSatellite/notice/CXPWYRJLAG2/documents",
+        "https://www.vergabe-westfalen.de/VMPSatellite/notice/CXPWYDDLAQ4"
+      ],
+      "url_count": 3
+    },
+    "www.vergabe.metropoleruhr.de": {
+      "best_url": "https://www.vergabe.metropoleruhr.de/VMPSatellite/notice/CXS0YMUYTP2RTYTT/documents",
+      "zip_url": "https://www.vergabe.metropoleruhr.de/VMPSatellite/public/company/project/CXS0YMUYTP2RTYTT/de/documents/archive/Vergabeunterlagen_CXS0YMUYTP2RTYTT.zip",
+      "all_urls": [
+        "https://www.vergabe.metropoleruhr.de/VMPSatellite/notice/CXS0YMUYTP2RTYTT/documents",
+        "https://www.vergabe.metropoleruhr.de/VMPSatellite/notice/CXS0YYSYTP4E3N4H/documents",
+        "https://www.vergabe.metropoleruhr.de/VMPSatellite/notice/CXPSYYVDG3L"
+      ],
+      "url_count": 3
+    },
+    "www.vergabe.stadt-frankfurt.de": {
+      "best_url": "http://www.vergabe.stadt-frankfurt.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd7d47ca9-15deee5d0e04888c&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "http://www.vergabe.stadt-frankfurt.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19ddd6f6c84-15c0d3567b1f0920&PublicationType=0",
+        "http://www.vergabe.stadt-frankfurt.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19d060d066e-3aeb75aec0390009&PublicationType=0",
+        "http://www.vergabe.stadt-frankfurt.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dd7d47ca9-15deee5d0e04888c&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "www.vergabe24.de": {
+      "best_url": "https://www.vergabe24.de/vergabeunterlagen/54321-Tender-19dd2f25b95-70fc06c9929a8e38",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.vergabe24.de/vergabeunterlagen/54321-Tender-19dd2f25b95-70fc06c9929a8e38",
+        "https://www.vergabe24.de/vergabeunterlagen/54321-Tender-19df72a46c4-58d09ece6ac63e6f",
+        "https://www.vergabe24.de/vergabeunterlagen/54321-Tender-19dd4101032-7ef91f4ca0950b70"
+      ],
+      "url_count": 3
+    },
+    "www.vergabemarktplatz-mv.de": {
+      "best_url": "https://www.vergabemarktplatz-mv.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dafccb77f-2325fd425ebe2dc0&PublicationType=0",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.vergabemarktplatz-mv.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19c716cf6c5-1c64e19986d84c23&PublicationType=0",
+        "https://www.vergabemarktplatz-mv.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dd342e2f4-2a299d8a421a598d",
+        "https://www.vergabemarktplatz-mv.de/NetServer/PublicationControllerServlet?function=Detail&TWOID=54321-Tender-19dafccb77f-2325fd425ebe2dc0&PublicationType=0"
+      ],
+      "url_count": 3
+    },
+    "www.vergaben-wirtschaftsregion-aachen.de": {
+      "best_url": "https://www.vergaben-wirtschaftsregion-aachen.de/VMPSatellite/notice/CXS0YR1YTPS9J8BG",
+      "zip_url": "https://www.vergaben-wirtschaftsregion-aachen.de/VMPSatellite/public/company/project/CXS0YR1YTPS9J8BG/de/documents/archive/Vergabeunterlagen_CXS0YR1YTPS9J8BG.zip",
+      "all_urls": [
+        "https://www.vergaben-wirtschaftsregion-aachen.de/VMPSatellite/notice/CXS0YR1YTPS9J8BG",
+        "https://www.vergaben-wirtschaftsregion-aachen.de/VMPSatellite/notice/CXVHYY5YTP3B2U2V/documents",
+        "https://www.vergaben-wirtschaftsregion-aachen.de/VMPSatellite/notice/CXVHYH5YT8V2YU73/documents"
+      ],
+      "url_count": 3
+    },
+    "www.vgem-mellingen.de": {
+      "best_url": "http://www.vgem-mellingen.de/seite/856902/ausschreibung-nach-vob-a.html",
+      "zip_url": null,
+      "all_urls": [
+        "http://www.vgem-mellingen.de/seite/856902/ausschreibung-nach-vob-a.html"
+      ],
+      "url_count": 1
+    },
+    "www.vmp-rheinland.de": {
+      "best_url": "https://www.vmp-rheinland.de/VMPSatellite/notice/CXPTYYQDUYV/documents",
+      "zip_url": "https://www.vmp-rheinland.de/VMPSatellite/public/company/project/CXPTYYQDUYV/de/documents/archive/Vergabeunterlagen_CXPTYYQDUYV.zip",
+      "all_urls": [
+        "https://www.vmp-rheinland.de/VMPSatellite/notice/CXPTYYQDUYV/documents",
+        "https://www.vmp-rheinland.de/VMPSatellite/notice/CXVHYYRYT77EJ3FL/documents",
+        "https://www.vmp-rheinland.de/VMPSatellite/notice/CXPTYY8DUDA"
+      ],
+      "url_count": 3
+    },
+    "www.volksbund.de": {
+      "best_url": "https://www.volksbund.de/ausschreibungen/umbettungsarbeiten-lettland-2026",
+      "zip_url": null,
+      "all_urls": [
+        "https://www.volksbund.de/ausschreibungen/umbettungsarbeiten-lettland-2026"
+      ],
+      "url_count": 1
+    },
+    "xvergabe.de": {
+      "best_url": "https://xvergabe.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dce49b307-9d3542990dcf747&",
+      "zip_url": null,
+      "all_urls": [
+        "https://xvergabe.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dce49b307-9d3542990dcf747&",
+        "https://xvergabe.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19d680d23bf-8a2ae95376d7c0b&",
+        "https://xvergabe.de/NetServer/TenderingProcedureDetails?function=_Details&TenderOID=54321-Tender-19dd9dd4c9c-61df16ce3e8dae6&"
+      ],
+      "url_count": 3
+    }
+  },
+  "generated": "2026-06-08",
+  "total": 80
+}

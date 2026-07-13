@@ -36,6 +36,8 @@ _USER_AGENT = (
     "Chrome/124.0.0.0 Safari/537.36"
 )
 
+_MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024   # 200 MB per file — ZIP bombs / runaway streams
+
 
 @dataclass
 class DeterministicResult:
@@ -87,12 +89,41 @@ def _download(url: str, dest: Path, timeout: int = 30) -> str | None:
             if r.status_code >= 400:
                 log.warning("deterministic.bad_status", url=url, status=r.status_code)
                 return None
+
+            # Pre-download size guard
+            content_length = r.headers.get("Content-Length")
+            if content_length:
+                try:
+                    declared_size = int(content_length)
+                    if declared_size > _MAX_DOWNLOAD_BYTES:
+                        log.warning(
+                            "deterministic.content_length_too_large",
+                            url=url,
+                            size_mb=declared_size // 1_048_576,
+                            limit_mb=_MAX_DOWNLOAD_BYTES // 1_048_576,
+                        )
+                        return None
+                except ValueError:
+                    pass
+
             name = _filename_from_url(url, r.headers.get("Content-Type"))
             path = dest / name
+            bytes_written = 0
             with open(path, "wb") as f:
                 for chunk in r.iter_content(chunk_size=65536):
                     if chunk:
+                        bytes_written += len(chunk)
+                        if bytes_written > _MAX_DOWNLOAD_BYTES:
+                            log.warning(
+                                "deterministic.stream_too_large",
+                                url=url,
+                                written_mb=bytes_written // 1_048_576,
+                                limit_mb=_MAX_DOWNLOAD_BYTES // 1_048_576,
+                            )
+                            path.unlink(missing_ok=True)
+                            return None
                         f.write(chunk)
+
             if path.stat().st_size == 0:
                 log.warning("deterministic.empty_file", url=url)
                 path.unlink(missing_ok=True)
@@ -133,6 +164,18 @@ def try_deterministic(url: str) -> DeterministicResult:
     log.info("deterministic.attempt", platform=platform, url=download_url)
     out = _make_output_dir()
     saved = _download(download_url, out)
+
+    # NetServer fallback: try alternate URL patterns when primary returns empty.
+    # _DownloadTenderDocuments often returns 200 with empty body on portals that
+    # gate document access by session. Try the DTVP ZIP endpoint style as well.
+    if not saved and platform == "netserver":
+        alt_urls = platform_classifier.build_netserver_fallback_urls(url)
+        for alt in alt_urls:
+            log.info("deterministic.netserver_fallback", alt_url=alt)
+            saved = _download(alt, out)
+            if saved:
+                break
+
     if not saved:
         return DeterministicResult(
             success=False, platform=platform, downloaded_files=[],

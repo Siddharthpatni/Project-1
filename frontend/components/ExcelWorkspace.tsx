@@ -25,6 +25,7 @@ import {
   Database,
   Globe,
 } from "lucide-react";
+import { useToast } from "@/components/Toast";
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface UploadedFile {
@@ -240,6 +241,7 @@ const VirtualRow = memo(function VirtualRow({
 
 // ─── Main Component ──────────────────────────────────────────────────
 export default function ExcelWorkspace() {
+  const toast = useToast();
   const filesRef = useRef<UploadedFile[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
   const [fileIds, setFileIds] = useState<string[]>([]);
@@ -502,7 +504,7 @@ export default function ExcelWorkspace() {
     if (!colName?.trim()) return;
     const clean = colName.trim();
     if (file.headers.includes(clean)) {
-      alert("Column already exists!");
+      toast.warning("Column already exists");
       return;
     }
     file.headers.push(clean);
@@ -511,7 +513,7 @@ export default function ExcelWorkspace() {
     }
     setDataVersion((v) => v + 1);
     scheduleSave();
-  }, [activeFileId, scheduleSave]);
+  }, [activeFileId, scheduleSave, toast]);
 
   const exportFile = useCallback(() => {
     if (!activeFile) return;
@@ -524,9 +526,9 @@ export default function ExcelWorkspace() {
         activeFile.name.replace(/\.[^/.]+$/, "") + "_modified.xlsx"
       );
     } catch (err: any) {
-      alert(`Export failed: ${err.message}`);
+      toast.error("Export failed", err?.message);
     }
-  }, [activeFile]);
+  }, [activeFile, toast]);
 
   // ─── react-window props ───────────────────────────────────────────
   const rowProps: RowProps = useMemo(

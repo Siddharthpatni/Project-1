@@ -51,8 +51,11 @@ celery_app.conf.update(
         "app.workers.tasks.run_cua_task":               {"queue": "cua"},
         "app.workers.tasks.smart_domain_batch_task":    {"queue": "default"},
         "app.workers.tasks.run_evaluation_task":        {"queue": "default"},
-        "app.workers.tasks.crash_recovery_task":        {"queue": "beat"},
-        "app.workers.tasks.check_document_versions_task": {"queue": "beat"},
+        "app.workers.tasks.crash_recovery_task":           {"queue": "beat"},
+        "app.workers.tasks.check_document_versions_task":  {"queue": "beat"},
+        "app.workers.tasks.cleanup_stale_downloads_task":  {"queue": "beat"},
+        "app.workers.tasks.extract_job_task":              {"queue": "default"},
+        "app.workers.tasks.extract_chunk_task":            {"queue": "chunks"},
     },
 
     # Timezone
@@ -69,7 +72,14 @@ celery_app.conf.beat_schedule = {
     # Document versioning check every N hours
     "check-document-versions": {
         "task": "app.workers.tasks.check_document_versions_task",
-        "schedule": crontab(hour="*/{}".format(settings.versioning_check_interval_hours), minute=0),
+        "schedule": crontab(hour=f"*/{settings.versioning_check_interval_hours}", minute=0),
+        "options": {"queue": "beat"},
+    },
+    # Hourly disk cleanup — removes stale download dirs older than 24h
+    # Critical for 10K+ URL runs to prevent disk exhaustion
+    "cleanup-stale-downloads": {
+        "task": "app.workers.tasks.cleanup_stale_downloads_task",
+        "schedule": crontab(minute=0),   # every hour on the hour
         "options": {"queue": "beat"},
     },
 }

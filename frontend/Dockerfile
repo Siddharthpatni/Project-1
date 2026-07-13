@@ -3,27 +3,36 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci || npm install
 
 COPY . .
 
 # The rewrite destination is evaluated at build time by Next.js,
 # so we set the internal Docker URL here.
 ENV INTERNAL_API_URL=http://api:8000
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Stage 2: Runner
+# Stage 2: Runner — standalone output only (no full node_modules, ~10x smaller)
 FROM node:20-alpine AS runner
 
 WORKDIR /app
-COPY --from=builder /app/package.json .
-COPY --from=builder /app/package-lock.json .
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Keep at runtime too (Next.js re-evaluates rewrites on each request)
+# next.config.js `output: "standalone"` emits a self-contained server.js
+# with its own pruned node_modules subset.
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/public ./public
+
+# NOTE: rewrites are baked at BUILD time in standalone mode — the builder
+# stage's INTERNAL_API_URL is what counts. This runtime copy only serves any
+# server code that reads process.env directly.
 ENV INTERNAL_API_URL=http://api:8000
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
+USER node
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

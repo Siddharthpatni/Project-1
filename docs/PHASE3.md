@@ -2,44 +2,44 @@
 
 **Goal:** Combine all approaches into a unified, deployed service.
 
+> This is the original Phase-3 brief. The integrated system has since grown from
+> a 3-strategy cascade into a **7-strategy** one with a URL-intelligence layer,
+> honest outcome buckets, and a public tender directory. See
+> [PIPELINE.md](PIPELINE.md) and [ARCHITECTURE.md](ARCHITECTURE.md) for the
+> current design; this file is kept for historical context.
+
 ## Files
 
 | File | Responsibility |
 |---|---|
 | `pipeline.py` | The cascaded `process_url` function — the main entry point |
-| `scraper_registry.py` | CRUD + statistics for reusable scrapers (keyed by domain) |
+| `url_intelligence.py` | Pre-classify URLs (30 portal types) + circuit breaker + rate limiter |
+| `adaptive_scraper.py` | Strategy 3 — free, country/language-agnostic heuristic scraper |
+| `deterministic.py` | Strategy 2 — direct ZIP download for DTVP/Satellite/NetServer |
+| `scraper_registry.py` | CRUD + statistics for reusable scrapers + learned routes (keyed by domain) |
+| `platform_classifier.py` | URL/HTML portal fingerprinting + deterministic URL builders |
+| `outcomes.py` | Collapse 27 failure categories → 8 honest buckets + needs-manual logic |
+| `portal_directory_seed.py` | ~100 seed portal domains for the public directory |
 | `fallback.py` | Pure decision logic: which strategy to try next |
 | `versioning.py` | Document checksum diffing for periodic re-checks |
 
-## Cascade
+## Cascade (current — 7 strategies)
 
 ```
-            ┌──────────────────┐
-            │ POST /api/jobs   │
-            └────────┬─────────┘
-                     │
-                     ▼
-        ┌────────────────────────┐
-        │ existing scraper       │── success ──▶ store + done
-        │ (registry by domain)   │
-        └────────┬───────────────┘
-                 │ fail
-                 ▼
-        ┌────────────────────────┐
-        │ LLM-generated scraper  │── success ──▶ promote to registry
-        │ (Phase 1 feedback loop)│              + store + done
-        └────────┬───────────────┘
-                 │ fail
-                 ▼
-        ┌────────────────────────┐
-        │ CUA fallback           │── success ──▶ store + done
-        │ (Phase 2)              │
-        └────────┬───────────────┘
-                 │ fail
-                 ▼
-            error report
+POST /api/jobs
+      │
+      ▼
+URL intelligence ── classify type · circuit breaker · rate limiter
+      │  selects a strategy order tuned to the portal type
+      ▼
+1 existing ─▶ 2 deterministic ─▶ 3 adaptive ─▶ 4 LLM-generated
+      ─▶ 5 learned route ─▶ 6 CUA ─▶ 7 manual
+      │ (first to return documents wins; the rest are skipped)
+      ▼
+success: store + deep-extract   |   failure: classify into outcome bucket
 ```
 
+`ADAPTIVE` is injected before the paid LLM step and `LEARNED_ROUTE` before CUA.
 The `next_strategy` function in `fallback.py` is intentionally pure and
 side-effect-free so it's trivially unit-testable. See `tests/test_phase3.py`.
 

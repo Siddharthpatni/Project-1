@@ -35,6 +35,7 @@ import tempfile
 import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -42,31 +43,18 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.llm_client import LLMClient
-from app.core.security import is_url_allowed, classify_risk, detect_prompt_injection
+from app.core.metrics import (
+    SCRAPE_DURATION, SCRAPE_TOTAL, ZIP_EXPANSIONS, ZIP_FILES_EXTRACTED,
+)
+from app.core.security import (
+    classify_error,
+    classify_risk,
+    detect_prompt_injection,
+    is_url_allowed,
+)
 from app.core.storage import ObjectStorage
+from app.core.zip_expander import expand_zips
 from app.models import Document, JobItem, JobStatus, Strategy
-from app.utils.audit import CRITICAL, ERROR, INFO, WARNING, write_audit
-
-# Maps security.classify_error categories → plain-English reason shown in UI
-_ERROR_REASON_MAP: dict[str, str] = {
-    "timeout":          "Request timed out — portal too slow or overloaded",
-    "network":          "Network error — connection refused or reset by portal",
-    "dns":              "DNS resolution failed — domain does not exist",
-    "ssl":              "SSL/TLS error — certificate problem on portal",
-    "auth":             "Access denied (HTTP 401/403) — portal requires login",
-    "not_found":        "Page not found (HTTP 404) — URL may be expired",
-    "rate_limit":       "Rate limited (HTTP 429) — too many requests to portal",
-    "server_error":     "Portal server error (5xx) — backend issue on tender site",
-    "code_validation":  "Generated scraper failed validation — unsafe or wrong signature",
-    "sandbox":          "Sandbox resource limit exceeded — scraper used too much memory/CPU",
-    "prompt_injection": "Prompt injection pattern detected in URL or page content",
-    "no_documents":     "No downloadable documents found on the page",
-    "storage":          "File storage error — could not save to S3/MinIO",
-    "blocked_url":      "URL blocked — private network or disallowed scheme (SSRF protection)",
-    "no_strategy":      "No matching strategy — deterministic template does not apply",
-    "loop_exhausted":   "LLM feedback loop exhausted — all iterations failed to produce valid scraper",
-    "unknown":          "Unexpected error — check error_raw for details",
-}
 from app.phase0_manual.v1_reference import scrape as manual_scrape
 from app.phase1_llm_scraper.executor import (
     cleanup_output_dir,
@@ -75,12 +63,76 @@ from app.phase1_llm_scraper.executor import (
 from app.phase1_llm_scraper.feedback_loop import run_feedback_loop
 from app.phase1_llm_scraper.route_learner import RouteMap, learn_route
 from app.phase2_cua.orchestrator import run_agent
+from app.phase2_cua.route_learner import learn_from_cua, replay as replay_learned_route
 from app.phase3_integration import platform_classifier, scraper_registry
+from app.phase3_integration.adaptive_scraper import run_adaptive
 from app.phase3_integration.deterministic import try_deterministic
 from app.phase3_integration.fallback import StrategyOutcome, next_strategy
+from app.phase3_integration.login_detector import detect_login_wall
+from app.phase3_integration.url_intelligence import (
+    classify_url_type, circuit_breaker, get_strategy_order, rate_limiter,
+)
+from app.utils.audit import CRITICAL, ERROR, INFO, WARNING, write_audit
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
+
+# Maps security.classify_error categories → plain-English reason shown in UI
+_ERROR_REASON_MAP: dict[str, str] = {
+    # Infrastructure
+    "timeout":               "Request timed out — portal too slow or overloaded",
+    "network":               "Network error — connection refused or reset by portal",
+    "dns":                   "DNS resolution failed — domain does not exist",
+    "ssl":                   "SSL/TLS error — certificate problem on portal",
+    "redirect_loop":         "Redirect loop detected — URL keeps redirecting indefinitely",
+    "encoding_error":        "Encoding/decode error — response could not be read (charset issue)",
+    # Security / validation
+    "code_validation":       "Generated scraper failed validation — unsafe or wrong signature",
+    "prompt_injection":      "Prompt injection pattern detected in URL or page content",
+    "blocked_url":           "URL blocked — private network or disallowed scheme (SSRF protection)",
+    "sandbox":               "Sandbox resource limit exceeded — scraper used too much memory/CPU",
+    # Access / auth
+    "login_required":        "Login required — portal shows a sign-in wall (no hard 401/403)",
+    "registration_required": "Registration required — must create an account to access documents",
+    "auth":                  "Access denied (HTTP 401/403) — portal requires authentication",
+    # Bot protection
+    "captcha":               "CAPTCHA / bot detection triggered — Cloudflare or reCAPTCHA blocked access",
+    # HTTP codes
+    "not_found":             "Page not found (HTTP 404) — URL may be expired or removed",
+    "rate_limit":            "Rate limited (HTTP 429) — too many requests to portal",
+    "server_error":          "Portal server error (5xx) — backend issue on the tender site",
+    # Tender lifecycle
+    "expired":               "Tender expired or archived — documents no longer publicly available",
+    "maintenance":           "Site under maintenance — try again later",
+    # Scraper content issues
+    "js_required":           "JavaScript required — page needs browser rendering, plain HTTP failed",
+    "empty_page":            "Empty/blank page — portal loaded but returned no usable content",
+    "scraper_crash":         "Scraper crashed — unhandled exception in generated or stored scraper code",
+    # Documents / storage
+    "no_documents":          "No downloadable documents found on the page",
+    "storage":               "File storage error — could not save to S3/MinIO",
+    # Pipeline-level
+    "no_strategy":           "No matching strategy — deterministic template does not apply",
+    "loop_exhausted":        "LLM feedback loop exhausted — all iterations failed to produce valid scraper",
+    "unknown":               "Unexpected error — check error_raw for details",
+}
+# Global semaphore: limits concurrent LLM generation threads across all URLs
+# in the same asyncio event loop (one per Celery worker task).
+# Without this, 8 concurrent URLs each spawn a thread that calls OpenRouter
+# simultaneously — triggering 403 rate-limit on most of them.
+# Re-created per event loop: each Celery task runs asyncio.run() with a fresh
+# loop, and awaiting a semaphore bound to a previous (closed) loop raises
+# "bound to a different event loop".
+_LLM_GENERATION_SEM: asyncio.Semaphore | None = None
+_LLM_SEM_LOOP: asyncio.AbstractEventLoop | None = None
+
+def _get_llm_sem() -> asyncio.Semaphore:
+    global _LLM_GENERATION_SEM, _LLM_SEM_LOOP
+    loop = asyncio.get_running_loop()
+    if _LLM_GENERATION_SEM is None or _LLM_SEM_LOOP is not loop:
+        _LLM_GENERATION_SEM = asyncio.Semaphore(settings.llm_global_concurrency)
+        _LLM_SEM_LOOP = loop
+    return _LLM_GENERATION_SEM
 
 
 @dataclass
@@ -112,8 +164,9 @@ def _job_downloads_dir(item: JobItem) -> Path:
 
 
 def _move_into(scratch: Path, sources: list[str]) -> list[str]:
-    """Copy `sources` into `scratch` (preserving names; deduping by name) and
-    return the new absolute paths. Skips files that don't exist."""
+    """Copy `sources` into `scratch` (preserving names; deduping by name),
+    expand any ZIPs found, and return the full list of absolute paths.
+    Skips files that don't exist."""
     moved: list[str] = []
     seen: set[str] = set()
     for src in sources:
@@ -134,6 +187,22 @@ def _move_into(scratch: Path, sources: list[str]) -> list[str]:
             moved.append(str(target))
         except Exception as e:  # noqa: BLE001
             log.warning("phase3.pipeline.copy_failed", src=src, error=str(e))
+
+    try:
+        expanded = expand_zips(moved)
+        new_files = len(expanded) - len(moved)
+        if new_files > 0:
+            log.info(
+                "phase3.pipeline.zip_expanded",
+                original=len(moved),
+                after_expansion=len(expanded),
+            )
+            ZIP_EXPANSIONS.inc()
+            ZIP_FILES_EXTRACTED.inc(new_files)
+        moved = expanded
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.pipeline.zip_expand_failed", error=str(e))
+
     return moved
 
 
@@ -145,7 +214,12 @@ async def process_url(
     force_strategy: Strategy | None = None,
 ) -> PipelineResult:
     """Run the full cascade for a single URL and persist downloaded files."""
-    url = item.url
+    # Rewrite known login-entrance / landing URLs to the public page that
+    # actually serves documents (e.g. EU-Supply rwlentrance → PublicPurchase).
+    url = platform_classifier.normalize_url(item.url)
+    if url != item.url:
+        write_audit("pipeline.url_normalized", f"{item.url} → {url}", level=INFO,
+                    job_id=item.job_id, item_id=item.id, url=item.url)
     domain = urlparse(url).netloc
 
     result = PipelineResult(success=False, strategy_used=Strategy.NONE, downloaded=[])
@@ -170,7 +244,6 @@ async def process_url(
     #    the whole URL string (which may contain % encodings that look like hex
     #    sequences). URLs cannot inject into LLM prompts; only fetched HTML can.
     #    Prompt injection in fetched HTML is caught in generator._fetch_snippet().
-    from app.core.security import detect_prompt_injection
     from urllib.parse import unquote
     url_decoded = unquote(url)
     injection_hits = detect_prompt_injection(url_decoded)
@@ -184,25 +257,27 @@ async def process_url(
         db.commit()
         return result
 
-    # 2. Lightweight DNS-only pre-flight check.
+    # 2. Lightweight DNS-only pre-flight check (non-blocking).
     #
-    # We ONLY abort here when the domain does not resolve in DNS — that means
-    # the URL is completely unreachable and no strategy can help. All other
-    # failures (TCP refused, SSL errors, HTTP 4xx/5xx, VPN-gated, slow servers)
-    # are handled gracefully inside the cascade strategies themselves.
-    #
-    # Previous approach tried HEAD→GET and aborted on ConnectError — this was
-    # too aggressive for bulk runs: 100 simultaneous connections to the same
-    # IP triggered rate-limiting/connection resets, appearing as ConnectError
-    # even for valid domains. DNS failures are the only truly unrecoverable case.
+    # CRITICAL: socket.getaddrinfo is synchronous — calling it directly in an
+    # async function blocks the entire event loop and freezes all concurrent
+    # coroutines. Run it in a thread pool so other URLs keep processing.
     import socket as _socket
+    # Resolve the bare hostname — netloc may carry a port ("host:8443") or
+    # userinfo, which getaddrinfo rejects and would misreport as a DNS failure.
+    _dns_host = urlparse(url).hostname or domain
     try:
-        _socket.getaddrinfo(domain, None, proto=_socket.IPPROTO_TCP)
-    except _socket.gaierror:
-        result.error = f"dns resolution failed: {domain} does not exist"
+        await asyncio.to_thread(_socket.getaddrinfo, _dns_host, None, _socket.AF_UNSPEC, _socket.SOCK_STREAM)
+    except OSError:
+        # Catch all socket resolution failures: gaierror (NXDOMAIN), herror
+        # (SERVFAIL), and OSError (resolver timeout, network unreachable).
+        # Previously only gaierror was caught — herror/OSError escaped unhandled
+        # and left the item in PENDING state with no final DB commit.
+        result.error = f"dns resolution failed: {domain}"
         item.status = JobStatus.FAILED.value
         item.strategy = Strategy.NONE.value
         item.error_message = result.error
+        item.failure_category = "dns"
         write_audit("pipeline.dns_fail", f"DNS resolution failed for {domain}", level=ERROR,
                     job_id=item.job_id, item_id=item.id, domain=domain, url=url)
         db.commit()
@@ -211,13 +286,52 @@ async def process_url(
     scratch = _job_downloads_dir(item)
     result._scratch_dirs.append(str(scratch))
 
-    strategies = [force_strategy] if force_strategy else [
-        Strategy.MANUAL,
-        Strategy.EXISTING,
-        Strategy.DETERMINISTIC,
-        Strategy.LLM_GENERATED,
-        Strategy.CUA,
-    ]
+    # ── Intelligent URL pre-classification ───────────────────────────────────
+    # Classify URL type BEFORE the cascade to select the optimal strategy order.
+    # This is the single biggest reliability improvement for 10K+ URL runs:
+    #   - Auth-gated URLs skip LLM (saves ~90s + API cost per URL)
+    #   - Satellite URLs go straight to deterministic (saves Playwright startup)
+    #   - All types get a strategy list tuned to their expected success pattern
+    _quick_platform = platform_classifier.classify_url(url)
+    _url_type       = classify_url_type(url)
+
+    # ── Circuit breaker check ─────────────────────────────────────────────────
+    # If this domain has failed too many times recently, skip it immediately.
+    # The circuit re-opens after reset_timeout (30 min) to allow recovery probes.
+    if not circuit_breaker.allow_request(domain):
+        result.error = f"circuit breaker open for {domain} — too many recent failures"
+        item.status = JobStatus.FAILED.value
+        item.strategy = Strategy.NONE.value
+        item.error_message = result.error
+        item.failure_category = "circuit_open"
+        write_audit("circuit_breaker.rejected", f"Domain {domain} circuit is open — skipping",
+                    level=WARNING, job_id=item.job_id, item_id=item.id, domain=domain, url=url)
+        db.commit()
+        return result
+
+    # ── Domain rate limiter ───────────────────────────────────────────────────
+    # Prevent hammering the same portal from multiple concurrent workers.
+    # If we can't acquire a slot, back off briefly and try one more time.
+    # Track whether we actually hold a slot: releasing a slot we never took
+    # would corrupt the shared counter and allow over-concurrency later.
+    have_rl_slot = rate_limiter.acquire(domain)
+    if not have_rl_slot:
+        await asyncio.sleep(5)
+        have_rl_slot = rate_limiter.acquire(domain)
+        if not have_rl_slot:
+            write_audit("rate_limiter.backoff", f"Rate limit hit for {domain}",
+                        level=WARNING, job_id=item.job_id, item_id=item.id, domain=domain)
+
+    # ── Strategy order selection ──────────────────────────────────────────────
+    if force_strategy:
+        strategies = [force_strategy]
+    else:
+        strategies = get_strategy_order(_url_type, _quick_platform)
+
+    # Log the pre-classification result for analytics
+    write_audit("pipeline.url_classified",
+                f"URL type={_url_type.value} platform={_quick_platform} strategies={[s.value for s in strategies]}",
+                level=INFO, job_id=item.job_id, item_id=item.id, domain=domain, url=url)
 
     from datetime import datetime as _dt
     from app.core.security import classify_error as _classify_error
@@ -250,7 +364,7 @@ async def process_url(
             "success":        outcome.success,
             "downloaded":     outcome.downloaded,
             "duration_s":     strategy_elapsed,
-            "timestamp":      _dt.utcnow().isoformat(),
+            "timestamp":      _dt.now(UTC).isoformat(),
             "error_raw":      (outcome.error or "")[:500],
             "error_category": error_category,
             "error_reason":   error_reason,
@@ -278,17 +392,23 @@ async def process_url(
                             level=WARNING, job_id=item.job_id, item_id=item.id,
                             domain=domain, url=url, strategy=strategy.value,
                             metadata={"error_category": error_category, "error_raw": (outcome.error or "")[:300]})
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(0.3)  # was 2.0 — don't block all concurrent coroutines
                 try:
                     retry_outcome = await _run_strategy(db, strategy, url, domain, llm, scratch, result)
                     if retry_outcome.success:
                         log.info("phase3.pipeline.self_healing_success", strategy=strategy.value)
                         write_audit("self_heal.success", f"Auto-recovered {strategy.value}", level=INFO,
                                     job_id=item.job_id, item_id=item.id, domain=domain, url=url, strategy=strategy.value)
+                        healed_from = attempt_record["error_raw"]
                         outcome = retry_outcome
                         last_outcome = outcome
+                        # Keep the attempt record consistent with the final
+                        # outcome, otherwise analytics count a healed win as a
+                        # failure of this strategy.
                         attempt_record["healed"] = True
-                        item.error_message = f"[SELF-HEALED] Automatically resolved: {retry_outcome.error}"
+                        attempt_record["success"] = True
+                        attempt_record["downloaded"] = retry_outcome.downloaded
+                        item.error_message = f"[SELF-HEALED] Automatically resolved: {healed_from}"
                     else:
                         log.warning("phase3.pipeline.self_healing_failed", strategy=strategy.value)
                         write_audit("self_heal.failed", f"Self-heal retry failed for {strategy.value}", level=WARNING,
@@ -299,9 +419,20 @@ async def process_url(
         attempt_chain.append(attempt_record)
         result.attempts.append(attempt_record)
 
+        # Prometheus metrics
+        SCRAPE_TOTAL.labels(
+            strategy=strategy.value,
+            status="success" if outcome.success else "failed",
+        ).inc()
+        SCRAPE_DURATION.labels(strategy=strategy.value).observe(strategy_elapsed)
+
         if outcome.success:
             result.success = True
             result.strategy_used = outcome.strategy
+            # Feed success back to circuit breaker and rate limiter
+            circuit_breaker.record_success(domain)
+            if have_rl_slot:
+                rate_limiter.release(domain)
             write_audit(
                 "pipeline.success",
                 f"Strategy {outcome.strategy.value} succeeded — {outcome.downloaded} doc(s) downloaded in {strategy_elapsed}s",
@@ -325,7 +456,7 @@ async def process_url(
             },
         )
 
-        if next_strategy(strategy, outcome, settings.enable_fallback_cua) is None:
+        if next_strategy(strategy, outcome, settings.enable_fallback_cua, order=strategies) is None:
             break
 
     result.runtime_seconds = time.time() - t0
@@ -344,6 +475,27 @@ async def process_url(
             log.exception("phase3.pipeline.persist_failed", error=str(e))
             result.error = (result.error or "") + f"; persist failed: {e}"
 
+        # Deep extraction — pure regex/structural, no LLM.
+        # Runs after successful download; failure never blocks the pipeline.
+        try:
+            from app.document_extractor.extractor import DeepExtractor
+            extractor = DeepExtractor()
+            extractor.run(
+                document_paths=result.downloaded,
+                source_url=url,
+                db=db,
+                job_item_id=item.id,
+            )
+        except Exception as _ex:  # noqa: BLE001
+            log.warning("extractor.pipeline_hook_failed", error=str(_ex))
+
+    # Feed failure back to circuit breaker — trips after threshold
+    if not result.success:
+        final_error_category = _classify_error(result.error) if result.error else "unknown"
+        circuit_breaker.record_failure(domain, final_error_category)
+        if have_rl_slot:
+            rate_limiter.release(domain)
+
     # Final outcome audit
     if not result.success:
         write_audit("pipeline.failure", result.error or "all strategies exhausted", level=ERROR,
@@ -356,6 +508,12 @@ async def process_url(
     item.iterations       = result.iterations
     item.runtime_seconds  = result.runtime_seconds
     item.attempts_detail  = attempt_chain   # persist full strategy cascade log
+
+    # Derive final failure category from the last recorded error for quick DB filtering.
+    if not result.success and result.error:
+        item.failure_category = _classify_error(result.error)
+    else:
+        item.failure_category = None
 
     # Build a clear, human-readable error summary when failed
     if not result.success:
@@ -398,10 +556,14 @@ async def _run_strategy(
         return await _try_existing(db, url, domain, scratch, result)
     if strategy is Strategy.DETERMINISTIC:
         return await _try_deterministic(url, scratch, result)
+    if strategy is Strategy.ADAPTIVE:
+        return await _try_adaptive(url, scratch, result)
     if strategy is Strategy.LLM_GENERATED:
         return await _try_llm_generated(db, url, domain, llm, scratch, result)
+    if strategy is Strategy.LEARNED_ROUTE:
+        return await _try_learned_route(db, url, domain, scratch, result)
     if strategy is Strategy.CUA:
-        return await _try_cua(url, scratch, result)
+        return await _try_cua(db, url, domain, scratch, result)
     return StrategyOutcome(strategy=strategy, success=False, downloaded=0, error="no runner")
 
 
@@ -412,6 +574,7 @@ async def _try_manual(
     tmp_id = uuid.uuid4().hex[:8]
     tmp_dir = Path(tempfile.gettempdir()) / f"vergabepilot-manual-{tmp_id}"
     tmp_dir.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
     try:
         # manual_scrape uses playwright.sync_api → run off the event loop.
         files = await asyncio.to_thread(manual_scrape, url, str(tmp_dir))
@@ -423,12 +586,28 @@ async def _try_manual(
             # appears in the frontend and is not lost across sessions.
             _register_manual_scraper(db, domain)
             return StrategyOutcome(Strategy.MANUAL, True, len(moved))
+        _record_manual_failure(db, domain, time.time() - t0)
         return StrategyOutcome(Strategy.MANUAL, False, 0, "no files found")
     except Exception as e:  # noqa: BLE001
         log.warning("phase3.manual.error", url=url, error=str(e))
+        _record_manual_failure(db, domain, time.time() - t0)
         return StrategyOutcome(Strategy.MANUAL, False, 0, str(e))
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _record_manual_failure(db: Session, domain: str, runtime: float) -> None:
+    """Count a MANUAL miss on the registered manual template (if any).
+
+    Successes were already recorded via _register_manual_scraper, but misses
+    never were — so the manual scraper's health always showed 100 %.
+    """
+    try:
+        tpl = scraper_registry.get_for_domain(db, domain)
+        if tpl is not None and tpl.source == "manual":
+            scraper_registry.record_outcome(db, tpl, success=False, runtime=runtime)
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.manual.record_failure_failed", domain=domain, error=str(e))
 
 
 def _register_manual_scraper(db: Session, domain: str) -> None:
@@ -472,6 +651,22 @@ async def _try_existing(
     if not tpl:
         return StrategyOutcome(Strategy.EXISTING, success=False, downloaded=0, error="no template")
 
+    # Skip CUA-hint-only stubs — store_cua_hint() creates a ScraperTemplate
+    # with source="cua" and a comment-only placeholder code when CUA runs
+    # before a real scraper exists. Executing it would always fail, pollute
+    # failure_count, and eventually trigger should_retire() on a fake scraper.
+    if tpl.source == "cua":
+        return StrategyOutcome(Strategy.EXISTING, success=False, downloaded=0, error="no real scraper (cua hint only)")
+
+    # A scraper below the retirement threshold (<20% success over 10+ runs)
+    # wastes a sandbox run on every URL and blocks the cascade from generating
+    # a better one; skip it so LLM_GENERATED can overwrite it on success.
+    if scraper_registry.should_retire(tpl):
+        log.info("phase3.existing.retired_skip", domain=domain,
+                 success=tpl.success_count, failures=tpl.failure_count)
+        return StrategyOutcome(Strategy.EXISTING, success=False, downloaded=0,
+                               error="cached scraper retired (success rate below threshold)")
+
     # executor is sync; run in thread pool
     ex = await asyncio.to_thread(exec_scraper, tpl.code, url)
     scraper_registry.record_outcome(db, tpl, success=ex.success, runtime=ex.runtime_seconds)
@@ -507,6 +702,34 @@ async def _try_deterministic(
     )
 
 
+async def _try_adaptive(
+    url: str, scratch: Path, result: PipelineResult,
+) -> StrategyOutcome:
+    """Universal, country/language-agnostic heuristic scraper (free, no LLM).
+
+    Runs a single bounded Playwright session that harvests documents directly or
+    after one multilingual click-hop. A miss returns a precise reason (e.g. a
+    detected login/captcha wall) so the failure is explained, not generic.
+    """
+    tmp_id = uuid.uuid4().hex[:8]
+    tmp_dir = Path(tempfile.gettempdir()) / f"vergabepilot-adaptive-{tmp_id}"
+    try:
+        ar = await asyncio.to_thread(run_adaptive, url, str(tmp_dir))
+        if ar.success and ar.downloaded_files:
+            moved = _move_into(scratch, ar.downloaded_files)
+            if moved:
+                result.downloaded.extend(moved)
+                return StrategyOutcome(Strategy.ADAPTIVE, True, len(moved))
+        return StrategyOutcome(
+            Strategy.ADAPTIVE, False, 0, ar.error or "no documents found",
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.adaptive.error", url=url, error=str(e))
+        return StrategyOutcome(Strategy.ADAPTIVE, False, 0, str(e))
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 async def _try_llm_generated(
     db: Session, url: str, domain: str, llm: LLMClient,
     scratch: Path, result: PipelineResult,
@@ -520,20 +743,31 @@ async def _try_llm_generated(
     sanitized_snippet: str | None = None
     try:
         import httpx
-        from app.core.security import detect_prompt_injection, sanitize_web_content
-        async with httpx.AsyncClient(timeout=12, follow_redirects=True, verify=False) as client:  # noqa: S501
+        from app.core.security import redact_injections, sanitize_web_content, strip_html_noise
+        async with httpx.AsyncClient(timeout=8, follow_redirects=True) as client:
             r = await client.get(url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept-Language": "de-DE,de;q=0.9,en;q=0.7",
             })
-            html_snippet = r.text
-        # Security: run injection scan on fetched HTML before handing to LLM.
-        hits = detect_prompt_injection(html_snippet)
+            # Cap before regex passes: a multi-MB page would burn CPU in
+            # strip/redact only to be truncated to 20k chars anyway.
+            html_snippet = r.text[:300_000]
+        # Strip script/style noise (the main injection false-positive source),
+        # then redact any remaining injection patterns instead of dropping the
+        # page — the AST validator + sandbox still constrain the generated code.
+        cleaned = strip_html_noise(html_snippet)
+        cleaned, hits = redact_injections(cleaned)
         if hits:
-            log.warning("phase3.llm.prompt_injection_in_html", url=url, patterns=hits[:3])
-            html_snippet = None  # discard tainted content; generator will re-fetch safely
-        else:
-            sanitized_snippet = sanitize_web_content(html_snippet, max_length=20_000)
+            log.warning("phase3.llm.prompt_injection_redacted", url=url, patterns=hits[:3])
+        html_snippet = cleaned
+        sanitized_snippet = sanitize_web_content(cleaned, max_length=20_000)
+    except httpx.ConnectError as e:
+        log.warning("phase3.llm.html_fetch_connect_error", url=url, error=str(e))
+    except httpx.SSLError as e:
+        # Portal has an invalid cert — log clearly and continue without HTML
+        log.warning("phase3.llm.html_fetch_ssl_error", url=url, error=str(e))
+    except httpx.TimeoutException as e:
+        log.warning("phase3.llm.html_fetch_timeout", url=url, error=str(e))
     except Exception as e:  # noqa: BLE001
         log.warning("phase3.llm.html_fetch_failed", url=url, error=str(e))
 
@@ -554,75 +788,125 @@ async def _try_llm_generated(
 
     resolved_platform = platform if platform != "unknown" else None
 
+    # 4b. Structural login-wall parse — when the fetched page is a hard auth
+    # wall with no public document links, skip the paid LLM step entirely and
+    # report the wall honestly. The CUA (which can sometimes pass walls
+    # visually) still runs later in the cascade.
+    if html_snippet:
+        wall = detect_login_wall(html_snippet)
+        if wall.is_wall and wall.confidence >= 0.8:
+            log.info(
+                "phase3.llm.login_wall_skip",
+                url=url, kind=wall.kind, confidence=wall.confidence,
+            )
+            return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, wall.as_error())
+
     # 5. Best-effort route learning (Playwright traces the click path).
+    # Only runs when explicitly enabled — disabled by default because it adds
+    # 20-30s of Playwright overhead per URL before LLM generation even starts.
+    # Enable via ENABLE_ROUTE_LEARNING=true when quality matters more than speed.
     route_map: RouteMap | None = None
     if settings.enable_route_learning:
         try:
             route_map = await asyncio.to_thread(learn_route, url)
-            log.info(
-                "phase3.route_learning",
-                url=url, learned=route_map.learned,
-                docs=route_map.total_documents_found,
-            )
+            log.info("phase3.route_learning", url=url, learned=route_map.learned,
+                     docs=route_map.total_documents_found)
         except Exception as e:  # noqa: BLE001
             log.warning("phase3.route_learning_failed", url=url, error=str(e))
             route_map = None
+        # NOTE: CUA preflight fallback intentionally removed — it adds a second
+        # full browser session (30-60s) and the stored cua_hint already provides
+        # equivalent navigation knowledge to the LLM generator.
 
-        # Fallback to Computer-Use Agent (CUA) Pre-flight Discovery if standard learner failed
-        if route_map is None or not route_map.learned:
-            try:
-                log.info("phase3.route_learning.cua_preflight_trigger", url=url)
-                from app.phase1_llm_scraper.cua_discovery import run_cua_preflight_discovery
-                route_map = await run_cua_preflight_discovery(url, max_steps=8)
-                log.info(
-                    "phase3.route_learning.cua_preflight_complete",
-                    url=url, learned=route_map.learned,
-                    docs=route_map.total_documents_found,
-                )
-            except Exception as e:
-                log.warning("phase3.route_learning.cua_preflight_failed", url=url, error=str(e))
-
-    # 6. Domain-deduplication lock: if another worker is generating a scraper for
-    #    this domain right now, wait for it to finish and then use the cached result.
-    #    This is critical at scale — 100 URLs from the same domain would otherwise
-    #    each trigger their own LLM call (wasted cost + time).
+    # 6. Domain-deduplication lock: acquire BEFORE generation starts so concurrent
+    #    workers for the same domain queue up rather than each calling the LLM.
     lock_acquired = False
-    _redis = None  # must be initialized before try so the finally block can safely reference it
+    _redis = None
+    lock_key = f"vergabepilot:domain_llm_lock:{domain}"
     try:
         import redis as redis_lib
-        _redis = redis_lib.from_url(settings.redis_url, socket_timeout=2.0)
-        lock_key = f"vergabepilot:domain_llm_lock:{domain}"
-        # Try to acquire with a short poll loop (non-blocking)
-        for _ in range(int(settings.domain_llm_lock_ttl / 5)):
-            lock_acquired = bool(_redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl))
-            if lock_acquired:
-                break
-            # Another worker holds the lock — check if it already built the scraper
-            await asyncio.sleep(5)
-            refreshed = scraper_registry.get_for_domain(db, domain)
-            if refreshed:
-                log.info("phase3.llm.dedup_cache_hit", domain=domain, url=url)
-                ex = await asyncio.to_thread(exec_scraper, refreshed.code, url)
-                scraper_registry.record_outcome(db, refreshed, success=ex.success, runtime=ex.runtime_seconds)
-                if ex.success and ex.downloaded_files:
-                    moved = _move_into(scratch, ex.downloaded_files)
+        _redis = redis_lib.from_url(settings.redis_url, socket_timeout=2.0, decode_responses=True)
+
+        # Attempt to acquire the lock immediately
+        lock_acquired = bool(
+            _redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl)
+        )
+
+        if not lock_acquired:
+            log.info("phase3.llm.lock_wait", domain=domain, url=url)
+            # Another worker holds the lock — poll every 2s until it releases or
+            # the lock TTL expires. The lock-holder will write the scraper to the
+            # registry on success, so check after each wait.
+            max_polls = max(1, int(settings.domain_llm_lock_ttl / 2))
+            for poll in range(max_polls):
+                await asyncio.sleep(2)
+                db.expire_all()
+                refreshed = scraper_registry.get_for_domain(db, domain)
+                if refreshed and refreshed.source not in ("cua",):
+                    log.info(
+                        "phase3.llm.dedup_cache_hit",
+                        domain=domain, url=url, polls=poll + 1,
+                    )
+                    ex = await asyncio.to_thread(exec_scraper, refreshed.code, url)
+                    scraper_registry.record_outcome(
+                        db, refreshed, success=ex.success, runtime=ex.runtime_seconds
+                    )
+                    if ex.success and ex.downloaded_files:
+                        moved = _move_into(scratch, ex.downloaded_files)
+                        cleanup_output_dir(ex.output_dir)
+                        if moved:
+                            result.downloaded.extend(moved)
+                            return StrategyOutcome(Strategy.EXISTING, True, len(moved))
                     cleanup_output_dir(ex.output_dir)
-                    if moved:
-                        result.downloaded.extend(moved)
-                        return StrategyOutcome(Strategy.EXISTING, True, len(moved))
-                cleanup_output_dir(ex.output_dir)
-                return StrategyOutcome(Strategy.EXISTING, False, 0, "dedup scraper did not return files")
-        # Timed out waiting for lock — proceed with own LLM generation
-    except Exception:  # Redis unavailable — proceed without dedup
-        pass
+                    return StrategyOutcome(
+                        Strategy.EXISTING, False, 0, "dedup scraper did not return files"
+                    )
+                # Re-try acquiring the lock (may have been released)
+                lock_acquired = bool(
+                    _redis.set(lock_key, "1", nx=True, ex=settings.domain_llm_lock_ttl)
+                )
+                if lock_acquired:
+                    log.info("phase3.llm.lock_acquired_after_wait", domain=domain, polls=poll + 1)
+                    break
+
+            if not lock_acquired:
+                log.warning(
+                    "phase3.llm.lock_timeout_proceeding",
+                    domain=domain,
+                    ttl=settings.domain_llm_lock_ttl,
+                )
+        else:
+            log.debug("phase3.llm.lock_acquired", domain=domain)
+
+    except Exception as e:  # noqa: BLE001
+        # Redis unavailable — proceed without dedup protection, log so ops can investigate
+        log.warning("phase3.llm.redis_lock_unavailable", domain=domain, error=str(e))
 
     report_data = route_map.cua_discovery_report if route_map else None
 
+    # Pull any CUA interaction knowledge stored for this domain.  If the CUA
+    # fallback already ran (in a prior job or earlier in this cascade), the
+    # recorded trace dramatically improves LLM generation success rates.
+    # Expire first: a concurrent worker may have committed a cua_hint after
+    # _try_existing loaded this domain's row into the session identity map.
+    cua_hint: str | None = None
     try:
-        # Run the LLM feedback loop (generator uses platform + route + pre-fetched HTML).
-        loop = await asyncio.to_thread(
-            _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet,
-        )
+        db.expire_all()
+        tpl = scraper_registry.get_for_domain(db, domain)
+        if tpl and tpl.cua_hint:
+            cua_hint = tpl.cua_hint
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        # Acquire the global LLM semaphore before spawning the generation thread.
+        # This caps concurrent OpenRouter calls to settings.llm_global_concurrency
+        # (default 2) so simultaneous URL batches don't all fire at once and hit
+        # the 403 concurrent-call limit on the API key.
+        async with _get_llm_sem():
+            loop = await asyncio.to_thread(
+                _run_loop_sync, url, llm.default_model, route_map, resolved_platform, sanitized_snippet, cua_hint,
+            )
         result.iterations += loop.iterations
         result.cost_usd += loop.total_cost_usd
 
@@ -643,12 +927,12 @@ async def _try_llm_generated(
             cleanup_output_dir(loop.final_execution.output_dir)
         return StrategyOutcome(Strategy.LLM_GENERATED, False, 0, err, cua_discovery_report=report_data)
     finally:
-        # Always release the domain lock after generation
         if lock_acquired and _redis is not None:
             try:
                 _redis.delete(lock_key)
-            except Exception:
-                pass
+                log.debug("phase3.llm.lock_released", domain=domain)
+            except Exception as e:  # noqa: BLE001
+                log.warning("phase3.llm.lock_release_failed", domain=domain, error=str(e))
 
 
 def _run_loop_sync(
@@ -657,6 +941,7 @@ def _run_loop_sync(
     route_map=None,
     platform: str | None = None,
     html_snippet: str | None = None,
+    cua_hint: str | None = None,
 ):
     """Run the async feedback loop from inside asyncio.to_thread().
 
@@ -664,33 +949,162 @@ def _run_loop_sync(
     to the new event loop started by asyncio.run() — not the outer loop.
     `html_snippet` is the already-sanitized page content forwarded from the
     pipeline so the generator skips its own HTTP fetch.
+    `cua_hint` is the recorded CUA interaction trace for this domain, if any.
     """
     llm = LLMClient(default_model=default_model)
     return asyncio.run(run_feedback_loop(
         url=url, llm=llm, route_map=route_map, platform=platform,
-        html_snippet=html_snippet,
+        html_snippet=html_snippet, cua_hint=cua_hint,
     ))
 
 
-async def _try_cua(
-    url: str, scratch: Path, result: PipelineResult,
+async def _try_learned_route(
+    db: Session, url: str, domain: str, scratch: Path, result: PipelineResult,
 ) -> StrategyOutcome:
-    outcome = await run_agent(
-        "playwright_cua", url=url, max_steps=settings.cua_max_steps,
-    )
-    result.cost_usd += outcome.cost_usd
-    if outcome.success and outcome.downloaded_files:
-        moved = _move_into(scratch, outcome.downloaded_files)
-        # Clean up the agent's run-specific temp dir once files are in scratch.
-        for f in outcome.downloaded_files:
-            cua_dir = str(Path(f).parent)
-            if cua_dir and cua_dir != str(scratch):
-                cleanup_output_dir(cua_dir)
-                break
+    """Replay a route the CUA proved works on a prior visit (cheap Playwright).
+
+    Fast-fails when no route was learned for this domain so the cascade moves on
+    to CUA. Replay is best-effort: a miss is treated as a normal strategy failure.
+    """
+    route = scraper_registry.get_learned_route(db, domain)
+    if route is None:
+        return StrategyOutcome(Strategy.LEARNED_ROUTE, False, 0, "no learned route for domain")
+
+    tmp_id = uuid.uuid4().hex[:8]
+    tmp_dir = Path(tempfile.gettempdir()) / f"vergabepilot-learned-{tmp_id}"
+    try:
+        files = await asyncio.to_thread(replay_learned_route, route.to_dict(), str(tmp_dir))
+        moved = _move_into(scratch, files)
         if moved:
             result.downloaded.extend(moved)
-            return StrategyOutcome(Strategy.CUA, True, len(moved))
-    return StrategyOutcome(Strategy.CUA, False, 0, outcome.error or "agent failed")
+            return StrategyOutcome(Strategy.LEARNED_ROUTE, True, len(moved))
+        return StrategyOutcome(Strategy.LEARNED_ROUTE, False, 0, "learned route returned no documents")
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.learned_route.error", url=url, error=str(e))
+        return StrategyOutcome(Strategy.LEARNED_ROUTE, False, 0, str(e))
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+# Failure categories where a CUA retry cannot help: the wall is deterministic,
+# so a second vision-agent run only doubles the cost.
+_CUA_NO_RETRY = {
+    "login_required", "registration_required", "captcha",
+    "not_found", "expired", "blocked_url",
+}
+
+
+async def _try_cua(
+    db: Session, url: str, domain: str, scratch: Path, result: PipelineResult,
+) -> StrategyOutcome:
+    attempts = max(1, settings.cua_attempts)
+    last_error: str | None = None
+
+    for attempt in range(1, attempts + 1):
+        outcome = await run_agent(
+            "playwright_cua", url=url, max_steps=settings.cua_max_steps,
+        )
+        result.cost_usd += outcome.cost_usd
+
+        # Always persist the CUA interaction trace as a domain hint, regardless of
+        # success/failure. Even a failed trace encodes which steps were tried,
+        # which selectors were found, and where the agent got stuck — this is
+        # valuable context for the next LLM generation attempt on this domain.
+        if outcome.trace:
+            hint = _format_cua_hint(url, outcome)
+            scraper_registry.store_cua_hint(db, domain, hint)
+
+        if outcome.success and outcome.downloaded_files:
+            moved = _move_into(scratch, outcome.downloaded_files)
+            for f in outcome.downloaded_files:
+                cua_dir = str(Path(f).parent)
+                if cua_dir and cua_dir != str(scratch):
+                    cleanup_output_dir(cua_dir)
+                    break
+            if moved:
+                result.downloaded.extend(moved)
+                # ── CUA route learning ───────────────────────────────────────
+                # The CUA succeeded. If every cheaper strategy already failed for
+                # this URL (i.e. CUA was the only thing that worked), learn the route
+                # so the next visit to this domain replays it cheaply instead of
+                # paying the full CUA cost again. Never let learning break the win.
+                await _maybe_learn_route(db, url, domain, outcome, result)
+                return StrategyOutcome(Strategy.CUA, True, len(moved))
+
+        last_error = outcome.error or "agent failed"
+        # The visual agent is stochastic — benchmarks showed the same portal
+        # flipping between success and failure across runs, so one retry buys
+        # real coverage. Deterministic walls are exempt (see _CUA_NO_RETRY).
+        if attempt < attempts:
+            if classify_error(last_error) in _CUA_NO_RETRY:
+                break
+            log.info(
+                "phase3.cua.retry",
+                url=url, attempt=attempt, of=attempts, error=last_error[:200],
+            )
+
+    return StrategyOutcome(Strategy.CUA, False, 0, last_error or "agent failed")
+
+
+async def _maybe_learn_route(
+    db: Session, url: str, domain: str, outcome, result: PipelineResult,
+) -> None:
+    """Capture & persist a replayable route after a CUA-only success.
+
+    Guards:
+      * gated by settings.enable_cua_route_learning,
+      * only when at least one cheaper strategy was tried and failed for this
+        URL (so a forced/standalone CUA run doesn't trigger learning),
+      * learn_from_cua returns None for unreplayable portals (e.g. login walls),
+        in which case we keep relying on CUA.
+    """
+    if not settings.enable_cua_route_learning:
+        return
+    prior_failures = any(not a.get("success") for a in result.attempts)
+    if not prior_failures:
+        return
+    try:
+        route = await asyncio.to_thread(learn_from_cua, url, outcome)
+        if route is not None:
+            scraper_registry.store_learned_route(db, domain, route)
+            write_audit(
+                "route_learner.learned",
+                f"Learned replayable CUA route for {domain} "
+                f"({len(route.steps)} steps, {len(route.document_links)} docs)",
+                level=INFO, domain=domain, url=url, strategy=Strategy.CUA.value,
+                metadata={"confidence": route.confidence, "learned_via": route.learned_via},
+            )
+    except Exception as e:  # noqa: BLE001
+        log.warning("phase3.cua.route_learning_failed", url=url, error=str(e))
+
+
+def _format_cua_hint(url: str, outcome) -> str:
+    """Convert a CUA AgentRunOutcome trace into a concise text hint for the LLM.
+
+    Captures the step sequence (action type + description), any download
+    events, and the final outcome. Capped at 80 steps to stay prompt-friendly.
+    """
+    lines: list[str] = [
+        f"CUA agent ran on: {url}",
+        f"Outcome: {'SUCCESS' if outcome.success else 'FAILED'} — steps taken: {outcome.steps}",
+    ]
+    if outcome.error:
+        lines.append(f"Final error: {outcome.error[:300]}")
+
+    lines.append("\nStep-by-step trace:")
+    for i, step in enumerate(outcome.trace[:80], 1):
+        action = step.get("action") or step.get("type") or "step"
+        desc   = step.get("description") or step.get("text") or step.get("url") or ""
+        result = step.get("result") or step.get("outcome") or ""
+        line   = f"  {i}. [{action}] {str(desc)[:120]}"
+        if result:
+            line += f" → {str(result)[:80]}"
+        lines.append(line)
+
+    if outcome.downloaded_files:
+        lines.append(f"\nFiles downloaded: {[Path(f).name for f in outcome.downloaded_files[:10]]}")
+
+    return "\n".join(lines)
 
 
 # ---------- persistence ----------

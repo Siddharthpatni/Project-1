@@ -1,12 +1,33 @@
+/**
+ * CUA Agent Runs page — trigger and inspect Phase 2 computer-use agent sessions.
+ *
+ * The Computer-Use Agent (CUA) is the last-resort strategy in the cascade:
+ * a vision-capable LLM (e.g. GPT-4o) drives a real Chromium browser to navigate
+ * procurement portals and click download buttons — used when all other strategies fail.
+ *
+ * Features:
+ *   - Run form: submit a URL + agent type + max steps to trigger a CUA session
+ *   - Run history table: past sessions with success/failure, cost, step count
+ *   - Session detail: expand to see the full action trace from each run
+ *
+ * Agent types registered in the backend orchestrator:
+ *   playwright_cua — primary, with CRITICAL RULES prompt (used in production cascade)
+ *   browser_use    — secondary, simpler prompt (for benchmarking only)
+ *
+ * Data sources:
+ *   GET  /api/agents          → list historical CUA runs
+ *   POST /api/agents/run      → trigger a new CUA session (async, returns run_id)
+ */
 "use client";
 
 import { useState } from "react";
 import useSWR from "swr";
 import { api, fetcher, postJSON } from "@/lib/api";
+import { usd } from "@/lib/format";
 import Link from "next/link";
 import {
   Bot, CheckCircle2, XCircle, Search, Cpu, Activity, Clock,
-  DollarSign, ArrowLeft, X, Sparkles, Zap, Timer, Hash,
+  DollarSign, X, Sparkles, Zap, Timer, Hash,
   RefreshCcw, Globe, ExternalLink, FileText
 } from "lucide-react";
 
@@ -46,21 +67,12 @@ export default function AgentsPage() {
     : 0;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      {/* ── Navigation ── */}
-      <Link 
-        href="/" 
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all hover:translate-x-[-2px] duration-200"
-      >
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Back to Dashboard
-      </Link>
+    <div className="space-y-8">
 
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-3 text-slate-900 tracking-tight">
-            <Bot className="w-8 h-8 text-indigo-600" />
-            Phase 2 — Computer-Use Agents
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            Computer-Use Agents
           </h1>
           <p className="text-slate-500 text-sm sm:text-base font-medium mt-1">
             GUI-based autonomous agent that visually navigates procurement portals to discover and download tender files.
@@ -95,12 +107,12 @@ export default function AgentsPage() {
           <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
             <DollarSign className="w-4 h-4" /> Total LLM Cost
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-800">${totalCost.toFixed(4)}</div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-800">{usd(totalCost)}</div>
         </div>
       </div>
 
       {/* ── Trigger Run Form ── */}
-      <div className="bg-white border-2 border-dashed border-indigo-200 rounded-3xl p-6 md:p-8 bg-gradient-to-br from-indigo-50/15 via-white to-white space-y-6">
+      <div className="bg-white border-2 border-dashed border-indigo-200 rounded-2xl p-6 md:p-8 bg-gradient-to-br from-indigo-50/15 via-white to-white space-y-6">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-2xl">
             <Sparkles className="w-6 h-6 text-indigo-600" />
@@ -129,6 +141,7 @@ export default function AgentsPage() {
                   <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
                   <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
                   <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+                  <option value="ollama/gemma4:12b">Gemma 4 12B · Local, free</option>
                 </select>
               </div>
             </div>
@@ -189,7 +202,7 @@ export default function AgentsPage() {
                 key={preset.label}
                 type="button"
                 onClick={() => setUrl(preset.url)}
-                className="text-xs px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-full font-bold shadow-sm transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="text-xs px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded-full font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
                 disabled={busy}
               >
                 {preset.label}
@@ -244,7 +257,7 @@ export default function AgentsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center font-bold text-slate-500">{s.avg_steps}</td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-800">${s.total_cost_usd?.toFixed(4)}</td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-800">{usd(s.total_cost_usd)}</td>
                     </tr>
                   ))
                 )}
@@ -285,7 +298,7 @@ export default function AgentsPage() {
                     </div>
                     <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono font-bold">
                       <DollarSign className="w-3.5 h-3.5" />
-                      {r.cost_usd?.toFixed(4)}
+                      {usd(r.cost_usd).replace("$", "")}
                     </span>
                   </div>
                   <div className="text-[11px] font-mono font-bold text-slate-500 truncate w-full" title={r.url}>

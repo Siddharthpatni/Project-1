@@ -1,12 +1,19 @@
 """
-Browser-Use driven CUA agent — secondary agent strategy for Phase 2.
+Alternative browser-use CUA agent — secondary Phase 2 strategy.
 
-Identical task prompt to PlaywrightCUA but registered under a different
-name so the evaluation harness can compare them independently.
+Functionally identical to PlaywrightCUA but:
+  - Registered under a different name ("browser_use") so the evaluation harness
+    can benchmark both agents independently on the same URL dataset.
+  - Uses a simpler task prompt (no CRITICAL RULES section) to test whether strict
+    constraints improve or hurt success rate in practice.
+  - Adds wait_between_actions=0.5s to slow down interactions on portals with
+    rate-limiting or JS-heavy rendering (some DTVP portals throttle rapid clicks).
+
+Shares the global browser semaphore from browser_agent.py to keep the total
+concurrent Chromium count capped across both implementations.
 """
 from __future__ import annotations
 
-import asyncio
 import time
 import uuid
 from pathlib import Path
@@ -17,15 +24,24 @@ from browser_use.llm.openrouter.chat import ChatOpenRouter
 
 from app.config import settings
 from app.phase2_cua.base_agent import AgentRunOutcome, BaseAgent
-from app.phase2_cua.browser_agent import _get_browser_sem   # shared semaphore
+# Import the shared semaphore — both PlaywrightCUA and BrowserUseCUA count against
+# the same 2-browser limit per worker to prevent memory exhaustion.
+from app.phase2_cua.browser_agent import _get_browser_sem
 from app.utils.logger import get_logger
 
 log = get_logger(__name__)
 
+# Same document extensions as PlaywrightCUA — used to filter directory scan results.
 _DOC_SUFFIXES = frozenset({".pdf", ".zip", ".docx", ".xlsx", ".doc", ".xml", ".odt", ".ods"})
 
 
 def build_agent_task(url: str) -> str:
+    """
+    Build the task prompt for this agent.
+
+    Intentionally simpler than PlaywrightCUA's prompt — no CRITICAL RULES block —
+    to allow the evaluation harness to test whether strict constraints help or hurt.
+    """
     return dedent(f"""
         Your objective is to download public procurement tender documents from a German website.
 
@@ -43,12 +59,20 @@ def build_agent_task(url: str) -> str:
 
 
 class BrowserUseCUA(BaseAgent):
+    """
+    Secondary CUA implementation using browser-use library.
+
+    Registered as "browser_use" in the orchestrator registry.
+    Not used in the production cascade (pipeline always calls "playwright_cua");
+    available for manual benchmarking via the /api/agents/run endpoint.
+    """
     name = "browser_use"
 
     def __init__(self, model_name: str | None = None):
         self.llm_model = model_name or settings.llm_model_fallback or "openai/gpt-4o-mini"
 
     async def run(self, url: str, max_steps: int) -> AgentRunOutcome:
+        # Shared semaphore caps total Chromium instances across both CUA implementations.
         async with _get_browser_sem():
             return await self._run_with_browser(url, max_steps)
 
@@ -77,6 +101,8 @@ class BrowserUseCUA(BaseAgent):
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
             ),
+            # Slight delay between actions helps on portals that debounce rapid clicks
+            # or that use JS animations between navigation states.
             wait_between_actions=0.5,
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -94,6 +120,8 @@ class BrowserUseCUA(BaseAgent):
             log.info("phase2.browser_use.start", url=url)
             result = await agent.run(max_steps=max_steps or 30)
 
+            # Collect downloaded files — same two-stage strategy as PlaywrightCUA:
+            # prefer browser tracker, fall back to directory scan.
             downloaded_files: list[str] = []
             try:
                 tracked = browser.downloaded_files

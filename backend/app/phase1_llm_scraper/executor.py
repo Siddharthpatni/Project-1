@@ -56,14 +56,16 @@ from scraper import scrape
 t0 = time.time()
 try:
     raw = scrape({url!r}, {output_dir!r})
+    blocked = ""
     if raw is None:
         files = []
     elif isinstance(raw, dict):
         files = raw.get("downloaded_files") or raw.get("files") or []
+        blocked = str(raw.get("blocked_reason") or "")[:300]
     else:
         files = list(raw)
     files = [str(f) for f in files if isinstance(f, (str, bytes, os.PathLike)) and os.path.isfile(str(f))]
-    result = {{"ok": True, "files": files, "elapsed": time.time() - t0}}
+    result = {{"ok": True, "files": files, "blocked": blocked, "elapsed": time.time() - t0}}
 except Exception as e:
     result = {{"ok": False, "error": str(e), "traceback": traceback.format_exc(), "elapsed": time.time() - t0}}
 
@@ -184,6 +186,10 @@ def execute(code: str, url: str) -> ExecutionResult:
             _consider(str(output_dir / entry))
 
     if not surviving:
+        # A scraper-reported access wall (login/CAPTCHA/registration) is a more
+        # honest failure reason than the generic "no valid documents", and
+        # classify_error() maps it to the right category for the admin panel.
+        blocked = (payload.get("blocked") or "").strip()
         return ExecutionResult(
             success=False,
             downloaded_files=[],
@@ -191,7 +197,7 @@ def execute(code: str, url: str) -> ExecutionResult:
             stdout=sb.stdout,
             stderr=sb.stderr,
             runtime_seconds=payload.get("elapsed", sb.elapsed),
-            error=(
+            error=blocked or (
                 f"scraper produced no valid documents "
                 f"(rejected {len(rejected)} non-document file(s): "
                 f"{[r for _, r in rejected[:5]]})"
