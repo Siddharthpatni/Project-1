@@ -141,11 +141,12 @@ services:
   # ── Celery Workers (tiered) ───────────────────────────────────────
 
   # Job orchestration: spawns chunk tasks, runs small jobs directly
+  # Also consumes the beat queue (crash recovery, cleanup, versioning)
   worker-default:
     <<: *worker-common
     command: >
       celery -A app.workers.celery_app worker
-      --queues=default
+      --queues=default,beat
       --concurrency=4
       --loglevel=info
       --hostname=worker-default@%h
